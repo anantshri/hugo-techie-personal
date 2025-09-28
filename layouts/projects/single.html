@@ -69,7 +69,12 @@
         <a href="{{ .Params.website_url }}" target="_blank" rel="noopener" class="btn btn-primary">🌐 Website</a>
       {{ end }}
       {{ if .Params.github_url }}
-        <a href="{{ .Params.github_url }}" target="_blank" rel="noopener" class="btn btn-secondary">📁 GitHub</a>
+        <a href="{{ .Params.github_url }}" target="_blank" rel="noopener" class="btn btn-secondary btn-icon-only">
+          {{ $githubIcon := resources.Get "images/github.svg" }}
+          {{ if $githubIcon }}
+            <img src="{{ $githubIcon.RelPermalink }}" alt="GitHub" class="btn-icon" />
+          {{ end }}
+        </a>
       {{ end }}
     </div>
   </div>

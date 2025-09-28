@@ -12,7 +12,7 @@
 		"remove" : "<div(.*)</div>"
 	},
 	{
-		"endpoint" : "https://www.youtube.com/oembed?maxwidth=450&maxheight=250&privacy=1",
+		"endpoint" : "https://www.youtube.com/oembed?maxwidth=800&maxheight=450&privacy=1",
 		"pattern" : "youtu",
 		"privacy_enhanced": true,
 		"privacy_replace": {

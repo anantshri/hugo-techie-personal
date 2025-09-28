@@ -44,14 +44,9 @@
     <ul class="timeline-year-list">
       {{ range $sortedEntries }}
         <li class="timeline-entry-item">
-          <span class="timeline-entry-date">{{ .Date.Format "Jan 02" }}</span>
           {{ $red_url := default .RelPermalink .Params.redirect_url }}
           <a href="{{ $red_url }}"{{ if .Params.redirect_url }} target="_blank" rel="noreferrer noopener nofollow"{{ end }} class="timeline-entry-link">
-            {{ .Title | markdownify }}
-          </a>
-          {{ if .Params.event }} 
-            <span class="timeline-entry-event">@ {{ .Params.event | markdownify }}</span>
-          {{ end }}
+          <span class="timeline-entry-date">{{ .Date.Format "Jan 02" }}</span>
           {{ if .Params.activity }}
             {{ $activityDisplay := .Params.activity }}
             {{ if reflect.IsSlice .Params.activity }}
@@ -60,6 +55,12 @@
             {{ $activityLower := $activityDisplay | lower }}
             <span class="timeline-entry-activity" data-activity="{{ $activityLower }}">{{ $activityDisplay | humanize | title }}</span>
           {{ end }}
+            {{ .Title | markdownify }}
+          {{ if .Params.event }} 
+            <span class="timeline-entry-event">@ {{ .Params.event | markdownify }}</span>
+          {{ end }}
+        </a>
+
         </li>
       {{ end }}
     </ul>
