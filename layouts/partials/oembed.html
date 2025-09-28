@@ -74,9 +74,13 @@
         {{/* Output directly without wrapper */}}
       {{else}}
         {{ if $autoheight }}
-          {{ $out = printf "<div style='position: relative; padding-bottom: %spx; height: 0; overflow: hidden;'>%s</div>" .height $out | safeHTML }}
+          {{ $out = printf "<div class='oembed-container-auto' style='padding-bottom: %spx;'>%s</div>" .height $out | safeHTML }}
         {{ else }}
-          {{ $out = printf "<div style='position: relative; padding-bottom: 55.25%%; height: 0; overflow: hidden;'>%s</div>" $out | safeHTML }}
+          {{ if and (findRE "(youtu)" $videoUrl.Host) (findRE "/shorts/" $url) }}
+            {{ $out = printf "<div class='oembed-container-auto oembed-youtube-shorts'>%s</div>" $out | safeHTML }}
+          {{ else }}
+            {{ $out = printf "<div class='oembed-container-auto'>%s</div>" $out | safeHTML }}
+          {{ end }}
         {{ end }}
       {{ end }}
     {{ end }}

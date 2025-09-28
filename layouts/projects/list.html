@@ -85,7 +85,7 @@
     <div class="project-section-header">
       <h2 class="project-section-title">{{ $focusKey }}</h2>
     </div>
-    <div>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {{ range $projects }}
         <div id="featured_home">
           <center>
@@ -173,7 +173,7 @@
   {{ $sortedDiscontinuedWithoutDates := sort $discontinuedWithoutDates ".Title" }}
   
   <!-- Display discontinued projects with dates first -->
-  <div>
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
     {{ range $sortedDiscontinuedWithDates }}
       <div id="featured_home" style="opacity: 0.7;">
         <center>

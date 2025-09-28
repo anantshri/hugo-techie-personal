@@ -1,5 +1,5 @@
 {{ partial "header.html" . }}
-<main>
+<main class="{{ .Site.Params.home_layout | default "home-layout-50-50" }}">
 <div id="mainimg">
 
 	{{ $img_loc := $.Site.Params.profile_pic }}
@@ -41,7 +41,4 @@
 {{ $content | safeHTML }}
 </div>
 </main>
-<br />
-<span class="clear"></span>
-<br />
 {{ partial "footer.html" . }}

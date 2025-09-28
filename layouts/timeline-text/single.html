@@ -2,14 +2,16 @@
 
 {{ partial "breadcrumbs.html" . }}
 
-<div class="article-meta">
-<h1><span class="title">{{ .Title | markdownify }}</span></h1>
-</div>
+<div class="timeline-text-page">
+  <div class="timeline-text-header">
+    <h1>{{ .Title | markdownify }}</h1>
+  </div>
 
-<main>
-{{ .Content }}
+  <div class="timeline-text-content">
+    {{ .Content }}
+  </div>
 
-<div class="text-timeline">
+  <div class="text-timeline">
   {{ $pages := where .Site.Pages "Section" "timeline" }}
   {{ $pages = where $pages "Kind" "page" }}
   {{ $pages = where $pages "Draft" "!=" true }}
@@ -39,31 +41,30 @@
     {{ $sortedEntries := sort $entries ".Date" "desc" }}
     
     <h2>{{ $year }}</h2>
-    <ul style="list-style-type: none; padding-left: 0;">
+    <ul class="timeline-year-list">
       {{ range $sortedEntries }}
-        <li style="margin-bottom: 8px; padding: 5px 0; border-bottom: 1px dotted #ccc;">
-          <span style="color: #666; font-size: 0.9em;">{{ .Date.Format "Jan 02" }}</span> - 
+        <li class="timeline-entry-item">
+          <span class="timeline-entry-date">{{ .Date.Format "Jan 02" }}</span>
           {{ $red_url := default .RelPermalink .Params.redirect_url }}
-          <a href="{{ $red_url }}"{{ if .Params.redirect_url }} target="_blank" rel="noreferrer noopener nofollow"{{ end }} style="text-decoration: none;">
-            <strong>{{ .Title | markdownify }}</strong>
+          <a href="{{ $red_url }}"{{ if .Params.redirect_url }} target="_blank" rel="noreferrer noopener nofollow"{{ end }} class="timeline-entry-link">
+            {{ .Title | markdownify }}
           </a>
           {{ if .Params.event }} 
-            <span style="color: #888; font-style: italic;">@ {{ .Params.event | markdownify }}</span>
+            <span class="timeline-entry-event">@ {{ .Params.event | markdownify }}</span>
           {{ end }}
           {{ if .Params.activity }}
             {{ $activityDisplay := .Params.activity }}
             {{ if reflect.IsSlice .Params.activity }}
               {{ $activityDisplay = index .Params.activity 0 }}
             {{ end }}
-            <span style="background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-size: 0.8em; margin-left: 8px;">{{ $activityDisplay | humanize | title }}</span>
+            {{ $activityLower := $activityDisplay | lower }}
+            <span class="timeline-entry-activity" data-activity="{{ $activityLower }}">{{ $activityDisplay | humanize | title }}</span>
           {{ end }}
         </li>
       {{ end }}
     </ul>
-    <br>
   {{ end }}
+  </div>
 </div>
-
-</main>
 
 {{ partial "footer.html" . }}

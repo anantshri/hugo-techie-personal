@@ -1,7 +1,6 @@
 {{ partial "header.html" . }}
 {{ $orender := . }}
 <div class="article-meta">
-<br />
 <div id=featured>
 </div>
 <h1><span class="title">{{ .Title | markdownify }}</span></h1>
@@ -13,9 +12,5 @@
 {{ $orender = replace .Content "http://" "https://" }}
 {{ $orender | safeHTML }}
 </main>
-<br />
 
-
-
-<br />
 {{ partial "footer.html" . }}

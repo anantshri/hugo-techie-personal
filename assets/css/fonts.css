@@ -1,7 +1,46 @@
+/* Modern Font Stack - Using CSS Custom Properties from modern-design.css */
 body {
-  font-family: Merriweather, Optima, Candara, Calibri, Arial, sans-serif;
+  font-family: var(--font-family-sans);
+  font-weight: var(--font-weight-normal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
-code {
-  font-family: "Lucida Console", Monaco, monospace;
-  font-size: 85%;
+
+/* Serif for specific content areas */
+.serif, 
+main p,
+blockquote {
+  font-family: var(--font-family-serif);
+}
+
+/* Monospace for code */
+code, 
+pre,
+.mono {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-normal);
+}
+
+/* Headings use sans-serif for modern look */
+h1, h2, h3, h4, h5, h6,
+.brand,
+.nav-title,
+.timeline-section-title {
+  font-family: var(--font-family-sans);
+}
+
+/* Fallback for systems without custom fonts */
+@supports not (font-variation-settings: normal) {
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  }
+  
+  .serif, main p, blockquote {
+    font-family: Georgia, 'Times New Roman', Times, serif;
+  }
+  
+  code, pre, .mono {
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  }
 }

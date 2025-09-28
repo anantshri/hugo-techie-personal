@@ -2,41 +2,48 @@
 
 {{ partial "breadcrumbs.html" . }}
 
-<div class="article-meta">
-<br />
-<div id=featured>
-
-<center>
-	{{ if and (.Params.featured_image) ( not (isset .Params "hide_featured"))  }}
-              {{ $img_loc := replace .Params.featured_image "/uploads" "images" }}
-              {{- $image := resources.Get $img_loc -}}
-              {{ if $image }}
-                <img src='{{ ($image.Resize "x400 q100").RelPermalink }}' alt='{{.Title}}' maxwidth='650px' maxheight='360px' loading="lazy" /> 
-                <br />
-              {{ else }}
-                {{ $placeholder := resources.Get "images/timeline-placeholder.svg" }}
-                {{ if $placeholder }}
-                  <img src="{{ $placeholder.RelPermalink }}" alt="Placeholder for {{ .Title }}" style="opacity: 0.7; max-width: 400px;" />
-                  <br />
-                {{ end }}
-              {{ end }}
-    {{ else if not (isset .Params "hide_featured") }}
-              {{ $placeholder := resources.Get "images/timeline-placeholder.svg" }}
-              {{ if $placeholder }}
-                <img src="{{ $placeholder.RelPermalink }}" alt="Placeholder for {{ .Title }}" style="opacity: 0.7; max-width: 400px;" />
-                <br />
-              {{ end }}
+{{/* Featured Image Box */}}
+{{ $hasFeaturedImage := and .Params.featured_image (not (isset .Params "hide_featured")) }}
+{{ $shouldShowPlaceholder := and (not (isset .Params "hide_featured")) (not (in .Params.excerpt "https://")) }}
+{{ if or $hasFeaturedImage $shouldShowPlaceholder }}
+<div class="timeline-featured-box">
+  <div class="timeline-featured-content">
+    {{ if $hasFeaturedImage }}
+      {{ $img_loc := replace .Params.featured_image "/uploads" "images" }}
+      {{- $image := resources.Get $img_loc -}}
+      {{ if $image }}
+        <img src='{{ ($image.Resize "x400 q100").RelPermalink }}' alt='{{.Title}}' maxwidth='650px' maxheight='360px' loading="lazy" /> 
+      {{ else if $shouldShowPlaceholder }}
+        {{ $placeholder := resources.Get "images/timeline-placeholder.svg" }}
+        {{ if $placeholder }}
+          <img src="{{ $placeholder.RelPermalink }}" alt="Placeholder for {{ .Title }}" style="opacity: 0.7; max-width: 400px;" />
+        {{ end }}
+      {{ end }}
+    {{ else if $shouldShowPlaceholder }}
+      {{ $placeholder := resources.Get "images/timeline-placeholder.svg" }}
+      {{ if $placeholder }}
+        <img src="{{ $placeholder.RelPermalink }}" alt="Placeholder for {{ .Title }}" style="opacity: 0.7; max-width: 400px;" />
+      {{ end }}
     {{ end }}
-</center>
+  </div>
 </div>
-<h1><span class="title">{{ .Title | markdownify }}</span></h1>
-{{ if .Params.event }}<h2>{{ .Params.event | markdownify }}</h2>{{ end }}
-{{ if (gt .Params.date 0) }}<h2 class="date">{{ .Date.Format "2006/01/02" }}</h2>{{ end }}
+{{ end }}
+
+{{/* Title and Meta Box */}}
+<div class="timeline-header-box">
+  <div class="timeline-header-content">
+    <h1><span class="title">{{ .Title | markdownify }}</span></h1>
+    {{ if .Params.event }}<h2 class="event-title">{{ .Params.event | markdownify }}</h2>{{ end }}
+    {{ if (gt .Params.date 0) }}<h2 class="date">{{ .Date.Format "2006/01/02" }}</h2>{{ end }}
+  </div>
 </div>
 
-<main>
-{{ .Content }}
-</main>
+{{/* Main Content Box */}}
+<div class="timeline-content-box">
+  <main class="timeline-main-content">
+    {{ .Content }}
+  </main>
+</div>
 
 {{/* Related Projects Section */}}
 {{ if .Params.project_links }}

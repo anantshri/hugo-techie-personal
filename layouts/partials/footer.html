@@ -1,7 +1,6 @@
   <footer>
   {{ partial "foot_custom.html" . }}
   {{ with .Site.Params.footer }}
-  <hr/>
   {{ . | markdownify }} {{ now.Format "2006" }}
   {{ end }}
   </footer>

@@ -25,7 +25,9 @@
     {{ $fontsCSS := resources.Get "css/fonts.css" | fingerprint }}
     <link rel="stylesheet" href="{{ $styleCSS.RelPermalink }}" />
     <link rel="stylesheet" href="{{ $fontsCSS.RelPermalink }}" />
-    <link href="https://fonts.googleapis.com/css?family=Merriweather" rel="stylesheet" type="text/css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Merriweather:ital,wght@0,300;0,400;0,700;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
     {{ partial "head_custom.html" . }}
   </head>
     <body>
@@ -46,18 +48,12 @@
         </section>
       </header>
 
-
-        <nav class="nav">
-          <ul class="menu">
-          </ul>
-        </nav>
-      </header>
-    <hr />
-    {{ if and (.Site.Params.Banner) (ne .Site.Params.Banner "") }}
-    <div class="banner">
-    <center>
-    {{.Site.Params.Banner | markdownify}}
-    </center>
-    </div>
-    <hr />
-    {{ end }}
+      {{/* Banner section with conditional underline */}}
+      {{ if and (.Site.Params.Banner) (ne .Site.Params.Banner "") }}
+      <div class="banner">
+        <div class="banner-content">
+          {{.Site.Params.Banner | markdownify}}
+        </div>
+      </div>
+      <hr class="banner-divider" />
+      {{ end }}
