@@ -19,7 +19,7 @@
 
 {{ if $activePages }}
 <h2>{{ $.Site.Params.navigation.labels.currently_used | default "Currently Used" }}</h2>
-<div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
 {{ range $index, $entry := $activePages }}
 	<div id="featured_home">
 		<center>
@@ -52,7 +52,7 @@
 {{ if $upcomingPages }}
 <div class="clear"></div>
 <h2>{{ $.Site.Params.navigation.labels.upcoming | default "Upcoming" }}</h2>
-<div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
 {{ range $index, $entry := $upcomingPages }}
 	<div id="featured_home">
 		<center>
@@ -85,7 +85,7 @@
 {{ if $discontinuedPages }}
 <div class="clear"></div>
 <h2>{{ $.Site.Params.navigation.labels.discontinued | default "Discontinued" }}</h2>
-<div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
 {{ range $index, $entry := $discontinuedPages }}
 	<div id="featured_home">
 		<center>
