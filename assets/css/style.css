@@ -45,6 +45,7 @@
   --space-2: 0.5rem;
   --space-3: 0.75rem;
   --space-4: 1rem;
+  --space-5: 1.25rem;
   --space-6: 1.5rem;
   --space-8: 2rem;
   --space-12: 3rem;
@@ -563,7 +564,7 @@ body:not([class*="home-layout-"]) {
   margin: var(--space-4);
   box-shadow: var(--shadow-embossed);
   transition: all 0.25s ease;
-    display: flex;
+  display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
@@ -583,7 +584,7 @@ body:not([class*="home-layout-"]) {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-3);
+  /* gap: var(--space-3); */
   flex: 1;
 }
 
@@ -1611,6 +1612,10 @@ body:not([class*="home-layout-"]) {
   box-shadow: var(--shadow-md);
 }
 
+.btn-secondary:hover .btn-icon {
+  filter: brightness(0) invert(1); /* Makes the icon white on hover */
+}
+
 /* Button Icons */
 .btn-icon {
   width: 16px;
@@ -1621,7 +1626,7 @@ body:not([class*="home-layout-"]) {
 }
 
 .btn-secondary .btn-icon {
-  filter: brightness(0) invert(1); /* Makes the icon white for secondary buttons too */
+  filter: brightness(0); /* Makes the icon dark for secondary buttons */
 }
 
 /* Icon-only buttons */
