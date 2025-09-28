@@ -61,6 +61,7 @@
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+  --shadow-embossed: -5px -5px 5px #888;
 }
 
 /* Dark Mode */
@@ -397,12 +398,14 @@ hr {
 
 /* Banner */
 .banner {
-  background: linear-gradient(135deg, var(--color-primary-light), var(--color-secondary-light));
+  background: linear-gradient(135deg, var(--color-primary-light), var(--color-primary-dark));
   color: var(--color-text-inverse);
   padding: var(--space-4) 0;
   text-align: center;
   margin: 0;
   box-shadow: var(--shadow-sm);
+  font-weight: bold;
+  border-radius: var(--radius-lg);
 }
 
 .banner-content {
@@ -553,12 +556,12 @@ body:not([class*="home-layout-"]) {
 
 /* Project and Gadget Cards */
 #featured_home, #widget_home {
-  background-color: var(--color-background);
+  background-color: var(--color-background-alt);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-xl);
   padding: var(--space-6);
   margin: var(--space-4);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-embossed);
   transition: all 0.25s ease;
     display: flex;
   flex-direction: column;
@@ -1007,6 +1010,7 @@ body:not([class*="home-layout-"]) {
   font-size: 1.25rem;
   font-weight: var(--font-weight-semibold);
   margin-bottom: var(--space-1);
+  margin-top: 0;
   font-style: italic;
 }
 
@@ -1015,6 +1019,7 @@ body:not([class*="home-layout-"]) {
   font-size: 1rem;
   font-weight: var(--font-weight-medium);
   margin-bottom: 0;
+  margin-top: 0;
   background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
   background-clip: text;
   -webkit-background-clip: text;
@@ -1230,7 +1235,7 @@ body:not([class*="home-layout-"]) {
 
 .nav-link {
   display: block;
-  padding: var(--space-5);
+  padding: var(--space-6);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-xl);
   text-decoration: none;
@@ -1606,6 +1611,34 @@ body:not([class*="home-layout-"]) {
   box-shadow: var(--shadow-md);
 }
 
+/* Button Icons */
+.btn-icon {
+  width: 16px;
+  height: 16px;
+  margin-right: var(--space-2);
+  vertical-align: middle;
+  filter: brightness(0) invert(1); /* Makes the icon white for primary buttons */
+}
+
+.btn-secondary .btn-icon {
+  filter: brightness(0) invert(1); /* Makes the icon white for secondary buttons too */
+}
+
+/* Icon-only buttons */
+.btn-icon-only {
+  padding: var(--space-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+}
+
+.btn-icon-only .btn-icon {
+  margin-right: 0;
+  width: 20px;
+  height: 20px;
+}
+
 /* Mobile Responsive Navigation */
 @media (max-width: 768px) {
   .breadcrumb-list {
@@ -1634,7 +1667,7 @@ body:not([class*="home-layout-"]) {
     }
     
     .nav-link {
-    padding: var(--space-4);
+    padding: var(--space-5);
     }
     
     .nav-title {
@@ -1722,7 +1755,6 @@ body:not([class*="home-layout-"]) {
   text-align: center;
   background-color: var(--color-background-alt);
   border-radius: var(--radius-xl);
-  padding: var(--space-4);
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-sm);
   transition: all var(--transition-normal);
@@ -1764,9 +1796,12 @@ body:not([class*="home-layout-"]) {
   position: relative;
   padding-bottom: 56.25%; /* 16:9 aspect ratio */
   height: 0;
+  width: 100%;
+  min-width: 300px;
   border-radius: var(--radius-lg);
   background-color: #000;
   box-shadow: var(--shadow-md);
+  overflow: hidden;
 }
 
 .oembed-container-auto iframe {
@@ -1777,12 +1812,14 @@ body:not([class*="home-layout-"]) {
   height: 100%;
   border: 0;
   border-radius: var(--radius-lg);
+  display: block;
+  background-color: #000;
 }
 
 /* Fix for any inline style conflicts */
 .oembed-container .oembed-container-auto {
   margin: 0 !important;
-  padding: 0 !important;
+  /* padding: 0 !important; */
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
@@ -1795,6 +1832,18 @@ body:not([class*="home-layout-"]) {
   visibility: visible !important;
   opacity: 1 !important;
   z-index: 1 !important;
+}
+
+/* YouTube embed container fixes */
+.oembed-container-auto iframe[src*="youtube"] {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  border: none !important;
+  display: block !important;
+  background-color: #000 !important;
 }
 
 /* Fix for YouTube embed containers */
@@ -2403,6 +2452,7 @@ main {
     text-transform: uppercase;
     letter-spacing: 0.5px;
   margin-left: var(--space-2);
+  margin-right: var(--space-2);
   border: 1px solid var(--color-border-light);
   display: inline-block;
 }

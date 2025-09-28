@@ -9,7 +9,10 @@
   <p>{{ . | markdownify }}</p>
 {{ end }}
 
-{{ .Content }}
+{{ if .Content }}
+  {{ .Content }}
+  <hr />
+{{ end }}
 
 {{ with .Resources.ByType "images" }}
   {{ range . }}

@@ -38,12 +38,14 @@
   </div>
 </div>
 
-{{/* Main Content Box */}}
+{{/* Main Content Box - only show if there's content */}}
+{{ if .Content }}
 <div class="timeline-content-box">
   <main class="timeline-main-content">
     {{ .Content }}
   </main>
 </div>
+{{ end }}
 
 {{/* Related Projects Section */}}
 {{ if .Params.project_links }}
