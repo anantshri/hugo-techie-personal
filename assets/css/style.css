@@ -424,7 +424,6 @@ hr {
 
 .banner a {
   color: var(--color-text-inverse);
-  text-decoration: underline;
   font-weight: var(--font-weight-semibold);
 }
 
