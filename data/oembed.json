@@ -1,0 +1,53 @@
+[
+	{
+		"endpoint": "https://publish.twitter.com/oembed",
+		"pattern": "twitter.com",
+		"remove" : "<script(.*)</script>",
+		"nowrapper" : true,
+		"lazy_loading": true
+	},
+	{
+		"endpoint" : "https://www.slideshare.net/api/oembed/2",
+		"pattern" : "slideshare.net",
+		"remove" : "<div(.*)</div>"
+	},
+	{
+		"endpoint" : "https://www.youtube.com/oembed?maxwidth=450&maxheight=250&privacy=1",
+		"pattern" : "youtu",
+		"privacy_enhanced": true,
+		"privacy_replace": {
+			"from": "www.youtube.com",
+			"to": "www.youtube-nocookie.com"
+		},
+		"lazy_loading": true
+	},
+	{
+		"endpoint" : "https://vimeo.com/api/oembed.json?url=",
+		"pattern" : "vimeo.com"
+	},
+	{
+		"endpoint": "https://open.spotify.com/oembed",
+		"pattern": "spotify.com",
+		"autoheight":true,
+		"lazy_loading": true
+	},
+	{
+		"endpoint": "https://api.spreaker.com/oembed",
+		"pattern": "spreaker.com",
+		"autoheight":true
+	},
+	{
+		"endpoint": "https://speakerdeck.com/oembed.json",
+		"pattern": "speakerdeck.com"
+	},
+	{
+		"endpoint": "https://codesandbox.io/oembed",
+		"pattern": "codesandbox.io",
+		"remove":"<script(.*)</script>"
+	},
+	{
+		"endpoint": "https://podcasts.apple.com/api/oembed?url=",
+		"pattern": "podcasts.apple.com",
+		"remove":"<script(.*)</script>"
+	}
+]

@@ -1,0 +1,57 @@
+{{/* Breadcrumb navigation partial
+     Usage: {{ partial "breadcrumbs.html" . }}
+     
+     Generates responsive breadcrumb navigation showing:
+     Home > Section > Current Page
+*/}}
+
+{{ if $.Site.Params.navigation.enable_breadcrumbs }}
+  {{ $separator := $.Site.Params.navigation.breadcrumb_separator | default "›" }}
+  {{ $homeLabel := $.Site.Params.navigation.labels.home | default "Home" }}
+  
+  <nav class="breadcrumb" aria-label="Breadcrumb navigation">
+    <ol class="breadcrumb-list">
+      {{/* Home link */}}
+      {{ if not .IsHome }}
+        <li class="breadcrumb-item">
+          <a href="{{ .Site.BaseURL }}" class="breadcrumb-link">{{ $homeLabel }}</a>
+        </li>
+      {{ end }}
+      
+      {{/* Section link (for pages in sections) */}}
+      {{ if .Section }}
+        {{ if not .IsHome }}
+          <li class="breadcrumb-separator" aria-hidden="true">{{ $separator }}</li>
+        {{ end }}
+        
+        {{ $sectionLabel := "" }}
+        {{ if eq .Section "projects" }}
+          {{ $sectionLabel = $.Site.Params.navigation.labels.projects | default "Projects" }}
+        {{ else if eq .Section "gadget" }}
+          {{ $sectionLabel = $.Site.Params.navigation.labels.gadgets | default "Gadgets" }}
+        {{ else if eq .Section "timeline" }}
+          {{ $sectionLabel = $.Site.Params.navigation.labels.timeline | default "Timeline" }}
+        {{ else }}
+          {{ $sectionLabel = .Section | title }}
+        {{ end }}
+        
+        <li class="breadcrumb-item">
+          {{ if .IsSection }}
+            <span class="breadcrumb-current" aria-current="page">{{ $sectionLabel }}</span>
+          {{ else }}
+            <a href="/{{ .Section }}/" class="breadcrumb-link">{{ $sectionLabel }}</a>
+          {{ end }}
+        </li>
+      {{ end }}
+      
+      {{/* Current page (if not section or home) */}}
+      {{ if and (not .IsHome) (not .IsSection) }}
+        <li class="breadcrumb-separator" aria-hidden="true">{{ $separator }}</li>
+        <li class="breadcrumb-item">
+          <span class="breadcrumb-current" aria-current="page">{{ .Title }}</span>
+        </li>
+      {{ end }}
+    </ol>
+  </nav>
+{{ end }}
+

@@ -1,0 +1,221 @@
+{{ partial "header.html" . }}
+
+{{ partial "breadcrumbs.html" . }}
+
+{{ if not .IsHome }}
+<h1>{{ .Title | markdownify }}</h1>
+{{ end }}
+
+{{ partial "work_in_progress.html" . }}
+
+<div class="gadget_center">
+  {{ if .Params.featured_image }}
+    {{ $img := resources.Get .Params.featured_image }}
+    {{ if $img }}
+      {{ if eq $img.MediaType.SubType "svg" }}
+        <img src="{{ $img.RelPermalink }}" alt="Image for {{ .Title }}" class="project-image-svg" />
+      {{ else }}
+        <img src="{{ ($img.Resize "x400 q100").RelPermalink }}" alt="Image for {{ .Title }}" class="project-image-regular" />
+      {{ end }}
+    {{ end }}
+  {{ else }}
+    {{ $img_loc := printf "%s.*" .Path | printf "%s%s" "/images" }}
+    {{ $img_found := resources.GetMatch $img_loc }}
+    {{ if $img_found }}
+      {{ if eq $img_found.MediaType.SubType "svg" }}
+        <img src='{{ $img_found.RelPermalink }}' class="project-image-svg" />
+      {{ else }}
+        <img src='{{ ($img_found.Resize "x400 q100").RelPermalink }}' class="project-image-regular" />
+      {{ end }}
+    {{ else }}
+      {{ $placeholder := resources.Get "images/project-placeholder.svg" }}
+      {{ if $placeholder }}
+        <img src="{{ $placeholder.RelPermalink }}" alt="Placeholder for {{ $.Title }}" class="project-image-svg" style="opacity: 0.7;" />
+      {{ end }}
+    {{ end }}
+  {{ end }}
+</div>
+
+{{/* Related Timeline Entries Section */}}
+{{ $currentProjectSlug := .File.TranslationBaseName }}
+{{ $relatedTimelineEntries := slice }}
+
+{{/* Find all timeline entries that reference this project */}}
+{{ range where .Site.Pages "Section" "timeline" }}
+  {{ if .Params.project_links }}
+    {{ if in .Params.project_links $currentProjectSlug }}
+      {{ $relatedTimelineEntries = $relatedTimelineEntries | append . }}
+    {{ end }}
+  {{ end }}
+{{ end }}
+
+{{/* Always show TL;DR section if parameters exist */}}
+{{ if or .Params.tldr_description .Params.tldr_best_for .Params.tldr_key_features }}
+<hr />
+<div class="project-tldr-section">
+  <h2>TL;DR</h2>
+  <div class="tldr-content">
+    {{ if .Params.tldr_description }}
+      <p><strong>🚀 What it does:</strong> {{ .Params.tldr_description }}</p>
+    {{ end }}
+    {{ if .Params.tldr_best_for }}
+      <p><strong>💡 Best for:</strong> {{ .Params.tldr_best_for }}</p>
+    {{ end }}
+    {{ if .Params.tldr_key_features }}
+      <p><strong>🔍 Key features:</strong> {{ .Params.tldr_key_features }}</p>
+    {{ end }}
+    <div class="project-links">
+      {{ if .Params.website_url }}
+        <a href="{{ .Params.website_url }}" target="_blank" rel="noopener" class="btn btn-primary">🌐 Website</a>
+      {{ end }}
+      {{ if .Params.github_url }}
+        <a href="{{ .Params.github_url }}" target="_blank" rel="noopener" class="btn btn-secondary">📁 GitHub</a>
+      {{ end }}
+    </div>
+  </div>
+</div>
+{{ end }}
+
+{{/* Show content only if show_content parameter is true */}}
+{{ if .Params.show_content }}
+<hr />
+{{ .Content }}
+{{ end }}
+
+{{/* Show related timeline entries if they exist */}}
+{{ if $relatedTimelineEntries }}
+<hr />
+<div class="related-timeline-entries">
+  <h3>📅 Related Timeline Entries ({{ len $relatedTimelineEntries }})</h3>
+  
+  {{/* Group entries by activity type */}}
+  {{ $talks := slice }}
+  {{ $tools := slice }}
+  {{ $trainings := slice }}
+  {{ $others := slice }}
+  
+  {{ range $relatedTimelineEntries }}
+    {{ $activity := .Params.activity }}
+    {{ if reflect.IsSlice $activity }}
+      {{ $activity = index $activity 0 }}
+    {{ end }}
+    {{ $activity = $activity | lower }}
+    {{ if eq $activity "talk" }}
+      {{ $talks = $talks | append . }}
+    {{ else if eq $activity "tool" }}
+      {{ $tools = $tools | append . }}
+    {{ else if eq $activity "training" }}
+      {{ $trainings = $trainings | append . }}
+    {{ else }}
+      {{ $others = $others | append . }}
+    {{ end }}
+  {{ end }}
+  
+  {{/* Display Talks section */}}
+  {{ if $talks }}
+    <div class="timeline-section">
+      <h4 class="timeline-section-title">🎤 Talks ({{ len $talks }})</h4>
+      <div class="timeline-entries-grid">
+        {{ $sortedTalks := sort $talks ".Date" "desc" }}
+        {{ range $sortedTalks }}
+          <div class="timeline-entry-card">
+            {{ $red_url := default .RelPermalink .Params.redirect_url }}
+            <a href="{{ $red_url }}"{{ if .Params.redirect_url }} target="_blank" rel="noreferrer noopener nofollow"{{ end }} class="timeline-entry-card-link">
+              <div class="timeline-card-header">
+                <div class="timeline-card-date">{{ .Date.Format "Jan '06" }}</div>
+                <div class="timeline-card-activity">{{ $activityDisplay := .Params.activity }}{{ if reflect.IsSlice .Params.activity }}{{ $activityDisplay = index .Params.activity 0 }}{{ end }}{{ $activityDisplay | humanize | title }}</div>
+              </div>
+              <div class="timeline-card-title">{{ .Title | markdownify }}</div>
+              {{ if .Params.event }}
+                <div class="timeline-card-event">{{ .Params.event | markdownify }}</div>
+              {{ end }}
+            </a>
+          </div>
+        {{ end }}
+      </div>
+    </div>
+  {{ end }}
+  
+  {{/* Display Tools section */}}
+  {{ if $tools }}
+    <div class="timeline-section">
+      <h4 class="timeline-section-title">🛠️ Tool Demos ({{ len $tools }})</h4>
+      <div class="timeline-entries-grid">
+        {{ $sortedTools := sort $tools ".Date" "desc" }}
+        {{ range $sortedTools }}
+          <div class="timeline-entry-card">
+            {{ $red_url := default .RelPermalink .Params.redirect_url }}
+            <a href="{{ $red_url }}"{{ if .Params.redirect_url }} target="_blank" rel="noreferrer noopener nofollow"{{ end }} class="timeline-entry-card-link">
+              <div class="timeline-card-header">
+                <div class="timeline-card-date">{{ .Date.Format "Jan '06" }}</div>
+                <div class="timeline-card-activity">{{ $activityDisplay := .Params.activity }}{{ if reflect.IsSlice .Params.activity }}{{ $activityDisplay = index .Params.activity 0 }}{{ end }}{{ $activityDisplay | humanize | title }}</div>
+              </div>
+              <div class="timeline-card-title">{{ .Title | markdownify }}</div>
+              {{ if .Params.event }}
+                <div class="timeline-card-event">{{ .Params.event | markdownify }}</div>
+              {{ end }}
+            </a>
+          </div>
+        {{ end }}
+      </div>
+    </div>
+  {{ end }}
+  
+  {{/* Display Trainings section */}}
+  {{ if $trainings }}
+    <div class="timeline-section">
+      <h4 class="timeline-section-title">🎓 Trainings ({{ len $trainings }})</h4>
+      <div class="timeline-entries-grid">
+        {{ $sortedTrainings := sort $trainings ".Date" "desc" }}
+        {{ range $sortedTrainings }}
+          <div class="timeline-entry-card">
+            {{ $red_url := default .RelPermalink .Params.redirect_url }}
+            <a href="{{ $red_url }}"{{ if .Params.redirect_url }} target="_blank" rel="noreferrer noopener nofollow"{{ end }} class="timeline-entry-card-link">
+              <div class="timeline-card-header">
+                <div class="timeline-card-date">{{ .Date.Format "Jan '06" }}</div>
+                <div class="timeline-card-activity">{{ $activityDisplay := .Params.activity }}{{ if reflect.IsSlice .Params.activity }}{{ $activityDisplay = index .Params.activity 0 }}{{ end }}{{ $activityDisplay | humanize | title }}</div>
+              </div>
+              <div class="timeline-card-title">{{ .Title | markdownify }}</div>
+              {{ if .Params.event }}
+                <div class="timeline-card-event">{{ .Params.event | markdownify }}</div>
+              {{ end }}
+            </a>
+          </div>
+        {{ end }}
+      </div>
+    </div>
+  {{ end }}
+  
+  {{/* Display Others section */}}
+  {{ if $others }}
+    <div class="timeline-section">
+      <h4 class="timeline-section-title">📋 Other Activities ({{ len $others }})</h4>
+      <div class="timeline-entries-grid">
+        {{ $sortedOthers := sort $others ".Date" "desc" }}
+        {{ range $sortedOthers }}
+          <div class="timeline-entry-card">
+            {{ $red_url := default .RelPermalink .Params.redirect_url }}
+            <a href="{{ $red_url }}"{{ if .Params.redirect_url }} target="_blank" rel="noreferrer noopener nofollow"{{ end }} class="timeline-entry-card-link">
+              <div class="timeline-card-header">
+                <div class="timeline-card-date">{{ .Date.Format "Jan '06" }}</div>
+                {{ if .Params.activity }}
+                  <div class="timeline-card-activity">{{ $activityDisplay := .Params.activity }}{{ if reflect.IsSlice .Params.activity }}{{ $activityDisplay = index .Params.activity 0 }}{{ end }}{{ $activityDisplay | humanize | title }}</div>
+                {{ end }}
+              </div>
+              <div class="timeline-card-title">{{ .Title | markdownify }}</div>
+              {{ if .Params.event }}
+                <div class="timeline-card-event">{{ .Params.event | markdownify }}</div>
+              {{ end }}
+            </a>
+          </div>
+        {{ end }}
+      </div>
+    </div>
+  {{ end }}
+  
+</div>
+{{ end }}
+
+{{ partial "prev_next_nav.html" . }}
+
+{{ partial "footer.html" . }}

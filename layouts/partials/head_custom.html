@@ -1,0 +1,53 @@
+{{/* Favicon and App Icons using Hugo Resources */}}
+{{ $appleIcon57 := resources.Get "favicons/apple-icon-57x57.png" }}
+{{ $appleIcon60 := resources.Get "favicons/apple-icon-60x60.png" }}
+{{ $appleIcon72 := resources.Get "favicons/apple-icon-72x72.png" }}
+{{ $appleIcon76 := resources.Get "favicons/apple-icon-76x76.png" }}
+{{ $appleIcon114 := resources.Get "favicons/apple-icon-114x114.png" }}
+{{ $appleIcon120 := resources.Get "favicons/apple-icon-120x120.png" }}
+{{ $appleIcon144 := resources.Get "favicons/apple-icon-144x144.png" }}
+{{ $appleIcon152 := resources.Get "favicons/apple-icon-152x152.png" }}
+{{ $appleIcon180 := resources.Get "favicons/apple-icon-180x180.png" }}
+{{ $androidIcon192 := resources.Get "favicons/android-icon-192x192.png" }}
+{{ $favicon32 := resources.Get "favicons/favicon-32x32.png" }}
+{{ $favicon96 := resources.Get "favicons/favicon-96x96.png" }}
+{{ $favicon16 := resources.Get "favicons/favicon-16x16.png" }}
+{{ $manifest := resources.Get "favicons/manifest.json" }}
+{{ $msIcon144 := resources.Get "favicons/ms-icon-144x144.png" }}
+
+{{ with $appleIcon57 }}<link rel="apple-touch-icon" sizes="57x57" href="{{ .RelPermalink }}">{{ end }}
+{{ with $appleIcon60 }}<link rel="apple-touch-icon" sizes="60x60" href="{{ .RelPermalink }}">{{ end }}
+{{ with $appleIcon72 }}<link rel="apple-touch-icon" sizes="72x72" href="{{ .RelPermalink }}">{{ end }}
+{{ with $appleIcon76 }}<link rel="apple-touch-icon" sizes="76x76" href="{{ .RelPermalink }}">{{ end }}
+{{ with $appleIcon114 }}<link rel="apple-touch-icon" sizes="114x114" href="{{ .RelPermalink }}">{{ end }}
+{{ with $appleIcon120 }}<link rel="apple-touch-icon" sizes="120x120" href="{{ .RelPermalink }}">{{ end }}
+{{ with $appleIcon144 }}<link rel="apple-touch-icon" sizes="144x144" href="{{ .RelPermalink }}">{{ end }}
+{{ with $appleIcon152 }}<link rel="apple-touch-icon" sizes="152x152" href="{{ .RelPermalink }}">{{ end }}
+{{ with $appleIcon180 }}<link rel="apple-touch-icon" sizes="180x180" href="{{ .RelPermalink }}">{{ end }}
+{{ with $androidIcon192 }}<link rel="icon" type="image/png" sizes="192x192" href="{{ .RelPermalink }}">{{ end }}
+{{ with $favicon32 }}<link rel="icon" type="image/png" sizes="32x32" href="{{ .RelPermalink }}">{{ end }}
+{{ with $favicon96 }}<link rel="icon" type="image/png" sizes="96x96" href="{{ .RelPermalink }}">{{ end }}
+{{ with $favicon16 }}<link rel="icon" type="image/png" sizes="16x16" href="{{ .RelPermalink }}">{{ end }}
+{{ with $manifest }}<link rel="manifest" href="{{ .RelPermalink }}">{{ end }}
+<meta name="msapplication-TileColor" content="#ffffff">
+{{ with $msIcon144 }}<meta name="msapplication-TileImage" content="{{ .RelPermalink }}">{{ end }}
+{{ with .Site.Params.analytics }}
+  {{ if and .provider .domain }}
+    {{ if eq .provider "plausible" }}
+      <script defer data-api="{{ .api_endpoint | default "/api/event" }}" data-domain="{{ .domain }}" src="{{ .script_src | default "/js/script.js" }}"></script>
+    {{ else if eq .provider "plausible_cloud" }}
+      <script defer data-domain="{{ .domain }}" src="https://plausible.io/js/script.js"></script>
+    {{ else if and (eq .provider "google") .tracking_id }}
+      <script async src="https://www.googletagmanager.com/gtag/js?id={{ .tracking_id }}"></script>
+      <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', '{{ .tracking_id }}');
+      </script>
+    {{ else if and (eq .provider "custom") .custom_code }}
+      {{ .custom_code | safeHTML }}
+    {{ end }}
+  {{ end }}
+{{ end }}
+<meta name="theme-color" content="#ffffff">

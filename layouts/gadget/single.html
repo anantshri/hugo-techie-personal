@@ -1,0 +1,43 @@
+{{ partial "header.html" . }}
+
+{{ partial "breadcrumbs.html" . }}
+
+{{ if not .IsHome }}
+<h1>{{ .Title | markdownify }}</h1>
+{{ end }}
+
+{{ partial "work_in_progress.html" . }}
+
+{{ partial "status_message.html" (dict "status" .Params.status "context" .) }}
+
+
+
+{{ $pages := where .Pages "Section" "!=" "" }}
+{{ if .IsHome }}
+  {{ $pages = .Site.RegularPages }}
+{{ end }}
+
+<div class="gadget_center">
+
+	{{ $img_loc := printf "%s.*" .Path | printf "%s%s" "/images" }}
+	{{ with try ( resources.GetMatch $img_loc ) }}
+		{{ with .Err }}
+			{{ $placeholder := resources.Get "images/gadget-placeholder.svg" }}
+			{{ if $placeholder }}
+				<img src="{{ $placeholder.RelPermalink }}" alt="Placeholder for {{ $.Title }}" style="opacity: 0.7; max-width: 300px;" />
+			{{ else }}
+				<br />
+				{{ $.Params.Name }}
+			{{ end }}
+		{{ else }}
+			{{ $img_link := .Value }}
+			<img src='{{ ($img_link.Resize "x300 q100").RelPermalink }}' />
+		{{ end }}
+	{{ end }}
+</div>
+
+{{ .Content }}
+
+{{ partial "prev_next_nav.html" . }}
+
+{{ partial "footer.html" . }}

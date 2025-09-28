@@ -1,0 +1,47 @@
+{{ partial "header.html" . }}
+<main>
+<div id="mainimg">
+
+	{{ $img_loc := $.Site.Params.profile_pic }}
+    {{ with resources.Get $img_loc }}
+      <img decoding="async" class="wp-image-1218" src='{{ .RelPermalink }}' alt="" srcset='{{ (.Resize "x944 q100").RelPermalink }} 944w, {{ (.Resize "x300 q100").RelPermalink }} 250w, {{ (.Resize "x850 q100").RelPermalink }} 768w, {{ (.Resize "x900 q100").RelPermalink }} 854w' sizes="(max-width: 709px) 85vw, (max-width: 909px) 67vw, (max-width: 1362px) 62vw, 840px" loading='lazy' /> 
+    {{ end }}
+	<div class="social-navigation">
+		{{ range $key, $value := .Params.social_links }}
+			{{ if not (in $key "verify") }}
+				{{ $socialPlatform := index (split $key "_") 0 }}
+				{{ $iconPath := printf "images/%s.svg" $socialPlatform }}
+				{{ $socialIcon := resources.Get $iconPath }}
+				{{ if not $socialIcon }}
+					{{/* Try theme assets if not found in site assets */}}
+					{{ $socialIcon = resources.GetMatch (printf "images/%s.svg" $socialPlatform) }}
+				{{ end }}
+				{{ if $socialIcon }}
+					<a href="{{ $value }}" rel="me"><img class="social_icons" src="{{ $socialIcon.RelPermalink }}" alt="{{ $socialPlatform | humanize | title }} profile" /></a>
+				{{ else }}
+					{{/* Fallback: Show platform name as text link */}}
+					<a href="{{ $value }}" rel="me" class="social-text-link">{{ $socialPlatform | humanize | title }}</a>
+				{{ end }}
+			{{end}}
+		{{- end }}
+	</div>
+	<div class="verification-class">
+		{{ range $key, $value := .Params.social_links }}
+			{{ if in $key "verify" }}
+				<a href="{{ $value }}" rel="me"></a> 
+			{{end}}
+		{{- end }}
+	</div>
+
+</div>
+<div id="maincontent">
+{{ $content := .Content }}
+{{ $yearsExperience := sub now.Year 2008 }}
+{{ $content = replace $content "YEARS_EXPERIENCE+" (printf "%d+" $yearsExperience) }}
+{{ $content | safeHTML }}
+</div>
+</main>
+<br />
+<span class="clear"></span>
+<br />
+{{ partial "footer.html" . }}

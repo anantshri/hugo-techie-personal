@@ -1,0 +1,122 @@
+{{ partial "header.html" . }}
+
+{{ if not .IsHome }}
+<h1>{{ .Title | markdownify }}</h1>
+{{ end }}
+
+{{ partial "work_in_progress.html" . }}
+
+{{ .Content }}
+
+{{ $pages := where .Pages "Section" "!=" "" }}
+{{ if .IsHome }}
+  {{ $pages = .Site.RegularPages }}
+{{ end }}
+
+{{ $upcomingPages := where $pages "Params.status" "==" "upcoming" }}
+{{ $discontinuedPages := where $pages "Params.status" "==" "discontinued" }}
+{{ $activePages := $pages | complement $upcomingPages | complement $discontinuedPages }}
+
+{{ if $activePages }}
+<h2>{{ $.Site.Params.navigation.labels.currently_used | default "Currently Used" }}</h2>
+<div>
+{{ range $index, $entry := $activePages }}
+	<div id="featured_home">
+		<center>
+			<a href="{{ $entry.Path }}">
+				<b>{{ $entry.Title }}</b>
+				<br />
+		{{ $gadgetSlug := $entry.File.TranslationBaseName }}
+		{{ $img_loc := printf "/images/gadget/%s.*" $gadgetSlug }}
+		{{ $gadgetImage := resources.GetMatch $img_loc }}
+		{{ if $gadgetImage }}
+			<img src="{{ ($gadgetImage.Resize "x180 q100").RelPermalink }}" alt="Image for {{ $entry.Title }}" class="img_gadget" />
+			<br />
+		{{ else }}
+			{{ $placeholder := resources.Get "images/gadget-placeholder.svg" }}
+			{{ if $placeholder }}
+				<img src="{{ $placeholder.RelPermalink }}" alt="Placeholder for {{ $entry.Title }}" class="img_gadget" style="opacity: 0.7;" />
+				<br />
+			{{ else }}
+				{{ $entry.Title }}
+				<br />
+			{{ end }}
+		{{ end }}
+			</a>
+		</center>
+	</div>
+{{ end }}
+</div>
+{{ end }}
+
+{{ if $upcomingPages }}
+<div class="clear"></div>
+<h2>{{ $.Site.Params.navigation.labels.upcoming | default "Upcoming" }}</h2>
+<div>
+{{ range $index, $entry := $upcomingPages }}
+	<div id="featured_home">
+		<center>
+			<a href="{{ $entry.Path }}">
+				<b>{{ $entry.Title }}</b>
+				<br />
+		{{ $gadgetSlug := $entry.File.TranslationBaseName }}
+		{{ $img_loc := printf "/images/gadget/%s.*" $gadgetSlug }}
+		{{ $gadgetImage := resources.GetMatch $img_loc }}
+		{{ if $gadgetImage }}
+			<img src="{{ ($gadgetImage.Resize "x180 q100").RelPermalink }}" alt="Image for {{ $entry.Title }}" class="img_gadget" />
+			<br />
+		{{ else }}
+			{{ $placeholder := resources.Get "images/gadget-placeholder.svg" }}
+			{{ if $placeholder }}
+				<img src="{{ $placeholder.RelPermalink }}" alt="Placeholder for {{ $entry.Title }}" class="img_gadget" style="opacity: 0.7;" />
+				<br />
+			{{ else }}
+				{{ $entry.Title }}
+				<br />
+			{{ end }}
+		{{ end }}
+			</a>
+		</center>
+	</div>
+{{ end }}
+</div>
+{{ end }}
+
+{{ if $discontinuedPages }}
+<div class="clear"></div>
+<h2>{{ $.Site.Params.navigation.labels.discontinued | default "Discontinued" }}</h2>
+<div>
+{{ range $index, $entry := $discontinuedPages }}
+	<div id="featured_home">
+		<center>
+			<a href="{{ $entry.Path }}">
+				<b>{{ $entry.Title }}</b>
+				<br />
+		{{ $gadgetSlug := $entry.File.TranslationBaseName }}
+		{{ $img_loc := printf "/images/gadget/%s.*" $gadgetSlug }}
+		{{ $gadgetImage := resources.GetMatch $img_loc }}
+		{{ if $gadgetImage }}
+			<img src="{{ ($gadgetImage.Resize "x180 q100").RelPermalink }}" alt="Image for {{ $entry.Title }}" class="img_gadget" />
+			<br />
+		{{ else }}
+			{{ $placeholder := resources.Get "images/gadget-placeholder.svg" }}
+			{{ if $placeholder }}
+				<img src="{{ $placeholder.RelPermalink }}" alt="Placeholder for {{ $entry.Title }}" class="img_gadget" style="opacity: 0.7;" />
+				<br />
+			{{ else }}
+				{{ $entry.Title }}
+				<br />
+			{{ end }}
+		{{ end }}
+			</a>
+		</center>
+	</div>
+{{ end }}
+</div>
+{{ end }}
+
+
+<div class="clear">
+</div>
+
+{{ partial "footer.html" . }}

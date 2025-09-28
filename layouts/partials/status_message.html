@@ -1,0 +1,37 @@
+{{/* Status message partial
+     Usage: {{ partial "status_message.html" (dict "status" .Params.status "context" .) }}
+     
+     Displays status messages for content based on status parameter
+     Supports: discontinued, upcoming, and custom status types
+*/}}
+
+{{ $status := .status }}
+{{ $page := .context }}
+
+{{ if $status }}
+  {{ if eq $status "discontinued" }}
+    <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 5px; padding: 15px; margin: 10px 0; color: #856404;">
+      <strong>{{ $page.Site.Params.navigation.labels.archived_device | default "⚠️ Archived Device" }}</strong><br>
+      {{ $page.Site.Params.navigation.labels.archived_device_description | default "This is an older device that is no longer in use. This page is kept for archival purposes and may not be updated with current information." }}
+    </div>
+    
+  {{ else if eq $status "upcoming" }}
+    <div style="background-color: #d1ecf1; border: 1px solid #bee5eb; border-radius: 5px; padding: 15px; margin: 10px 0; color: #0c5460;">
+      <strong>{{ $page.Site.Params.navigation.labels.planned_device | default "📋 Planned Device" }}</strong><br>
+      {{ $page.Site.Params.navigation.labels.planned_device_description | default "This device is owned but not currently in active use. Plans are in place to utilize this device in the future." }}
+    </div>
+    
+  {{ else if eq $status "maintenance" }}
+    <div style="background-color: #ffeaa7; border: 1px solid #ffc107; border-radius: 5px; padding: 15px; margin: 10px 0; color: #856404;">
+      <strong>{{ $page.Site.Params.navigation.labels.maintenance_device | default "🔧 Under Maintenance" }}</strong><br>
+      {{ $page.Site.Params.navigation.labels.maintenance_device_description | default "This item is currently undergoing maintenance or updates." }}
+    </div>
+    
+  {{ else }}
+    {{/* Custom status - use status as label if no specific config found */}}
+    <div style="background-color: #e9ecef; border: 1px solid #ced4da; border-radius: 5px; padding: 15px; margin: 10px 0; color: #495057;">
+      <strong>{{ $status | title }}</strong><br>
+      {{ $page.Params.status_description | default "Custom status information." }}
+    </div>
+  {{ end }}
+{{ end }}

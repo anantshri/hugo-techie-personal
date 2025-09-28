@@ -1,0 +1,87 @@
+{{/* Work in Progress notification partial
+     Usage: {{ partial "work_in_progress.html" . }}
+     
+     Configuration options:
+     1. Page-level: Set work_in_progress = "type" or work_in_progress = true in front matter
+     2. Section-level: Set work_in_progress in section's _index.md
+     3. Custom: Set work_in_progress_title and work_in_progress_message in front matter
+*/}}
+
+{{ $showWIP := false }}
+{{ $wipTitle := "" }}
+{{ $wipMessage := "" }}
+
+{{/* Check if WIP system is enabled globally and content status doesn't exclude WIP */}}
+{{ $showWIPForStatus := true }}
+{{ if .Params.status }}
+  {{ $excludeStatuses := $.Site.Params.work_in_progress.exclude_statuses | default (slice "discontinued" "archived" "completed" "finished") }}
+  {{ if in $excludeStatuses .Params.status }}
+    {{ $showWIPForStatus = false }}
+  {{ end }}
+{{ end }}
+
+{{ if and $.Site.Params.work_in_progress.enabled $showWIPForStatus }}
+
+  {{/* 1. Check for custom page-level title and message */}}
+  {{ if and .Params.work_in_progress_title .Params.work_in_progress_message }}
+    {{ $showWIP = true }}
+    {{ $wipTitle = .Params.work_in_progress_title }}
+    {{ $wipMessage = .Params.work_in_progress_message }}
+  
+  {{/* 2. Check for page-level work_in_progress setting */}}
+  {{ else if and (isset .Params "work_in_progress") .Params.work_in_progress }}
+    {{ $showWIP = true }}
+    {{ if eq (printf "%T" .Params.work_in_progress) "string" }}
+      {{/* Use predefined type */}}
+      {{ $wipType := index $.Site.Params.work_in_progress.types .Params.work_in_progress }}
+      {{ if $wipType }}
+        {{ $wipTitle = $wipType.title }}
+        {{ $wipMessage = $wipType.message }}
+      {{ else }}
+        {{ $wipTitle = $.Site.Params.work_in_progress.default_title }}
+        {{ $wipMessage = $.Site.Params.work_in_progress.default_message }}
+      {{ end }}
+    {{ else }}
+      {{/* Use default */}}
+      {{ $wipTitle = $.Site.Params.work_in_progress.default_title }}
+      {{ $wipMessage = $.Site.Params.work_in_progress.default_message }}
+    {{ end }}
+  
+  {{/* 3. Check for section-level work_in_progress setting (only if page-level not explicitly disabled) */}}
+  {{ else if and .Section (not (and (isset .Params "work_in_progress") (eq .Params.work_in_progress false))) }}
+    {{ $sectionPage := $.Site.GetPage (printf "/%s" .Section) }}
+    {{ if $sectionPage.Params.work_in_progress }}
+      {{ $showWIP = true }}
+      {{ if eq (printf "%T" $sectionPage.Params.work_in_progress) "string" }}
+        {{/* Use predefined type */}}
+        {{ $wipType := index $.Site.Params.work_in_progress.types $sectionPage.Params.work_in_progress }}
+        {{ if $wipType }}
+          {{ $wipTitle = $wipType.title }}
+          {{ $wipMessage = $wipType.message }}
+        {{ else }}
+          {{ $wipTitle = $.Site.Params.work_in_progress.default_title }}
+          {{ $wipMessage = $.Site.Params.work_in_progress.default_message }}
+        {{ end }}
+      {{ else }}
+        {{/* Use default */}}
+        {{ $wipTitle = $.Site.Params.work_in_progress.default_title }}
+        {{ $wipMessage = $.Site.Params.work_in_progress.default_message }}
+      {{ end }}
+      
+      {{/* Override with section-specific custom message if available */}}
+      {{ if and $sectionPage.Params.work_in_progress_title $sectionPage.Params.work_in_progress_message }}
+        {{ $wipTitle = $sectionPage.Params.work_in_progress_title }}
+        {{ $wipMessage = $sectionPage.Params.work_in_progress_message }}
+      {{ end }}
+    {{ end }}
+  {{ end }}
+
+  {{/* Display the work in progress notification */}}
+  {{ if $showWIP }}
+    <div class="work-in-progress">
+      <strong>{{ $wipTitle }}</strong><br>
+      {{ $wipMessage | markdownify }}
+    </div>
+  {{ end }}
+
+{{ end }}

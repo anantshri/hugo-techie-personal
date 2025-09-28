@@ -1,0 +1,29 @@
+{{/* Available notice types: warning, info, note, tip */}}
+{{- $noticeType := .Get 0 | default "note" -}}
+
+{{- $customTitle := cond (ge (len .Params) 2) (.Get 1) ($noticeType | title) -}}
+
+{{/* Workaround markdownify inconsistency for single/multiple paragraphs */}}
+{{- $raw := (markdownify .Inner | chomp) -}}
+{{- $block := findRE "(?is)^<(?:address|article|aside|blockquote|canvas|dd|div|dl|dt|fieldset|figcaption|figure|footer|form|h(?:1|2|3|4|5|6)|header|hgroup|hr|li|main|nav|noscript|ol|output|p|pre|section|table|tfoot|ul|video)\\b" $raw 1 -}}
+
+<div class="notice {{ $noticeType }}">
+    <p class="notice-title">
+        <span class="icon-notice baseline">
+            {{ $iconPath := printf "images/%s.svg" $noticeType }}
+            {{ $noticeIcon := resources.Get $iconPath }}
+            {{ if not $noticeIcon }}
+                {{/* Try theme assets if not found in site assets */}}
+                {{ $noticeIcon = resources.GetMatch (printf "images/%s.svg" $noticeType) }}
+            {{ end }}
+            {{ if $noticeIcon }}
+                {{ $noticeIcon.Content | safeHTML }}
+            {{ else }}
+                {{/* Fallback: Use text symbol */}}
+                {{ if eq $noticeType "warning" }}⚠️{{ else if eq $noticeType "info" }}ℹ️{{ else if eq $noticeType "tip" }}💡{{ else }}📝{{ end }}
+            {{ end }}
+        </span>
+        {{ $customTitle }}
+    </p>
+    {{- if or $block (not $raw) }}{{ $raw }}{{ else }}<p>{{ $raw }}</p>{{ end -}}
+</div>

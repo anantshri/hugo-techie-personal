@@ -1,0 +1,5 @@
+.DS_Store
+resources/_gen/
+public/
+exampleSite/resources/
+exampleSite/public/

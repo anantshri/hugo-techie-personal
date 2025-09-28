@@ -1,0 +1,56 @@
+{{/* Previous/Next navigation partial
+     Usage: {{ partial "prev_next_nav.html" . }}
+     
+     Shows navigation between adjacent pages in the same section
+     Particularly useful for timeline entries and content series
+*/}}
+
+{{ if $.Site.Params.navigation.enable_prev_next }}
+  {{ $prevLabel := $.Site.Params.navigation.labels.previous | default "Previous" }}
+  {{ $nextLabel := $.Site.Params.navigation.labels.next | default "Next" }}
+  
+  {{ if or .NextInSection .PrevInSection }}
+    <nav class="prev-next-nav" aria-label="Page navigation">
+      <div class="nav-container">
+        {{/* Previous page */}}
+        <div class="nav-item nav-prev">
+          {{ if .NextInSection }}
+            <a href="{{ .NextInSection.RelPermalink }}" class="nav-link nav-link-prev" rel="prev">
+              <div class="nav-direction">
+                <span class="nav-arrow">←</span>
+                <span class="nav-label">{{ $prevLabel }}</span>
+              </div>
+              <div class="nav-title">{{ .NextInSection.Title | truncate 50 "..." }}</div>
+              {{ if .NextInSection.Date }}
+                <div class="nav-date">{{ .NextInSection.Date.Format "Jan 2, 2006" }}</div>
+              {{ end }}
+              {{ if and (eq .Section "timeline") .NextInSection.Params.event }}
+                <div class="nav-event">{{ .NextInSection.Params.event | truncate 40 "..." }}</div>
+              {{ end }}
+            </a>
+          {{ end }}
+        </div>
+        
+        {{/* Next page */}}
+        <div class="nav-item nav-next">
+          {{ if .PrevInSection }}
+            <a href="{{ .PrevInSection.RelPermalink }}" class="nav-link nav-link-next" rel="next">
+              <div class="nav-direction">
+                <span class="nav-label">{{ $nextLabel }}</span>
+                <span class="nav-arrow">→</span>
+              </div>
+              <div class="nav-title">{{ .PrevInSection.Title | truncate 50 "..." }}</div>
+              {{ if .PrevInSection.Date }}
+                <div class="nav-date">{{ .PrevInSection.Date.Format "Jan 2, 2006" }}</div>
+              {{ end }}
+              {{ if and (eq .Section "timeline") .PrevInSection.Params.event }}
+                <div class="nav-event">{{ .PrevInSection.Params.event | truncate 40 "..." }}</div>
+              {{ end }}
+            </a>
+          {{ end }}
+        </div>
+      </div>
+    </nav>
+  {{ end }}
+{{ end }}
+

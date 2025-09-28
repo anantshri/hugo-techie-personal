@@ -1,0 +1,313 @@
+{{ partial "header.html" . }}
+
+{{ if not .IsHome }}
+<h1>{{ .Title | markdownify }}</h1>
+{{ end }}
+
+{{ partial "work_in_progress.html" . }}
+
+{{ $content := .Content | string }}
+{{ $supportIndex := findRE "## Support My Work" $content }}
+{{ if $supportIndex }}
+  {{ $beforeSupport := split $content "## Support My Work" }}
+  {{ index $beforeSupport 0 | markdownify }}
+{{ else }}
+  {{ .Content }}
+{{ end }}
+
+{{ $pages := where .Pages "Section" "!=" "" }}
+{{ if .IsHome }}
+  {{ $pages = .Site.RegularPages }}
+{{ end }}
+
+<!-- First filter: separate active and discontinued projects -->
+{{ $activeProjects := slice }}
+{{ $discontinuedProjects := slice }}
+
+{{ range $pages }}
+  {{ $status := .Params.status | default "active" }}
+  {{ if eq $status "discontinued" }}
+    {{ $discontinuedProjects = $discontinuedProjects | append . }}
+  {{ else }}
+    {{ $activeProjects = $activeProjects | append . }}
+  {{ end }}
+{{ end }}
+
+<!-- Get priority order for focus areas from page params, with fallback -->
+{{ $priorityFocusAreas := .Params.priority_focus_areas | default (slice "Long Term Project" "Security Tools" "Security Research" "Developer Tools" "AI & Automation") }}
+
+<!-- Second filter: group active projects by focus_area -->
+{{ $focusGroups := dict }}
+
+{{ range $activeProjects }}
+  {{ $focusArea := .Params.focus_area | default "Other" }}
+  {{ $existingGroup := index $focusGroups $focusArea }}
+  {{ if $existingGroup }}
+    {{ $focusGroups = merge $focusGroups (dict $focusArea ($existingGroup | append .)) }}
+  {{ else }}
+    {{ $focusGroups = merge $focusGroups (dict $focusArea (slice .)) }}
+  {{ end }}
+{{ end }}
+
+<!-- Separate priority focus areas from others -->
+{{ $priorityKeys := slice }}
+{{ $remainingKeys := slice }}
+
+{{ range $key, $value := $focusGroups }}
+  {{ if in $priorityFocusAreas $key }}
+    {{ $priorityKeys = $priorityKeys | append $key }}
+  {{ else }}
+    {{ $remainingKeys = $remainingKeys | append $key }}
+  {{ end }}
+{{ end }}
+
+<!-- Sort priority keys by their order in the priority array -->
+{{ $orderedPriorityKeys := slice }}
+{{ range $priorityArea := $priorityFocusAreas }}
+  {{ if in $priorityKeys $priorityArea }}
+    {{ $orderedPriorityKeys = $orderedPriorityKeys | append $priorityArea }}
+  {{ end }}
+{{ end }}
+
+<!-- Sort remaining keys alphabetically -->
+{{ $remainingKeys = sort $remainingKeys }}
+
+<!-- Combine ordered priority keys with remaining keys -->
+{{ $focusKeys := $orderedPriorityKeys }}
+{{ range $remainingKey := $remainingKeys }}
+  {{ $focusKeys = $focusKeys | append $remainingKey }}
+{{ end }}
+
+<!-- Display focus areas in priority order, then alphabetically -->
+{{ range $focusKey := $focusKeys }}
+  {{ $projects := index $focusGroups $focusKey }}
+  {{ if $projects }}
+    <div class="project-section-header">
+      <h2 class="project-section-title">{{ $focusKey }}</h2>
+    </div>
+    <div>
+      {{ range $projects }}
+        <div id="featured_home">
+          <center>
+            <a href="{{ .RelPermalink }}">
+              <b>{{ .Title }}</b>
+              <br />
+              {{ if .Params.featured_image }}
+                {{ $img := resources.Get .Params.featured_image }}
+                {{ if $img }}
+                  {{ if eq $img.MediaType.SubType "svg" }}
+                    <img src="{{ $img.RelPermalink }}" alt="Image for {{ .Title }}" class="img_gadget project-list-image-svg" />
+                  {{ else }}
+                    <img src="{{ ($img.Resize "x200 q100").RelPermalink }}" alt="Image for {{ .Title }}" class="img_gadget project-list-image-regular" />
+                  {{ end }}
+                {{ else }}
+                  {{ $placeholder := resources.Get "images/project-placeholder.svg" }}
+                  {{ if $placeholder }}
+                    <img src="{{ $placeholder.RelPermalink }}" alt="Placeholder for {{ .Title }}" class="img_gadget project-list-image-svg" style="opacity: 0.7;" />
+                  {{ else }}
+                    <p>No Image</p>
+                  {{ end }}
+                {{ end }}
+              {{ else }}
+                {{ $img_loc := printf "%s.*" ( replace .Path "projects" "images/projects" ) }}
+                {{ $img_found := resources.GetMatch $img_loc }}
+                {{ if $img_found }}
+                  {{ if eq $img_found.MediaType.SubType "svg" }}
+                    <img src="{{ $img_found.RelPermalink }}" alt="Image for {{ $.Title }}" class="img_gadget project-list-image-square" />
+                  {{ else }}
+                    <img src="{{ ($img_found.Resize "x180 q100").RelPermalink }}" alt="Image for {{ $.Title }}" class="img_gadget" />
+                  {{ end }}
+                {{ else }}
+                  {{ $placeholder := resources.Get "images/project-placeholder.svg" }}
+                  {{ if $placeholder }}
+                    <img src="{{ $placeholder.RelPermalink }}" alt="Placeholder for {{ $.Title }}" class="img_gadget project-list-image-svg" style="opacity: 0.7;" />
+                  {{ else }}
+                    {{ $.Title }}
+                  {{ end }}
+                {{ end }}
+                <br />
+              {{ end }}
+              <br />
+            </a>
+          </center>
+          <div class="project-links">
+            {{ if .Params.website_url }}
+              <a href="{{ .Params.website_url }}" target="_blank" rel="noopener">🌐 Website</a>
+            {{ end }}
+            {{ if .Params.github_url }}
+              <a href="{{ .Params.github_url }}" target="_blank" rel="noopener">📁 GitHub</a>
+            {{ end }}
+          </div>
+        </div>
+      {{ end }}
+      <div class="clear"></div>
+    </div>
+  {{ end }}
+{{ end }}
+
+<!-- Display discontinued projects section -->
+{{ if $discontinuedProjects }}
+  <div class="project-section-header">
+    <h2 class="project-section-title">{{ $.Site.Params.navigation.labels.discontinued_projects | default "Discontinued Projects" }}</h2>
+    <p style="color: #666; font-style: italic; margin-bottom: 20px;">
+      {{ $.Site.Params.navigation.labels.discontinued_project_description | default "The following projects are no longer actively maintained or developed, sorted by discontinuation date." }}
+    </p>
+  </div>
+  
+  <!-- Separate discontinued projects with and without dates -->
+  {{ $discontinuedWithDates := slice }}
+  {{ $discontinuedWithoutDates := slice }}
+  
+  {{ range $discontinuedProjects }}
+    {{ if .Params.discontinue_date }}
+      {{ $discontinuedWithDates = $discontinuedWithDates | append . }}
+    {{ else }}
+      {{ $discontinuedWithoutDates = $discontinuedWithoutDates | append . }}
+    {{ end }}
+  {{ end }}
+  
+  <!-- Sort projects with dates by discontinue_date (most recent first) -->
+  {{ $sortedDiscontinuedWithDates := sort $discontinuedWithDates ".Params.discontinue_date" "desc" }}
+  
+  <!-- Sort projects without dates alphabetically by title -->
+  {{ $sortedDiscontinuedWithoutDates := sort $discontinuedWithoutDates ".Title" }}
+  
+  <!-- Display discontinued projects with dates first -->
+  <div>
+    {{ range $sortedDiscontinuedWithDates }}
+      <div id="featured_home" style="opacity: 0.7;">
+        <center>
+          <a href="{{ .RelPermalink }}">
+            <b>{{ .Title }}</b>
+            {{ if .Params.discontinue_date }}
+              <br />
+              <small style="color: #666;">Discontinued: {{ dateFormat "January 2006" .Params.discontinue_date }}</small>
+            {{ end }}
+            <br />
+            {{ if .Params.featured_image }}
+              {{ $img := resources.Get .Params.featured_image }}
+              {{ if $img }}
+                {{ if eq $img.MediaType.SubType "svg" }}
+                  <img src="{{ $img.RelPermalink }}" alt="Image for {{ .Title }}" class="img_gadget project-list-image-svg" />
+                {{ else }}
+                  <img src="{{ ($img.Resize "x200 q100").RelPermalink }}" alt="Image for {{ .Title }}" class="img_gadget project-list-image-regular" />
+                {{ end }}
+              {{ else }}
+                {{ $placeholder := resources.Get "images/project-placeholder.svg" }}
+                {{ if $placeholder }}
+                  <img src="{{ $placeholder.RelPermalink }}" alt="Placeholder for {{ .Title }}" class="img_gadget project-list-image-svg" style="opacity: 0.7;" />
+                {{ else }}
+                  <p>No Image</p>
+                {{ end }}
+              {{ end }}
+            {{ else }}
+              {{ $img_loc := printf "%s.*" ( replace .Path "projects" "images/projects" ) }}
+              {{ $img_found := resources.GetMatch $img_loc }}
+              {{ if $img_found }}
+                {{ if eq $img_found.MediaType.SubType "svg" }}
+                  <img src="{{ $img_found.RelPermalink }}" alt="Image for {{ $.Title }}" class="img_gadget project-list-image-square" />
+                {{ else }}
+                  <img src="{{ ($img_found.Resize "x180 q100").RelPermalink }}" alt="Image for {{ $.Title }}" class="img_gadget" />
+                {{ end }}
+              {{ else }}
+                {{ $placeholder := resources.Get "images/project-placeholder.svg" }}
+                {{ if $placeholder }}
+                  <img src="{{ $placeholder.RelPermalink }}" alt="Placeholder for {{ $.Title }}" class="img_gadget project-list-image-svg" style="opacity: 0.7;" />
+                {{ else }}
+                  {{ $.Title }}
+                {{ end }}
+              {{ end }}
+              <br />
+            {{ end }}
+            <br />
+          </a>
+        </center>
+        <div class="project-links">
+          {{ if .Params.website_url }}
+            <a href="{{ .Params.website_url }}" target="_blank" rel="noopener">🌐 Website</a>
+          {{ end }}
+          {{ if .Params.github_url }}
+            <a href="{{ .Params.github_url }}" target="_blank" rel="noopener">📁 GitHub</a>
+          {{ end }}
+        </div>
+      </div>
+    {{ end }}
+    
+    <!-- Display discontinued projects without dates after those with dates -->
+    {{ range $sortedDiscontinuedWithoutDates }}
+      <div id="featured_home" style="opacity: 0.7;">
+        <center>
+          <a href="{{ .RelPermalink }}">
+            <b>{{ .Title }}</b>
+            <br />
+            {{ if .Params.featured_image }}
+              {{ $img := resources.Get .Params.featured_image }}
+              {{ if $img }}
+                {{ if eq $img.MediaType.SubType "svg" }}
+                  <img src="{{ $img.RelPermalink }}" alt="Image for {{ .Title }}" class="img_gadget project-list-image-svg" />
+                {{ else }}
+                  <img src="{{ ($img.Resize "x200 q100").RelPermalink }}" alt="Image for {{ .Title }}" class="img_gadget project-list-image-regular" />
+                {{ end }}
+              {{ else }}
+                {{ $placeholder := resources.Get "images/project-placeholder.svg" }}
+                {{ if $placeholder }}
+                  <img src="{{ $placeholder.RelPermalink }}" alt="Placeholder for {{ .Title }}" class="img_gadget project-list-image-svg" style="opacity: 0.7;" />
+                {{ else }}
+                  <p>No Image</p>
+                {{ end }}
+              {{ end }}
+            {{ else }}
+              {{ $img_loc := printf "%s.*" ( replace .Path "projects" "images/projects" ) }}
+              {{ $img_found := resources.GetMatch $img_loc }}
+              {{ if $img_found }}
+                {{ if eq $img_found.MediaType.SubType "svg" }}
+                  <img src="{{ $img_found.RelPermalink }}" alt="Image for {{ $.Title }}" class="img_gadget project-list-image-square" />
+                {{ else }}
+                  <img src="{{ ($img_found.Resize "x180 q100").RelPermalink }}" alt="Image for {{ $.Title }}" class="img_gadget" />
+                {{ end }}
+              {{ else }}
+                {{ $placeholder := resources.Get "images/project-placeholder.svg" }}
+                {{ if $placeholder }}
+                  <img src="{{ $placeholder.RelPermalink }}" alt="Placeholder for {{ $.Title }}" class="img_gadget project-list-image-svg" style="opacity: 0.7;" />
+                {{ else }}
+                  {{ $.Title }}
+                {{ end }}
+              {{ end }}
+              <br />
+            {{ end }}
+            <br />
+          </a>
+        </center>
+        <div class="project-links">
+          {{ if .Params.website_url }}
+            <a href="{{ .Params.website_url }}" target="_blank" rel="noopener">🌐 Website</a>
+          {{ end }}
+          {{ if .Params.github_url }}
+            <a href="{{ .Params.github_url }}" target="_blank" rel="noopener">📁 GitHub</a>
+          {{ end }}
+        </div>
+      </div>
+    {{ end }}
+    <div class="clear"></div>
+  </div>
+{{ end }}
+
+
+<div class="clear">
+</div>
+
+{{ $content := .Content | string }}
+{{ $supportIndex := findRE "## Support My Work" $content }}
+{{ if $supportIndex }}
+  {{ $afterSupport := split $content "## Support My Work" }}
+  {{ if gt (len $afterSupport) 1 }}
+    {{ $supportContent := index $afterSupport 1 }}
+    {{ if $supportContent }}
+      <div class="support-section">
+        {{ printf "## Support My Work%s" $supportContent | markdownify }}
+      </div>
+    {{ end }}
+  {{ end }}
+{{ end }}
+
+{{ partial "footer.html" . }}

@@ -1,0 +1,21 @@
+{{ partial "header.html" . }}
+{{ $orender := . }}
+<div class="article-meta">
+<br />
+<div id=featured>
+</div>
+<h1><span class="title">{{ .Title | markdownify }}</span></h1>
+{{ if .Params.event }}<h2>{{ .Params.event | markdownify }}</h2>{{ end }}
+{{ if (gt .Params.date 0) }}<h2 class="date">{{ .Date.Format "2006/01/02" }}</h2>{{ end }}
+</div>
+
+<main>
+{{ $orender = replace .Content "http://" "https://" }}
+{{ $orender | safeHTML }}
+</main>
+<br />
+
+
+
+<br />
+{{ partial "footer.html" . }}

@@ -1,0 +1,110 @@
+{{ $url := .Get "url" }}
+{{ $out := "" }}
+{{ $videoUrl := urls.Parse $url }}
+{{ $matched := 0 }}
+
+{{/* Try data-driven approach first */}}
+{{ $data := dict }}
+{{- range $.Site.Data.oembed }}
+  {{- if le 1 ( findRE .pattern $videoUrl.Host | len ) }}
+    {{ $matched = 1 }}
+    {{ $nowrapper := .nowrapper | default false }}
+    {{ $autoheight := .autoheight | default false }}
+    {{ $remove := .remove | default "" }}
+    {{ $privacyEnhanced := .privacy_enhanced | default false }}
+    {{ $privacyReplace := .privacy_replace }}
+    {{- $separator := "?" }}
+    {{- if (findRE "\\?" .endpoint) }}
+      {{- $separator = "&" }}
+    {{- end }}
+    {{- $jsonUrl := printf "%s%sformat=json&url=%s" .endpoint $separator $url }}
+    {{ with try (resources.GetRemote $jsonUrl) }}
+      {{ with .Err }}
+        {{ warnf "Error on %q : %s " $jsonUrl . }}
+      {{ else }}
+        {{ with try ( .Value | transform.Unmarshal) }}
+          {{ with .Err }}
+            {{ warnf " Errorize %s " . }}
+          {{ else }}
+            {{ $data = .Value }}
+          {{ end }}
+        {{ end }}
+      {{ end }}
+    {{ end }}
+    {{- with $data }}
+      {{ $html := .html }}
+      {{/* Apply remove pattern if specified */}}
+      {{ if $remove }}
+        {{ $html = replaceRE $remove "" $html }}
+      {{ end }}
+      {{/* Check if iframe already has title attribute */}}
+      {{ $titleAttr := "" }}
+      {{ if not (findRE "title\\s*=" $html) }}
+        {{ $titleAttr = printf "title='%s' " .title }}
+      {{ end }}
+      {{/* Configure lazy loading - default to true if not specified */}}
+      {{ $lazyLoading := .lazy_loading | default true }}
+      {{ $loadingAttr := "" }}
+      {{ if $lazyLoading }}
+        {{ $loadingAttr = "loading='lazy' " }}
+      {{ end }}
+      {{/* Build iframe style attributes dynamically */}}
+      {{ $baseStyle := "position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;" }}
+      {{ $marginStyle := "" }}
+      {{ if and (findRE "(youtu)" $videoUrl.Host) (findRE "/shorts/" $url) }}
+        {{ $marginStyle = " margin: 0 auto;" }}
+      {{ end }}
+      {{ $iframeStyle := printf "%s%s" $baseStyle $marginStyle }}
+      {{/* Handle privacy enhancement if configured */}}
+      {{ if and $privacyEnhanced $privacyReplace }}
+        {{ $html = replace $html $privacyReplace.from $privacyReplace.to }}
+      {{ end }}
+      {{ $frame := printf "iframe %s%sstyle='%s'" $titleAttr $loadingAttr $iframeStyle }}
+      {{ $out = replace $html "iframe " $frame | safeHTML }}
+      {{if $nowrapper }}
+        {{/* Output directly without wrapper */}}
+      {{else}}
+        {{ if $autoheight }}
+          {{ $out = printf "<div style='position: relative; padding-bottom: %spx; height: 0; overflow: hidden;'>%s</div>" .height $out | safeHTML }}
+        {{ else }}
+          {{ $out = printf "<div style='position: relative; padding-bottom: 55.25%%; height: 0; overflow: hidden;'>%s</div>" $out | safeHTML }}
+        {{ end }}
+      {{ end }}
+    {{ end }}
+  {{ end }}
+{{ end }}
+
+{{/* Fallback to Noti.st if configured and no match found */}}
+{{ if and (eq $matched 0) $.Site.Params.notist_custom_domains }}
+  {{ $isNotistDomain := false }}
+  {{ range $.Site.Params.notist_custom_domains }}
+    {{ if ( findRE . $videoUrl.Host 1) }}
+      {{ $isNotistDomain = true }}
+    {{ end }}
+  {{ end }}
+  {{ if $isNotistDomain }}
+    {{ $matched = 1 }}
+    {{ $url_id := index (split $videoUrl "/") 3 }}
+    {{ $notist_username := "" }}
+    {{ if $.Site.Params.notist_username }}
+      {{ $notist_username = $.Site.Params.notist_username }}
+    {{ else if $.Site.Params.notist_custom_domains }}
+      {{ errorf "notist_custom_domains is configured but notist_username is missing. Please set params.notist_username in your config.toml" }}
+    {{ else }}
+      {{ $notist_username = "notist" }}
+    {{ end }}
+    {{ $frm_src := printf "%s" "/embed' frameborder='0' width='960' height='540' allowfullscreen='allowfullscreen' class='frame_notist' \u003e\u003c/iframe\u003e"| printf "%s%s" $url_id |  printf "%s%s" (printf "\u003ciframe sandbox='allow-scripts' scrolling='no' src='https://noti.st/%s/" $notist_username) }}
+    {{ $out = $frm_src | safeHTML }}
+  {{ end }}
+{{ end }}
+
+{{/* Final fallback for unmatched URLs */}}
+{{ if eq $matched 0 }}
+  {{ $out = printf "<div class='oembed-error'><p>🔗 <a href='%s' target='_blank' rel='noopener'>View Link</a></p></div>" $url | safeHTML }}
+{{ end }}
+
+{{ with $out }}
+<div class="oembed-container">
+  {{ . }}
+</div>
+{{ end }}

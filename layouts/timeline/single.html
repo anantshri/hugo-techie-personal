@@ -1,0 +1,67 @@
+{{ partial "header.html" . }}
+
+{{ partial "breadcrumbs.html" . }}
+
+<div class="article-meta">
+<br />
+<div id=featured>
+
+<center>
+	{{ if and (.Params.featured_image) ( not (isset .Params "hide_featured"))  }}
+              {{ $img_loc := replace .Params.featured_image "/uploads" "images" }}
+              {{- $image := resources.Get $img_loc -}}
+              {{ if $image }}
+                <img src='{{ ($image.Resize "x400 q100").RelPermalink }}' alt='{{.Title}}' maxwidth='650px' maxheight='360px' loading="lazy" /> 
+                <br />
+              {{ else }}
+                {{ $placeholder := resources.Get "images/timeline-placeholder.svg" }}
+                {{ if $placeholder }}
+                  <img src="{{ $placeholder.RelPermalink }}" alt="Placeholder for {{ .Title }}" style="opacity: 0.7; max-width: 400px;" />
+                  <br />
+                {{ end }}
+              {{ end }}
+    {{ else if not (isset .Params "hide_featured") }}
+              {{ $placeholder := resources.Get "images/timeline-placeholder.svg" }}
+              {{ if $placeholder }}
+                <img src="{{ $placeholder.RelPermalink }}" alt="Placeholder for {{ .Title }}" style="opacity: 0.7; max-width: 400px;" />
+                <br />
+              {{ end }}
+    {{ end }}
+</center>
+</div>
+<h1><span class="title">{{ .Title | markdownify }}</span></h1>
+{{ if .Params.event }}<h2>{{ .Params.event | markdownify }}</h2>{{ end }}
+{{ if (gt .Params.date 0) }}<h2 class="date">{{ .Date.Format "2006/01/02" }}</h2>{{ end }}
+</div>
+
+<main>
+{{ .Content }}
+</main>
+
+{{/* Related Projects Section */}}
+{{ if .Params.project_links }}
+<hr />
+<div class="related-projects">
+  <h3>🔗 Related Projects</h3>
+  <div class="project-links-list">
+    {{ range .Params.project_links }}
+      {{ $projectSlug := . }}
+      {{ $projectPage := $.Site.GetPage (printf "/projects/%s" $projectSlug) }}
+      {{ if $projectPage }}
+        <div class="project-link-item">
+          <a href="{{ $projectPage.RelPermalink }}" class="project-link">
+            <strong>{{ $projectPage.Title }}</strong>
+            {{ if $projectPage.Params.tldr_description }}
+              <span class="project-description">{{ $projectPage.Params.tldr_description }}</span>
+            {{ end }}
+          </a>
+        </div>
+      {{ end }}
+    {{ end }}
+  </div>
+</div>
+{{ end }}
+
+{{ partial "prev_next_nav.html" . }}
+
+{{ partial "footer.html" . }}

@@ -1,0 +1,57 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="timelineGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#8B5CF6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#6366F1;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="200" height="200" rx="12" fill="url(#timelineGradient)"/>
+  
+  <!-- Timeline elements -->
+  <g fill="white" opacity="0.9">
+    <!-- Timeline line -->
+    <rect x="30" y="40" width="3" height="120" rx="1.5"/>
+    
+    <!-- Timeline nodes -->
+    <circle cx="31.5" cy="50" r="6"/>
+    <circle cx="31.5" cy="90" r="6"/>
+    <circle cx="31.5" cy="130" r="6"/>
+    
+    <!-- Event boxes -->
+    <rect x="45" y="42" width="120" height="16" rx="3" opacity="0.8"/>
+    <rect x="45" y="82" width="100" height="16" rx="3" opacity="0.8"/>
+    <rect x="45" y="122" width="110" height="16" rx="3" opacity="0.8"/>
+    
+    <!-- Calendar icon -->
+    <rect x="150" y="160" width="20" height="18" rx="2" fill="white" opacity="0.7"/>
+    <rect x="152" y="155" width="2" height="8" rx="1"/>
+    <rect x="166" y="155" width="2" height="8" rx="1"/>
+    <rect x="152" y="165" width="16" height="1"/>
+    <rect x="152" y="170" width="16" height="1"/>
+  </g>
+  
+  <!-- Activity icons -->
+  <g fill="white" opacity="0.6">
+    <!-- Presentation icon -->
+    <rect x="160" y="35" width="15" height="10" rx="1" stroke="white" stroke-width="1" fill="none"/>
+    <rect x="162" y="37" width="11" height="6" rx="0.5"/>
+    
+    <!-- Award star -->
+    <path d="M40 170 L43 177 L50 177 L45 182 L47 189 L40 185 L33 189 L35 182 L30 177 L37 177 Z" opacity="0.5"/>
+    
+    <!-- Tool icon -->
+    <rect x="170" y="100" width="2" height="12" rx="1" transform="rotate(45 171 106)"/>
+    <rect x="170" y="100" width="2" height="12" rx="1" transform="rotate(-45 171 106)"/>
+  </g>
+  
+  <!-- Tech symbols -->
+  <g fill="white" opacity="0.4">
+    <text x="25" y="25" font-family="monospace" font-size="12" font-weight="bold">📅</text>
+    <text x="160" y="190" font-family="monospace" font-size="10" font-weight="bold">⏰</text>
+  </g>
+  
+  <!-- Timeline label -->
+  <text x="100" y="25" font-family="Arial, sans-serif" font-size="12" font-weight="bold" text-anchor="middle" fill="white" opacity="0.8">TIMELINE</text>
+</svg>

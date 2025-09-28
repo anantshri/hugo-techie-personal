@@ -1,0 +1,26 @@
+name = "hugo-techie-personal"
+license = "MIT"
+#licenselink = "https://github.com/yihui/hugo-xmin/blob/master/LICENSE.md"
+description = "A timeline-based personal site theme for tech professionals who love to share their work, projects, and journey with the community. Features activity-based timelines, project showcases, gadget reviews, and comprehensive configuration options."
+homepage = "https://anantshri.info"
+tags = ["minimal", "blog", "personal", "clean", "simple", "starter", "minimalist", "timeline", "portfolio", "tech", "developer", "projects"]
+features = ["blog", "portfolio", "timeline", "responsive"]
+min_version = "0.18"
+
+[author]
+  name = "Anant Shrivastava"
+  homepage = "https://anantshri.info"
+
+# Work-in-Progress System Usage Examples:
+#
+# Section-level (in _index.md):
+# work_in_progress = "updating"     # Use predefined type
+# work_in_progress = true           # Use default message
+#
+# Individual page override examples (in page front matter):
+# work_in_progress = false                    # Disable WIP message for this page
+# work_in_progress = "incomplete"             # Use different predefined type
+# work_in_progress_title = "Custom Title"     # Custom title and message
+# work_in_progress_message = "Custom text"
+#
+# Available predefined types: "updating", "incomplete", "review", "placeholder"

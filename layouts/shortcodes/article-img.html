@@ -1,0 +1,14 @@
+{{/* Article Image Shortcode */}}
+{{- $src := .Get "src" -}}
+{{- $alt := .Get "alt" | default "" -}}
+{{- $class := .Get "class" | default "" -}}
+{{- $style := .Get "style" | default "" -}}
+
+{{/* Try to get image from assets first */}}
+{{ $img := resources.Get $src }}
+{{ if $img }}
+  <img src="{{ $img.RelPermalink }}" alt="{{ $alt }}"{{ with $class }} class="{{ . }}"{{ end }}{{ with $style }} style="{{ . }}"{{ end }} />
+{{ else }}
+  {{/* Fallback to static path if not found in assets */}}
+  <img src="/{{ $src }}" alt="{{ $alt }}"{{ with $class }} class="{{ . }}"{{ end }}{{ with $style }} style="{{ . }}"{{ end }} />
+{{ end }}

@@ -1,0 +1,147 @@
+baseURL = "https://example.com"
+languageCode = "en-us"
+title = "Hugo Techie Personal Demo"
+theme = "hugo-techie-personal"
+disableHugoGeneratorInject = true
+enableRobotsTXT = true
+
+# Enable taxonomies
+[taxonomies]
+  types = "type"
+  focus = "focus"
+  activities = "activity"
+
+# Site parameters
+[params]
+  subtitle = "Demonstrating Hugo Techie Personal Theme"
+  profile_pic = "images/profile.png"  # Replace with your own profile image
+  description = "A comprehensive demonstration of the Hugo Techie Personal theme, showcasing timeline-based content organization, project portfolios, gadget reviews, and personal interests. Perfect for tech professionals, security researchers, and developers."
+  footer = "&copy; [Hugo Techie Personal Demo](https://example.com)"
+  # social_share_image = "/images/profile.png"  # Add your own social share image
+  # featured_image = "/images/profile.png"      # Add your own featured image
+  banner = "<a href='#'>🚀 Explore the Hugo Techie Personal Theme Features! 🌐 📅</a>"
+  
+  # Site descriptions for different sections
+  description_timeline = "A chronological journey through activities and achievements"
+  description_projects = "Current and past projects showcasing various technologies and interests"
+  description_gadgets = "Reviews and experiences with various devices and gadgets"
+  description_talk = "This section lists all the talks delivered across various conferences"
+  description_training = "Training sessions and workshops conducted since 2020"
+  description_panel = "Panel discussions and moderated sessions"
+  description_discussion = "One-on-one discussions and interviews"
+  description_tool = "Tool demonstrations and technical showcases"
+  description_quote = "References and quotes in various publications"
+  description_ctf = "Capture The Flag competitions and achievements"
+  description_recognition = "Awards, recognitions, and professional achievements"
+  description_article = "Articles and publications in external platforms"
+  description_curator = "Event curation and organization activities"
+  description_whitepaper = "Technical whitepapers and research publications"
+
+  # Social links for home page
+  [params.social_links]
+    twitter_url = "https://twitter.com/example"
+    linkedin_url = "https://linkedin.com/in/example"
+    mastodon_url = "https://mastodon.social/@example"
+    mastodon_verify = "https://mastodon.social/@example"
+    github_url = "https://github.com/example"
+
+  # Noti.st integration
+  notist_username = "example"
+  notist_custom_domains = ["slides.example.com"]
+
+  # Analytics configuration (Plausible example)
+  [params.analytics]
+    provider = "plausible"
+    domain = "example.com"
+    api_endpoint = "/api/event"
+    script_src = "/js/script.js"
+    tracking_id = ""
+    custom_code = ""
+
+  # Work in progress notifications
+  [params.work_in_progress]
+    enabled = true
+    default_message = "This content is currently being updated and improved. Please check back later for the complete version."
+    default_title = "🚧 Work in Progress"
+    exclude_statuses = ["discontinued", "archived", "completed", "finished"]
+    
+    [params.work_in_progress.types]
+      updating = { title = "🚧 Work in Progress", message = "This content is currently being updated and improved. Please check back later for the complete version." }
+      incomplete = { title = "📝 Content Incomplete", message = "This page contains partial information. Additional content will be added over time." }
+      review = { title = "🔍 Under Review", message = "This content is being reviewed and may undergo changes. Please consider this when referencing the information." }
+      placeholder = { title = "📋 Placeholder", message = "This is a placeholder page. Content will be added in the future." }
+
+  # Navigation system
+  [params.navigation]
+    enable_breadcrumbs = true
+    enable_prev_next = true
+    breadcrumb_separator = "›"
+    show_section_context = true
+    
+    [params.navigation.labels]
+      home = "Home"
+      projects = "Projects"
+      gadgets = "Gadgets"
+      timeline = "Timeline"
+      back_to = "Back to"
+      previous = "Previous"
+      next = "Next"
+      currently_used = "Currently Used"
+      upcoming = "Upcoming"
+      discontinued = "Discontinued"
+      discontinued_projects = "Discontinued Projects"
+      archived_device = "⚠️ Archived Device"
+      planned_device = "📋 Planned Device"
+      
+      # Status message descriptions
+      archived_device_description = "This is an older device that is no longer in use. This page is kept for archival purposes and may not be updated with current information."
+      planned_device_description = "This device is owned but not currently in active use. Plans are in place to utilize this device in the future."
+      discontinued_project_description = "The following projects are no longer actively maintained or developed, sorted by discontinuation date."
+
+  # Timeline configuration
+  [params.timeline]
+    show_activity_icons = true
+
+[markup]
+  [markup.goldmark]
+    [markup.goldmark.extensions]
+      definitioncategory = true
+      footnote = true
+      linkify = false
+      strikethrough = true
+      table = true
+      taskcategory = true
+      typographer = true
+    [markup.goldmark.parser]
+      attribute = true
+      autoHeadingID = true
+      autoHeadingIDType = "github"
+    [markup.goldmark.renderer]
+      hardWraps = false
+      unsafe = true
+      xhtml = false
+
+[mediaTypes]
+  [mediaTypes."text/plain"]
+    suffixes = ["txt"]
+
+# Main menu
+[[menu.main]]
+  name = "Timeline"
+  url = "/timeline/"
+  weight = 2
+
+[[menu.main]]
+  name = "Projects"
+  url = "/projects/"
+  weight = 3
+
+[[menu.main]]
+  name = "Gadgets"
+  url = "/gadget/"
+  weight = 4
+
+[[menu.main]]
+  name = "About"
+  url = "/about/"
+  weight = 5
