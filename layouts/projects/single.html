@@ -8,6 +8,23 @@
 
 {{ partial "work_in_progress.html" . }}
 
+{{/* Show project status if discontinued */}}
+{{ if eq .Params.status "discontinued" }}
+<hr />
+<div class="project-status-section">
+  <div class="project-status-discontinued">
+    <h2>⚠️ Project Status: Discontinued</h2>
+    <div class="status-content">
+      {{ if .Params.discontinue_date }}
+        <p><strong>📅 Discontinued:</strong> {{ dateFormat "January 2006" .Params.discontinue_date }}</p>
+      {{ end }}
+      <p><strong>ℹ️ Note:</strong> This project is no longer actively maintained or developed. The information below is kept for archival purposes and may not reflect current best practices or technologies.</p>
+    </div>
+  </div>
+</div>
+<hr />
+{{ end }}
+
 <div class="gadget_center">
   {{ if .Params.featured_image }}
     {{ $img := resources.Get .Params.featured_image }}
@@ -48,6 +65,7 @@
     {{ end }}
   {{ end }}
 {{ end }}
+
 
 {{/* Always show TL;DR section if parameters exist */}}
 {{ if or .Params.tldr_description .Params.tldr_best_for .Params.tldr_key_features }}
