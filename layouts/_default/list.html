@@ -125,7 +125,7 @@
               {{ if in .Params.excerpt "https://" }}
                 {{ partial "oembed.html" (dict "url" .Params.excerpt "page" .) }}
                 {{ with .Params.event }}
-                  <span class="event-text-overlay">{{ . | markdownify }}</span>
+                  <span>{{ . | markdownify }}</span>
                 {{ end }}
               {{ else if .Params.featured_image }}
                 {{ $img_loc := replace .Params.featured_image "/uploads" "images" }}
