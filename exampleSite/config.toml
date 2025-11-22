@@ -51,11 +51,11 @@ enableRobotsTXT = true
   notist_custom_domains = ["slides.example.com"]
   
   # Credly badge integration (for demonstration)
-  credly_username = ""
+  credly_username = "anantshri"
   credly_image_dir = "images/CredlyBadges"
   
   # Accredible badge integration (for demonstration)
-  accredible_username = ""
+  accredible_username = "anantshrivastava"
   accredible_image_dir = "images/AccredibleBadges"
 
   # Analytics configuration (Plausible example)
