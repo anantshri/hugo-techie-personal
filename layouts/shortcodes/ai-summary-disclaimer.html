@@ -1,0 +1,30 @@
+{{/* AI Generated Summary Disclaimer Shortcode */}}
+{{/* Usage: {{< ai-summary-disclaimer >}} */}}
+
+{{- $noticeType := "warning" -}}
+{{- $customTitle := "AI Generated Content Disclaimer" -}}
+{{- $message := "**Note:** This summary is AI-generated and may contain inaccuracies, errors, or omissions. If you spot any issues, please contact the site owner for corrections. Errors or omissions are unintended." -}}
+{{- $raw := (markdownify $message | chomp) -}}
+{{- $block := findRE "(?is)^<(?:address|article|aside|blockquote|canvas|dd|div|dl|dt|fieldset|figcaption|figure|footer|form|h(?:1|2|3|4|5|6)|header|hgroup|hr|li|main|nav|noscript|ol|output|p|pre|section|table|tfoot|ul|video)\\b" $raw 1 -}}
+
+<div class="notice {{ $noticeType }}">
+    <p class="notice-title">
+        <span class="icon-notice baseline">
+            {{ $iconPath := printf "images/%s.svg" $noticeType }}
+            {{ $noticeIcon := resources.Get $iconPath }}
+            {{ if not $noticeIcon }}
+                {{/* Try theme assets if not found in site assets */}}
+                {{ $noticeIcon = resources.GetMatch (printf "images/%s.svg" $noticeType) }}
+            {{ end }}
+            {{ if $noticeIcon }}
+                {{ $noticeIcon.Content | safeHTML }}
+            {{ else }}
+                {{/* Fallback: Use text symbol */}}
+                ⚠️
+            {{ end }}
+        </span>
+        {{ $customTitle }}
+    </p>
+    {{- if or $block (not $raw) }}{{ $raw }}{{ else }}<p>{{ $raw }}</p>{{ end -}}
+</div>
+

@@ -4,6 +4,8 @@
 {{ $showExpiredOnly := eq ($params.show_expired | default "false") "true" }}
 {{ $hideExpired := eq ($params.hide_expired | default "false") "true" }}
 {{ $isSmall := eq $size "small" }}
+{{ $isBig := eq $size "big" }}
+{{ $isNormal := or (eq $size "normal") (and (ne $size "small") (ne $size "big")) }}
 {{ $showCredly := ne ($params.show_credly | default "true") "false" }}
 {{ $showAccredible := ne ($params.show_accredible | default "true") "false" }}
 
@@ -206,7 +208,7 @@
 
 {{/* Render all badges in a single grid container */}}
 {{ if $sortedBadges }}
-  <div class="badges{{ if $isSmall }} badges-small{{ end }}">
+  <div class="badges{{ if $isSmall }} badges-small{{ else if $isBig }} badges-big{{ else }} badges-normal{{ end }}">
     {{ range $sortedBadges }}
       {{ $badgeId := .id }}
       {{ $badgeName := .name }}
@@ -257,8 +259,8 @@
         {{ end }}
       {{ end }}
       
-      <div class="badge{{ if $isExpired }} badge-expired{{ end }}{{ if $isSmall }} badge-small{{ end }}">
-        <a href="{{ $badgeUrl }}" target="_blank" rel="noopener noreferrer" class="badge-link"{{ if $isSmall }} title="{{ $badgeName }}{{ if $badgeDescription }} - {{ $badgeDescription }}{{ end }}"{{ end }}>
+      <div class="badge{{ if $isExpired }} badge-expired{{ end }}{{ if $isSmall }} badge-small{{ else if $isBig }} badge-big{{ else }} badge-normal{{ end }}{{ if $badgeDescription }} badge-has-tooltip{{ end }}"{{ if and (not $isSmall) $badgeDescription }} data-tooltip="{{ $badgeDescription }}"{{ end }}>
+        <a href="{{ $badgeUrl }}" target="_blank" rel="noopener noreferrer" class="badge-link" title="{{ $badgeName }}{{ if $badgeDescription }} - {{ $badgeDescription }}{{ end }}">
           {{ if $badgeImage }}
             {{/* Use Hugo's image processing - resize based on size option */}}
             {{ if $isSmall }}
@@ -267,10 +269,18 @@
                    alt="{{ $badgeName }}" 
                    class="badge-image" 
                    loading="lazy" />
-            {{ else }}
-              {{ $processedImage := $badgeImage.Resize "400x400 q90" }}
+            {{ else if $isBig }}
+              {{ $processedImage := $badgeImage.Resize "500x500 q90" }}
               <img src="{{ $processedImage.RelPermalink }}" 
-                   srcset="{{ ($badgeImage.Resize "800x800 q90").RelPermalink }} 2x"
+                   srcset="{{ ($badgeImage.Resize "1000x1000 q90").RelPermalink }} 2x"
+                   alt="{{ $badgeName }}" 
+                   class="badge-image" 
+                   loading="lazy" />
+            {{ else }}
+              {{/* Normal size: 250x250 */}}
+              {{ $processedImage := $badgeImage.Resize "250x250 q90" }}
+              <img src="{{ $processedImage.RelPermalink }}" 
+                   srcset="{{ ($badgeImage.Resize "500x500 q90").RelPermalink }} 2x"
                    alt="{{ $badgeName }}" 
                    class="badge-image" 
                    loading="lazy" />
@@ -283,9 +293,6 @@
               {{ if $badgeName }}
                 <h3 class="badge-name">
                   {{ $badgeName }}
-                  {{ if $badgeDescription }}
-                    <span class="badge-tooltip" data-tooltip="{{ $badgeDescription }}">ℹ️</span>
-                  {{ end }}
                 </h3>
               {{ end }}
               <div class="badge-meta">

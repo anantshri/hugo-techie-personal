@@ -2049,6 +2049,28 @@ body:not([class*="home-layout-"]) {
   margin: var(--space-6) 0;
 }
 
+/* Normal badges container (250x250, default) */
+.badges-normal {
+  grid-template-columns: repeat(auto-fill, minmax(250px, 250px));
+  gap: var(--space-4);
+  margin: var(--space-4) 0;
+  justify-content: center;
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Big badges container (500x500) - 3 per row */
+.badges-big {
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-6);
+  margin: var(--space-6) 0;
+  justify-content: center;
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
 /* Small badges container (icon-only view) */
 .badges-small {
   grid-template-columns: repeat(auto-fill, minmax(64px, 64px)) !important;
@@ -2064,12 +2086,30 @@ body:not([class*="home-layout-"]) {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
   transition: all var(--transition-normal);
+  overflow: visible;
+}
+
+.badge .badge-link {
   overflow: hidden;
+  border-radius: var(--radius-lg);
 }
 
 .badge:hover {
   box-shadow: var(--shadow-lg);
   transform: translateY(-2px);
+}
+
+/* Normal badge size (250x250) */
+.badge-normal {
+  max-width: 250px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* Big badge size (500x500) - will auto-size to fit 3 per row */
+.badge-big {
+  width: 100%;
+  margin: 0 auto;
 }
 
 /* Badge Link */
@@ -2122,61 +2162,59 @@ body:not([class*="home-layout-"]) {
   gap: var(--space-2);
 }
 
-/* Tooltip for badge description */
-.badge-tooltip {
+/* Tooltip for badge description - appears on entire badge block */
+.badge-has-tooltip {
   position: relative;
-  display: inline-block;
-  cursor: help;
-  font-size: var(--font-size-xs);
-  opacity: 0.6;
-  transition: opacity var(--transition-normal);
 }
 
-.badge-tooltip:hover {
-  opacity: 1;
-}
-
-.badge-tooltip::before {
+.badge-has-tooltip::before {
   content: attr(data-tooltip);
   position: absolute;
-  bottom: 100%;
+  bottom: calc(100% + 12px);
   left: 50%;
-  transform: translateX(-50%);
-  margin-bottom: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  background-color: var(--color-text-primary);
-  color: var(--color-background);
-  font-size: var(--font-size-xs);
+  transform: translateX(-50%) translateY(4px);
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--color-background);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
   line-height: var(--line-height-relaxed);
   white-space: normal;
-  width: 250px;
-  max-width: calc(100vw - 2rem);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lg);
+  word-wrap: break-word;
+  word-break: break-word;
+  width: 320px;
+  max-width: min(320px, calc(100vw - 2rem));
+  border-radius: var(--radius-lg);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--color-border);
   opacity: 0;
   pointer-events: none;
-  transition: opacity var(--transition-normal);
+  transition: opacity var(--transition-normal), transform var(--transition-normal);
   z-index: 1000;
   text-align: left;
+  transform-origin: bottom center;
 }
 
-.badge-tooltip::after {
+.badge-has-tooltip::after {
   content: "";
   position: absolute;
-  bottom: 100%;
+  bottom: calc(100% + 6px);
   left: 50%;
   transform: translateX(-50%);
-  margin-bottom: calc(var(--space-2) - 5px);
-  border: 5px solid transparent;
-  border-top-color: var(--color-text-primary);
+  border: 6px solid transparent;
+  border-top-color: var(--color-background);
   opacity: 0;
   pointer-events: none;
   transition: opacity var(--transition-normal);
-  z-index: 1000;
+  z-index: 1001;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.1));
 }
 
-.badge-tooltip:hover::before,
-.badge-tooltip:hover::after {
+.badge-has-tooltip:hover::before {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.badge-has-tooltip:hover::after {
   opacity: 1;
 }
 
@@ -2218,8 +2256,9 @@ body:not([class*="home-layout-"]) {
   border-radius: var(--radius-sm);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
-  z-index: 10;
+  z-index: 100;
   box-shadow: var(--shadow-sm);
+  pointer-events: none;
 }
 
 /* Smaller expired text for small badges */
@@ -2248,21 +2287,53 @@ body:not([class*="home-layout-"]) {
 
 /* Responsive Design */
 @media (max-width: 767px) {
-  .badges:not(.badges-small) {
+  .badges:not(.badges-small):not(.badges-normal):not(.badges-big) {
     grid-template-columns: 1fr;
     gap: var(--space-4);
   }
-}
-
-@media (min-width: 768px) and (max-width: 991px) {
-  .badges:not(.badges-small) {
-    grid-template-columns: repeat(2, 1fr);
+  
+  .badges-normal {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 200px));
+    max-width: 100%;
+  }
+  
+  .badges-big {
+    grid-template-columns: 1fr;
+    max-width: 100%;
   }
 }
 
-@media (min-width: 992px) {
-  .badges:not(.badges-small) {
+@media (min-width: 768px) and (max-width: 1199px) {
+  .badges:not(.badges-small):not(.badges-normal):not(.badges-big) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .badges-normal {
+    grid-template-columns: repeat(auto-fill, minmax(250px, 250px));
+    max-width: 100%;
+  }
+  
+  .badges-big {
+    grid-template-columns: repeat(2, 1fr);
+    max-width: 100%;
+  }
+}
+
+@media (min-width: 1200px) {
+  .badges:not(.badges-small):not(.badges-normal):not(.badges-big) {
     grid-template-columns: repeat(3, 1fr);
+  }
+  
+  .badges-normal {
+    /* At 1200px width, can fit 4 badges (250px each) + gaps */
+    grid-template-columns: repeat(auto-fill, minmax(250px, 250px));
+    max-width: 1200px;
+  }
+  
+  .badges-big {
+    /* At 1200px width, 3 badges per row */
+    grid-template-columns: repeat(3, 1fr);
+    max-width: 1200px;
   }
 }
 
