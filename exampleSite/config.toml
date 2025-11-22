@@ -36,6 +36,7 @@ enableRobotsTXT = true
   description_article = "Articles and publications in external platforms"
   description_curator = "Event curation and organization activities"
   description_whitepaper = "Technical whitepapers and research publications"
+  description_badges = "Professional certifications and badges from Credly and Accredible"
 
   # Social links for home page
   [params.social_links]
@@ -48,6 +49,14 @@ enableRobotsTXT = true
   # Noti.st integration
   notist_username = "example"
   notist_custom_domains = ["slides.example.com"]
+  
+  # Credly badge integration (for demonstration)
+  credly_username = ""
+  credly_image_dir = "images/CredlyBadges"
+  
+  # Accredible badge integration (for demonstration)
+  accredible_username = ""
+  accredible_image_dir = "images/AccredibleBadges"
 
   # Analytics configuration (Plausible example)
   [params.analytics]
@@ -142,6 +151,11 @@ enableRobotsTXT = true
   weight = 4
 
 [[menu.main]]
+  name = "Badges"
+  url = "/badges/"
+  weight = 5
+
+[[menu.main]]
   name = "About"
   url = "/about/"
-  weight = 5
+  weight = 6

@@ -42,12 +42,15 @@ This theme is ideal for:
 - **Professional timeline** with comprehensive activity logging
 
 ### Advanced Features
+- **Professional badge integration** - Display Credly and Accredible certifications with API integration
 - **Work-in-progress notifications** for content under development
 - **Analytics integration** (Plausible, Google Analytics, custom solutions)
 - **Social media integration** with verification support
-- **OEmbed support** for rich media content
+- **OEmbed support** for rich media content (YouTube, Vimeo, SlideShare, Noti.st)
 - **Notice/admonition system** for highlighted content
+- **AI summary disclaimer** system for AI-generated content
 - **Breadcrumb navigation** and contextual navigation aids
+- **FontAwesome icon support** for inline SVG icons
 
 {{< notice tip "Customization" >}}
 The theme includes extensive configuration options in `config.toml` allowing customization of colors, layouts, navigation, analytics, and content organization.
@@ -78,14 +81,22 @@ This demonstration includes:
 - Security testing equipment
 - Smart home and IoT devices
 
+### Professional Badges
+- Credly badge integration demonstration
+- Accredible credential display
+- Multiple badge sizes (small, normal, big)
+- Expired badge handling
+- Tooltip descriptions on hover
+
 ## Technical Implementation
 
 ### Hugo Features Utilized
 - **Custom taxonomies** for activity and focus categorization
 - **Advanced templating** for timeline and portfolio layouts
-- **Shortcode system** for rich content formatting
+- **Shortcode system** for rich content formatting (badges, notices, oembed, images)
 - **Asset pipeline** for optimized CSS and JavaScript
 - **SEO optimization** with structured data and meta tags
+- **Data files** for badge caching and OEmbed provider configuration
 
 ### Performance Optimizations
 - **Lazy loading** for images and media content

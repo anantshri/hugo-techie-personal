@@ -24,6 +24,14 @@ The talk covered:
 Presentation slides are available at the redirect URL above, including speaker notes and additional resources.
 {{< /notice >}}
 
+## Presentation Video
+
+{{< oembed url="https://www.youtube.com/watch?v=dQw4w9WgXcQ" >}}
+
+{{< notice tip "OEmbed Support" >}}
+This demonstrates the theme's OEmbed support for embedding YouTube videos. The theme also supports Vimeo, SlideShare, Noti.st, and other platforms.
+{{< /notice >}}
+
 ## Key Takeaways
 
 {{< notice tip "Security Checklist" >}}

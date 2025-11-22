@@ -20,9 +20,10 @@ Key features demonstrated include:
 - **Timeline-based content organization** with multiple activity types
 - **Project portfolio management** with status tracking
 - **Detailed gadget reviews** with structured assessments
+- **Professional badge integration** - Display Credly and Accredible certifications
 - **Advanced theme features** like work-in-progress notifications, analytics integration, and responsive design
 
-The theme supports various content types including <a href="/activity/talk/">conference talks</a>, <a href="/activity/training/">training sessions</a>, <a href="/activity/article/">articles</a>, <a href="/activity/tool/">tool demonstrations</a>, and <a href="/activity/recognition/">professional recognition</a>.
+The theme supports various content types including <a href="/activity/talk/">conference talks</a>, <a href="/activity/training/">training sessions</a>, <a href="/activity/article/">articles</a>, <a href="/activity/tool/">tool demonstrations</a>, and <a href="/activity/recognition/">professional recognition</a>. Check out the <a href="/badges/">badges page</a> to see professional certification display capabilities.
 
 This demo site serves as both a showcase of theme capabilities and a template for tech professionals looking to create their own timeline-based portfolio sites. All content is carefully crafted to demonstrate real-world usage scenarios while highlighting the theme's flexibility and feature set.
 

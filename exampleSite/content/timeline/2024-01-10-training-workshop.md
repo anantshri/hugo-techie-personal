@@ -68,3 +68,13 @@ All workshop materials are available for download:
 - Security policy templates
 - Monitoring and alerting configurations
 - Recommended tools and resources list
+
+## Workshop Recording
+
+{{< oembed url="https://www.youtube.com/watch?v=dQw4w9WgXcQ" >}}
+
+## AI Generated Summary
+
+{{< ai-summary-disclaimer >}}
+
+This workshop covered Docker security best practices across four comprehensive modules. Module 1 focused on container security fundamentals including isolation mechanisms, Linux namespaces, and cgroups. Module 2 addressed secure image building with Dockerfile best practices, base image selection, and vulnerability management. Module 3 explored runtime security including container runtime configurations and network security. Module 4 concluded with production deployment considerations covering Kubernetes security, secrets management, and incident response. The workshop included hands-on labs and was well-received by 45 participants with a 4.8/5 average rating.

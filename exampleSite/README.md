@@ -20,13 +20,16 @@ This is a complete example site demonstrating the Hugo Techie Personal theme fea
 - **Gadget reviews** with various device statuses and categories
 
 ### Theme Features Demonstrated
+- **Professional badge integration** - Credly and Accredible badge display with API integration
 - **Responsive design** with mobile-first approach
 - **Activity-based filtering** for timeline content
-- **Notice/admonition system** with multiple types
+- **Notice/admonition system** with multiple types (info, warning, tip, note)
 - **Work-in-progress notifications** for sections and pages
 - **Navigation system** with breadcrumbs and prev/next
-- **OEmbed support** for external content embedding
+- **OEmbed support** for external content embedding (YouTube, Vimeo, SlideShare, Noti.st)
+- **AI summary disclaimer** system for AI-generated content
 - **Configurable analytics** (Plausible, Google Analytics, custom)
+- **Image shortcodes** for optimized image handling
 
 ### Configuration Examples
 The `config.toml` file demonstrates:

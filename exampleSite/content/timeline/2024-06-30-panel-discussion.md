@@ -11,6 +11,10 @@ panel_topic: "AI-Powered Threat Detection and Response"
 
 Participated as a panelist in a discussion about the evolving role of artificial intelligence in cybersecurity, focusing on both opportunities and challenges.
 
+## Panel Discussion Video
+
+{{< oembed url="https://www.youtube.com/watch?v=dQw4w9WgXcQ" >}}
+
 ## Panel Overview
 
 The discussion explored:
