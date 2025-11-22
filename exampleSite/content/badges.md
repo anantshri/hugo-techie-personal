@@ -47,7 +47,7 @@ To display your own badges, configure your `config.toml`:
 
 ## Usage Examples
 
-```hugo
+
 <!-- Display all badges (normal size) -->
 {{< badges >}}
 
@@ -68,7 +68,7 @@ To display your own badges, configure your `config.toml`:
 
 <!-- Display only Accredible badges -->
 {{< badges show_credly="false" >}}
-```
+
 
 {{< notice info "Note" >}}
 This demo site doesn't have actual badge credentials configured. In a real implementation, you would add your Credly and/or Accredible usernames to the config.toml file to display your actual badges.
