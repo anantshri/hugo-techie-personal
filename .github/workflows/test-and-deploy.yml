@@ -152,16 +152,42 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-      - name: Comment on Release (if release)
+      - name: Update Release with Demo Link (if release)
         if: github.event_name == 'release'
         uses: actions/github-script@v7
         with:
           script: |
-            if (context.eventName === 'release') {
-              github.rest.issues.createComment({
-                issue_number: context.payload.release.id,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: `🚀 **Demo site deployed!**\n\nThe theme demo is now live at: ${{ steps.deployment.outputs.page_url }}\n\nThis showcases all features of Hugo Techie Personal v${{ github.event.release.tag_name }}.`
-              });
+            try {
+              if (context.eventName === 'release') {
+                const release = context.payload.release;
+                const demoUrl = '${{ steps.deployment.outputs.page_url }}';
+                const tagName = release.tag_name;
+                
+                console.log(`Processing release ${tagName}, demo URL: ${demoUrl}`);
+                
+                // Check if demo link already exists to avoid duplicates
+                const currentBody = release.body || '';
+                if (currentBody.includes('🚀 **Live Demo**')) {
+                  console.log('Demo link already exists in release body, skipping update');
+                  return;
+                }
+                
+                // Append demo link to release body
+                const demoSection = `\n\n---\n\n🚀 **Live Demo**\n\nThe theme demo is now live at: ${demoUrl}\n\nThis showcases all features of Hugo Techie Personal ${tagName}.`;
+                
+                const updatedBody = currentBody + demoSection;
+                
+                await github.rest.repos.updateRelease({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  release_id: release.id,
+                  body: updatedBody
+                });
+                
+                console.log(`✅ Successfully updated release ${tagName} with demo link`);
+              }
+            } catch (error) {
+              console.error('Error updating release:', error);
+              // Don't fail the workflow if release update fails
+              core.warning(`Failed to update release with demo link: ${error.message}`);
             }

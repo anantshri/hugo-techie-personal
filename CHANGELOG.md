@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Fixed compatibility issues with Hugo versions below 0.141.0 due to `try` function usage
 - Fixed CI HTML validation false positives (CSS color codes containing "404" no longer trigger errors)
+- Fixed GitHub Actions release notification script (now updates release description instead of creating invalid comments)
 
 ## [1.1.0] - 2024-12-28
 
