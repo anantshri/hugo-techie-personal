@@ -33,8 +33,12 @@
     {{ with try (resources.GetRemote $badgeUrl) }}
       {{ if not .Err }}
         {{ $cachePath := "data/CredlyBadges.json" }}
-        {{ .Value | resources.Copy $cachePath }}
-        {{ with try (.Value | transform.Unmarshal) }}
+        {{ $remoteResource := .Value }}
+        {{ with resources.FromString $cachePath $remoteResource.Content }}
+          {{ $copiedResource := . | resources.Copy $cachePath }}
+          {{/* Resource cached - using with block prevents output */}}
+        {{ end }}
+        {{ with try ($remoteResource.Content | transform.Unmarshal) }}
           {{ if not .Err }}
             {{ $badgesData = .Value }}
           {{ end }}
@@ -121,8 +125,12 @@
     {{ with try (resources.GetRemote $apiUrl (dict "headers" $headers)) }}
       {{ if not .Err }}
         {{ $cachePath := "data/AccredibleBadges.json" }}
-        {{ .Value | resources.Copy $cachePath }}
-        {{ with try (.Value | transform.Unmarshal) }}
+        {{ $remoteResource := .Value }}
+        {{ with resources.FromString $cachePath $remoteResource.Content }}
+          {{ $copiedResource := . | resources.Copy $cachePath }}
+          {{/* Resource cached - using with block prevents output */}}
+        {{ end }}
+        {{ with try ($remoteResource.Content | transform.Unmarshal) }}
           {{ if not .Err }}
             {{ $badgesData = .Value }}
           {{ end }}
