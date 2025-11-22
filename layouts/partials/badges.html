@@ -1,0 +1,305 @@
+{{ $page := .page }}
+{{ $params := . }}
+{{ $size := $params.size | default "normal" }}
+{{ $showExpiredOnly := eq ($params.show_expired | default "false") "true" }}
+{{ $hideExpired := eq ($params.hide_expired | default "false") "true" }}
+{{ $isSmall := eq $size "small" }}
+{{ $showCredly := ne ($params.show_credly | default "true") "false" }}
+{{ $showAccredible := ne ($params.show_accredible | default "true") "false" }}
+
+{{/* Collect all badges from both sources */}}
+{{ $allBadges := slice }}
+
+{{/* Fetch Credly badges */}}
+{{ if $showCredly }}
+  {{ $credlyUsername := $page.Site.Params.credly_username }}
+  {{ $credlyImageDir := $page.Site.Params.credly_image_dir | default "images/CredlyBadges" }}
+  
+  {{ if $credlyUsername }}
+    {{ $badgeUrl := printf "https://www.credly.com/users/%s/badges.json" $credlyUsername }}
+    {{ $badgesData := false }}
+    
+    {{/* Try cached data first */}}
+    {{ $cachedJson := resources.Get "data/CredlyBadges.json" }}
+    {{ if $cachedJson }}
+      {{ with try ($cachedJson.Content | transform.Unmarshal) }}
+        {{ if not .Err }}
+          {{ $badgesData = .Value }}
+        {{ end }}
+      {{ end }}
+    {{ end }}
+    
+    {{/* Try API */}}
+    {{ with try (resources.GetRemote $badgeUrl) }}
+      {{ if not .Err }}
+        {{ $cachePath := "data/CredlyBadges.json" }}
+        {{ .Value | resources.Copy $cachePath }}
+        {{ with try (.Value | transform.Unmarshal) }}
+          {{ if not .Err }}
+            {{ $badgesData = .Value }}
+          {{ end }}
+        {{ end }}
+      {{ end }}
+    {{ end }}
+    
+    {{/* Fallback to Site.Data */}}
+    {{ if not $badgesData }}
+      {{ $badgesData = $page.Site.Data.CredlyBadges }}
+    {{ end }}
+    
+    {{ if $badgesData }}
+      {{ $badges := $badgesData.data | default $badgesData }}
+      {{ if $badges }}
+        {{ range $badges }}
+          {{ $expiresAt := .expires_at | default .ExpiresAt }}
+          {{ $isExpired := false }}
+          {{ if $expiresAt }}
+            {{ $expireTime := time $expiresAt }}
+            {{ if lt $expireTime now }}
+              {{ $isExpired = true }}
+            {{ end }}
+          {{ end }}
+          
+          {{ $includeBadge := true }}
+          {{ if $showExpiredOnly }}
+            {{ if not $isExpired }}
+              {{ $includeBadge = false }}
+            {{ end }}
+          {{ else if $hideExpired }}
+            {{ if $isExpired }}
+              {{ $includeBadge = false }}
+            {{ end }}
+          {{ end }}
+          
+          {{ if $includeBadge }}
+            {{ $normalizedBadge := dict 
+              "id" (.id | default .Id | string)
+              "name" (.badge_template.name | default .Name)
+              "description" (.badge_template.description | default .Description)
+              "imageUrl" (.badge_template.image_url | default .RemoteImageUrl)
+              "issuedAt" (.issued_at | default .IssuedAt)
+              "expiresAt" $expiresAt
+              "url" (printf "https://www.credly.com/badges/%s" (.id | default .Id | string))
+              "imageDir" $credlyImageDir
+              "isExpired" $isExpired
+              "source" "credly"
+            }}
+            {{ $allBadges = $allBadges | append $normalizedBadge }}
+          {{ end }}
+        {{ end }}
+      {{ end }}
+    {{ end }}
+  {{ end }}
+{{ end }}
+
+{{/* Fetch Accredible badges */}}
+{{ if $showAccredible }}
+  {{ $accredibleUsername := $page.Site.Params.accredible_username }}
+  {{ $accredibleImageDir := $page.Site.Params.accredible_image_dir | default "images/AccredibleBadges" }}
+  
+  {{ if $accredibleUsername }}
+    {{ $secretKey := "chtM@CyP_.7iF.kuQXBv" }}
+    {{ $apiPath := printf "/v1/credential-net/users/%s/user_wallet" $accredibleUsername }}
+    {{ $apiUrl := printf "https://api.accredible.com%s" $apiPath }}
+    {{ $badgesData := false }}
+    
+    {{/* Try cached data first */}}
+    {{ $cachedJson := resources.Get "data/AccredibleBadges.json" }}
+    {{ if $cachedJson }}
+      {{ with try ($cachedJson.Content | transform.Unmarshal) }}
+        {{ if not .Err }}
+          {{ $badgesData = .Value }}
+        {{ end }}
+      {{ end }}
+    {{ end }}
+    
+    {{/* Try API */}}
+    {{ $timestamp := now.Unix | string }}
+    {{ $message := printf "GET %s HTTP/1.1 %s" $apiPath $timestamp }}
+    {{ $signature := hmac "sha256" $secretKey $message }}
+    {{ $headers := dict "accept" "application/json, text/plain, */*" "x-signature" $signature "x-timestamp" $timestamp }}
+    {{ with try (resources.GetRemote $apiUrl (dict "headers" $headers)) }}
+      {{ if not .Err }}
+        {{ $cachePath := "data/AccredibleBadges.json" }}
+        {{ .Value | resources.Copy $cachePath }}
+        {{ with try (.Value | transform.Unmarshal) }}
+          {{ if not .Err }}
+            {{ $badgesData = .Value }}
+          {{ end }}
+        {{ end }}
+      {{ end }}
+    {{ end }}
+    
+    {{/* Fallback to Site.Data */}}
+    {{ if not $badgesData }}
+      {{ $badgesData = $page.Site.Data.AccredibleBadges }}
+    {{ end }}
+    
+    {{ if $badgesData }}
+      {{ $badges := $badgesData.data.credentials | default $badgesData.data | default $badgesData.credentials | default $badgesData }}
+      {{ if $badges }}
+        {{ range $badges }}
+          {{ $expiresAt := .expires_at | default .expired_on | default .expires_on | default .ExpiresAt }}
+          {{ $isExpired := false }}
+          {{ if $expiresAt }}
+            {{ $expireTime := time $expiresAt }}
+            {{ if lt $expireTime now }}
+              {{ $isExpired = true }}
+            {{ end }}
+          {{ end }}
+          
+          {{ $includeBadge := true }}
+          {{ if $showExpiredOnly }}
+            {{ if not $isExpired }}
+              {{ $includeBadge = false }}
+            {{ end }}
+          {{ else if $hideExpired }}
+            {{ if $isExpired }}
+              {{ $includeBadge = false }}
+            {{ end }}
+          {{ end }}
+          
+          {{ if $includeBadge }}
+            {{ $badgeImageUrl := .image_url | default .badge_image_url | default .credential_image_url | default .RemoteImageUrl }}
+            {{ if not $badgeImageUrl }}
+              {{ $svg := .group.badge_design.svg | default "" }}
+              {{ if $svg }}
+                {{ $matches := findRE `xlink:href="([^"]+)"` $svg }}
+                {{ if $matches }}
+                  {{ $fullMatch := index $matches 0 }}
+                  {{ $badgeImageUrl = replace $fullMatch `xlink:href="` "" }}
+                  {{ $badgeImageUrl = replace $badgeImageUrl `"` "" }}
+                {{ end }}
+              {{ end }}
+            {{ end }}
+            
+            {{ $normalizedBadge := dict 
+              "id" (.id | default .achievement_id | default .encoded_id | default .Id | string)
+              "name" (.name | default .credential_name | default .title | default .Name | default "Unnamed Badge")
+              "description" (.description | default .credential_description | default .Description)
+              "imageUrl" $badgeImageUrl
+              "issuedAt" (.issued_at | default .issued_on | default .created_at | default .IssuedAt)
+              "expiresAt" $expiresAt
+              "url" (.url | default .credential_url | default .AccredibleUrl | default (printf "https://www.accredible.com/credential/%s" (.encoded_id | default .id | default .achievement_id | string)))
+              "imageDir" $accredibleImageDir
+              "isExpired" $isExpired
+              "source" "accredible"
+            }}
+            {{ $allBadges = $allBadges | append $normalizedBadge }}
+          {{ end }}
+        {{ end }}
+      {{ end }}
+    {{ end }}
+  {{ end }}
+{{ end }}
+
+{{/* Sort all badges by issued date (most recent first) */}}
+{{ $sortedBadges := sort $allBadges "issuedAt" "desc" }}
+
+{{/* Render all badges in a single grid container */}}
+{{ if $sortedBadges }}
+  <div class="badges{{ if $isSmall }} badges-small{{ end }}">
+    {{ range $sortedBadges }}
+      {{ $badgeId := .id }}
+      {{ $badgeName := .name }}
+      {{ $badgeDescription := .description }}
+      {{ $badgeImageUrl := .imageUrl }}
+      {{ $issuedAt := .issuedAt }}
+      {{ $expiresAt := .expiresAt }}
+      {{ $badgeUrl := .url }}
+      {{ $imageDir := .imageDir }}
+      {{ $isExpired := .isExpired }}
+      
+      {{/* Download and store badge image in assets directory */}}
+      {{ $badgeImage := "" }}
+      {{ if $badgeImageUrl }}
+        {{/* Determine image extension from URL */}}
+        {{ $imageExt := "png" }}
+        {{ if findRE "\\.(jpg|jpeg|png|gif|webp)" $badgeImageUrl }}
+          {{ $urlParts := split $badgeImageUrl "." }}
+          {{ $imageExt = index $urlParts (sub (len $urlParts) 1) }}
+        {{ end }}
+        
+        {{/* Construct asset path */}}
+        {{ $assetPath := printf "%s/%s.%s" $imageDir $badgeId $imageExt }}
+        
+        {{/* Check if image already exists in assets (cached) */}}
+        {{ $existingImage := resources.Get $assetPath }}
+        
+        {{ if $existingImage }}
+          {{/* Use existing cached image from assets */}}
+          {{ $badgeImage = $existingImage }}
+        {{ else }}
+          {{/* Download image using resources.GetRemote (gets highest resolution) */}}
+          {{ with try (resources.GetRemote $badgeImageUrl) }}
+            {{ with .Err }}
+              {{ warnf "Error downloading badge image %s: %s" $badgeImageUrl . }}
+            {{ else }}
+              {{/* Copy remote resource to assets directory for caching */}}
+              {{ $remoteImage := .Value }}
+              {{ $copiedImage := $remoteImage | resources.Copy $assetPath }}
+              {{ if $copiedImage }}
+                {{ $badgeImage = $copiedImage }}
+              {{ else }}
+                {{/* Fallback to remote image if copy fails */}}
+                {{ $badgeImage = $remoteImage }}
+              {{ end }}
+            {{ end }}
+          {{ end }}
+        {{ end }}
+      {{ end }}
+      
+      <div class="badge{{ if $isExpired }} badge-expired{{ end }}{{ if $isSmall }} badge-small{{ end }}">
+        <a href="{{ $badgeUrl }}" target="_blank" rel="noopener noreferrer" class="badge-link"{{ if $isSmall }} title="{{ $badgeName }}{{ if $badgeDescription }} - {{ $badgeDescription }}{{ end }}"{{ end }}>
+          {{ if $badgeImage }}
+            {{/* Use Hugo's image processing - resize based on size option */}}
+            {{ if $isSmall }}
+              {{ $processedImage := $badgeImage.Resize "64x64 q90" }}
+              <img src="{{ $processedImage.RelPermalink }}" 
+                   alt="{{ $badgeName }}" 
+                   class="badge-image" 
+                   loading="lazy" />
+            {{ else }}
+              {{ $processedImage := $badgeImage.Resize "400x400 q90" }}
+              <img src="{{ $processedImage.RelPermalink }}" 
+                   srcset="{{ ($badgeImage.Resize "800x800 q90").RelPermalink }} 2x"
+                   alt="{{ $badgeName }}" 
+                   class="badge-image" 
+                   loading="lazy" />
+            {{ end }}
+          {{ else }}
+            <div class="badge-placeholder">Badge Image</div>
+          {{ end }}
+          {{ if not $isSmall }}
+            <div class="badge-content">
+              {{ if $badgeName }}
+                <h3 class="badge-name">
+                  {{ $badgeName }}
+                  {{ if $badgeDescription }}
+                    <span class="badge-tooltip" data-tooltip="{{ $badgeDescription }}">ℹ️</span>
+                  {{ end }}
+                </h3>
+              {{ end }}
+              <div class="badge-meta">
+                {{ if $issuedAt }}
+                  {{ $issueDate := time.Format "2 Jan 2006" (time $issuedAt) }}
+                  {{ if $expiresAt }}
+                    {{ $expireDate := time.Format "2 Jan 2006" (time $expiresAt) }}
+                    <span class="badge-date{{ if $isExpired }} badge-expired-text{{ end }}">
+                      {{ $issueDate }} - {{ $expireDate }}
+                    </span>
+                  {{ else }}
+                    <span class="badge-date">
+                      {{ $issueDate }}
+                    </span>
+                  {{ end }}
+                {{ end }}
+              </div>
+            </div>
+          {{ end }}
+        </a>
+      </div>
+    {{ end }}
+  </div>
+{{ end }}
+

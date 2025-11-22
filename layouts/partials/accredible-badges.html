@@ -128,7 +128,7 @@
         {{ end }}
       {{ end }}
       
-      <div class="credly-badges{{ if $isSmall }} credly-badges-small{{ end }}">
+      <div class="badges{{ if $isSmall }} badges-small{{ end }}">
         {{ range $filteredBadges }}
           {{ $badgeId := .id | default .achievement_id | default .encoded_id | default .Id | string }}
           {{ $badgeName := .name | default .credential_name | default .title | default .Name | default "Unnamed Badge" }}
@@ -198,47 +198,47 @@
             {{ end }}
           {{ end }}
   
-          <div class="credly-badge{{ if $isExpired }} credly-badge-expired{{ end }}{{ if $isSmall }} credly-badge-small{{ end }}">
-            <a href="{{ $accredibleUrl }}" target="_blank" rel="noopener noreferrer" class="credly-badge-link"{{ if $isSmall }} title="{{ $badgeName }}{{ if $badgeDescription }} - {{ $badgeDescription }}{{ end }}"{{ end }}>
+          <div class="badge{{ if $isExpired }} badge-expired{{ end }}{{ if $isSmall }} badge-small{{ end }}">
+            <a href="{{ $accredibleUrl }}" target="_blank" rel="noopener noreferrer" class="badge-link"{{ if $isSmall }} title="{{ $badgeName }}{{ if $badgeDescription }} - {{ $badgeDescription }}{{ end }}"{{ end }}>
               {{ if $badgeImage }}
                 {{/* Use Hugo's image processing - resize based on size option */}}
                 {{ if $isSmall }}
                   {{ $processedImage := $badgeImage.Resize "64x64 q90" }}
                   <img src="{{ $processedImage.RelPermalink }}" 
                        alt="{{ $badgeName }}" 
-                       class="credly-badge-image" 
+                       class="badge-image" 
                        loading="lazy" />
                 {{ else }}
                   {{ $processedImage := $badgeImage.Resize "400x400 q90" }}
                   <img src="{{ $processedImage.RelPermalink }}" 
                        srcset="{{ ($badgeImage.Resize "800x800 q90").RelPermalink }} 2x"
                        alt="{{ $badgeName }}" 
-                       class="credly-badge-image" 
+                       class="badge-image" 
                        loading="lazy" />
                 {{ end }}
               {{ else }}
-                <div class="credly-badge-placeholder">Badge Image</div>
+                <div class="badge-placeholder">Badge Image</div>
               {{ end }}
               {{ if not $isSmall }}
-                <div class="credly-badge-content">
+                <div class="badge-content">
                   {{ if $badgeName }}
-                    <h3 class="credly-badge-name">
+                    <h3 class="badge-name">
                       {{ $badgeName }}
                       {{ if $badgeDescription }}
-                        <span class="credly-badge-tooltip" data-tooltip="{{ $badgeDescription }}">ℹ️</span>
+                        <span class="badge-tooltip" data-tooltip="{{ $badgeDescription }}">ℹ️</span>
                       {{ end }}
                     </h3>
                   {{ end }}
-                  <div class="credly-badge-meta">
+                  <div class="badge-meta">
                     {{ if $issuedAt }}
                       {{ $issueDate := time.Format "2 Jan 2006" (time $issuedAt) }}
                       {{ if $expiresAt }}
                         {{ $expireDate := time.Format "2 Jan 2006" (time $expiresAt) }}
-                        <span class="credly-badge-date{{ if $isExpired }} credly-badge-expired-text{{ end }}">
+                        <span class="badge-date{{ if $isExpired }} badge-expired-text{{ end }}">
                           {{ $issueDate }} - {{ $expireDate }}
                         </span>
                       {{ else }}
-                        <span class="credly-badge-date">
+                        <span class="badge-date">
                           {{ $issueDate }}
                         </span>
                       {{ end }}

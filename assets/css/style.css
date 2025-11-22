@@ -2042,35 +2042,23 @@ body:not([class*="home-layout-"]) {
    =============================================== */
 
 /* Credly Badges Container */
-.credly-badges {
-  display: inline-grid;
+.badges {
+  display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: var(--space-6);
   margin: var(--space-6) 0;
-  vertical-align: top;
-}
-
-/* Group consecutive badge containers to sit side by side */
-.credly-badges + .credly-badges,
-.credly-badges + .credly-badges-small,
-.credly-badges-small + .credly-badges,
-.credly-badges-small + .credly-badges-small {
-  margin-top: calc(-1 * var(--space-6)) !important;
-  margin-left: var(--space-4) !important;
 }
 
 /* Small badges container (icon-only view) */
-.credly-badges-small {
-  display: inline-grid;
+.badges-small {
   grid-template-columns: repeat(auto-fill, minmax(64px, 64px)) !important;
   gap: var(--space-2) !important;
-  margin: var(--space-6) 0 !important;
+  margin: var(--space-3) 0 !important;
   justify-content: center;
-  vertical-align: top;
 }
 
 /* Individual Badge Card */
-.credly-badge {
+.badge {
   background-color: var(--color-background-alt);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
@@ -2079,24 +2067,24 @@ body:not([class*="home-layout-"]) {
   overflow: hidden;
 }
 
-.credly-badge:hover {
+.badge:hover {
   box-shadow: var(--shadow-lg);
   transform: translateY(-2px);
 }
 
 /* Badge Link */
-.credly-badge-link {
+.badge-link {
   display: block;
   text-decoration: none;
   color: inherit;
 }
 
-.credly-badge-link:hover {
+.badge-link:hover {
   text-decoration: none;
 }
 
 /* Badge Image */
-.credly-badge-image {
+.badge-image {
   width: 100%;
   height: auto;
   display: block;
@@ -2104,7 +2092,7 @@ body:not([class*="home-layout-"]) {
 }
 
 /* Badge Placeholder */
-.credly-badge-placeholder {
+.badge-placeholder {
   width: 100%;
   aspect-ratio: 1;
   background-color: var(--color-background);
@@ -2117,12 +2105,12 @@ body:not([class*="home-layout-"]) {
 }
 
 /* Badge Content */
-.credly-badge-content {
+.badge-content {
   padding: var(--space-4);
   text-align: center;
 }
 
-.credly-badge-name {
+.badge-name {
   margin: 0 0 var(--space-2) 0;
   /* font-size: var(--font-size-lg);
   font-weight: var(--font-weight-semibold); */
@@ -2135,7 +2123,7 @@ body:not([class*="home-layout-"]) {
 }
 
 /* Tooltip for badge description */
-.credly-badge-tooltip {
+.badge-tooltip {
   position: relative;
   display: inline-block;
   cursor: help;
@@ -2144,11 +2132,11 @@ body:not([class*="home-layout-"]) {
   transition: opacity var(--transition-normal);
 }
 
-.credly-badge-tooltip:hover {
+.badge-tooltip:hover {
   opacity: 1;
 }
 
-.credly-badge-tooltip::before {
+.badge-tooltip::before {
   content: attr(data-tooltip);
   position: absolute;
   bottom: 100%;
@@ -2172,7 +2160,7 @@ body:not([class*="home-layout-"]) {
   text-align: left;
 }
 
-.credly-badge-tooltip::after {
+.badge-tooltip::after {
   content: "";
   position: absolute;
   bottom: 100%;
@@ -2187,39 +2175,39 @@ body:not([class*="home-layout-"]) {
   z-index: 1000;
 }
 
-.credly-badge-tooltip:hover::before,
-.credly-badge-tooltip:hover::after {
+.badge-tooltip:hover::before,
+.badge-tooltip:hover::after {
   opacity: 1;
 }
 
 /* Small badge styling */
-.credly-badge-small {
+.badge-small {
   width: 64px;
   height: 64px;
   border-radius: var(--radius-md);
 }
 
-.credly-badge-small .credly-badge-image {
+.badge-small .badge-image {
   width: 64px;
   height: 64px;
   object-fit: contain;
   border-radius: var(--radius-md);
 }
 
-.credly-badge-small .credly-badge-link {
+.badge-small .badge-link {
   display: block;
   width: 100%;
   height: 100%;
 }
 
 /* Expired badge styling */
-.credly-badge-expired {
+.badge-expired {
   opacity: 0.5;
   position: relative;
   /* filter: grayscale(100%); */
 }
 
-.credly-badge-expired::before {
+.badge-expired::before {
   content: "Expired";
   position: absolute;
   top: var(--space-2);
@@ -2235,7 +2223,7 @@ body:not([class*="home-layout-"]) {
 }
 
 /* Smaller expired text for small badges */
-.credly-badge-small.credly-badge-expired::before {
+.badge-small.badge-expired::before {
   top: 2px;
   right: 2px;
   padding: 1px 3px;
@@ -2243,59 +2231,59 @@ body:not([class*="home-layout-"]) {
   line-height: 1.2;
 }
 
-.credly-badge-expired-text {
+.badge-expired-text {
   color: var(--color-error, #dc3545);
   font-weight: var(--font-weight-semibold);
 }
 
 /* Badge Metadata */
-.credly-badge-meta {
+.badge-meta {
   font-size: var(--font-size-xs);
   color: var(--color-text-tertiary);
 }
 
-.credly-badge-date {
+.badge-date {
   display: block;
 }
 
 /* Responsive Design */
 @media (max-width: 767px) {
-  .credly-badges:not(.credly-badges-small) {
+  .badges:not(.badges-small) {
     grid-template-columns: 1fr;
     gap: var(--space-4);
   }
 }
 
 @media (min-width: 768px) and (max-width: 991px) {
-  .credly-badges:not(.credly-badges-small) {
+  .badges:not(.badges-small) {
     grid-template-columns: repeat(2, 1fr);
   }
 }
 
 @media (min-width: 992px) {
-  .credly-badges:not(.credly-badges-small) {
+  .badges:not(.badges-small) {
     grid-template-columns: repeat(3, 1fr);
   }
 }
 
 /* Small badges responsive */
 @media (max-width: 767px) {
-  .credly-badges-small {
+  .badges-small {
     grid-template-columns: repeat(auto-fill, minmax(48px, 48px)) !important;
     gap: var(--space-2) !important;
   }
   
-  .credly-badge-small {
+  .badge-small {
     width: 48px;
     height: 48px;
   }
   
-  .credly-badge-small .credly-badge-image {
+  .badge-small .badge-image {
     width: 48px;
     height: 48px;
   }
   
-  .credly-badge-small.credly-badge-expired::before {
+  .badge-small.badge-expired::before {
     font-size: 7px;
     padding: 1px 2px;
   }
