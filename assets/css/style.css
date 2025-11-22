@@ -2829,7 +2829,7 @@ main {
 
 /* Footer */
 footer {
-  margin-top: var(--space-16);
+  /* margin-top: var(--space-16); */
   padding-top: var(--space-8);
   border-top: 1px solid var(--color-border);
   text-align: center;
