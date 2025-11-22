@@ -66,12 +66,36 @@ jobs:
       - name: Validate HTML output
         run: |
           cd exampleSite
-          # Check for common issues in generated HTML
-          if grep -r "404" public/ | grep -v "404.html"; then
-            echo "Found 404 errors in generated content"
+          echo "Running HTML validation checks..."
+          
+          # Check for broken internal links (404 errors in href attributes)
+          if grep -r 'href="[^"]*404[^"]*"' public/ --exclude="404.html" | grep -v 'href="/404"' | grep -v 'href=".*404\.html"'; then
+            echo "Found broken internal links (404 references in href attributes)"
             exit 1
           fi
-          echo "HTML validation passed"
+          
+          # Check for missing images or assets (common 404 sources)
+          if grep -r 'src=""' public/ --include="*.html"; then
+            echo "Found empty src attributes that could cause 404 errors"
+            exit 1
+          fi
+          
+          # Check for malformed navigation URLs that might cause 404s (exclude canonical links)
+          if grep -r 'href=""' public/ --include="*.html" | grep -v 'rel="canonical"'; then
+            echo "Found empty href attributes in navigation that could cause issues"
+            exit 1
+          fi
+          
+          # Verify critical pages exist
+          CRITICAL_PAGES=("index.html" "timeline/index.html" "projects/index.html" "gadget/index.html" "about/index.html")
+          for page in "${CRITICAL_PAGES[@]}"; do
+            if [ ! -f "public/$page" ]; then
+              echo "Critical page missing: $page"
+              exit 1
+            fi
+          done
+          
+          echo "✅ HTML validation passed - no broken links or missing critical pages found"
 
   # Build and deploy job (only on releases or manual trigger)
   build-and-deploy:
