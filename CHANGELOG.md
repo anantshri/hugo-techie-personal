@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **BREAKING**: Minimum Hugo version requirement updated from 0.18 to 0.141.0
 - **CI Improvement**: Workflow now dynamically extracts minimum Hugo version from `theme.toml`
+- **Security**: Implemented job-level permissions instead of workflow-level write access
+- **Security**: Reduced `build-and-prepare` job permissions (removed unnecessary `pages:write`)
 - Updated documentation to reflect new Hugo version requirement
 
 ### Fixed
