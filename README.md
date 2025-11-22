@@ -9,6 +9,7 @@ A timeline-based personal site theme designed specifically for tech professional
 
 ✨ **Timeline-based content organization** - Perfect for showcasing your professional journey  
 🎯 **Activity categorization** - Organize content by talks, tools, articles, training, and more  
+🏆 **Professional badge integration** - Display Credly and Accredible certifications with API integration  
 📱 **Responsive design** - Mobile-first approach with modern CSS Grid and Flexbox  
 🔧 **Highly configurable** - Extensive customization options via config.toml  
 🎨 **Notice system** - Beautiful callout boxes for important information  
@@ -21,6 +22,7 @@ A timeline-based personal site theme designed specifically for tech professional
 ## Perfect For
 
 - **Tech professionals** building their personal brand
+- **Certified professionals** showcasing credentials and achievements
 - **Open source contributors** showcasing their projects  
 - **Developers and security researchers** sharing their journey
 - **Conference speakers** documenting talks and presentations
@@ -50,6 +52,8 @@ A timeline-based personal site theme designed specifically for tech professional
 ## Demo
 
 **Live Example:** See the theme in action at **[anantshri.info](https://anantshri.info)** - the author's personal site showcasing real-world usage with extensive timeline content, project portfolios, and gadget reviews.
+
+**Demo Site:** A live demo is automatically deployed to GitHub Pages with each release, showcasing all theme features and the latest updates.
 
 **Example Site:** Check out the [example site](exampleSite/) included with the theme to see all features and configuration options.
 
@@ -304,3 +308,95 @@ The theme includes `data/oembed.json` with additional provider configurations fo
 <!-- As partial -->
 {{ partial "oembed.html" "https://www.youtube.com/watch?v=example" }}
 ```
+
+### Professional Badge Integration
+
+The theme provides comprehensive support for displaying professional certifications and badges from popular platforms:
+
+#### Credly Integration
+
+Display your Credly badges with automatic API fetching and intelligent caching:
+
+```toml
+[params]
+  # Your Credly username
+  credly_username = "your-username"
+  
+  # Optional: Custom image directory for cached badge images
+  credly_image_dir = "images/CredlyBadges"  # Default
+```
+
+**Usage:**
+```hugo
+<!-- Display all Credly badges -->
+{{< credly-badges >}}
+
+<!-- Display with custom size -->
+{{< credly-badges size="small" >}}
+
+<!-- Hide expired badges -->
+{{< credly-badges hide_expired="true" >}}
+
+<!-- Show only expired badges -->
+{{< credly-badges show_expired="true" >}}
+```
+
+#### Accredible Integration
+
+Display your Accredible credentials with API integration:
+
+```toml
+[params]
+  # Your Accredible username
+  accredible_username = "your-username"
+  
+  # Optional: Custom image directory for cached badge images
+  accredible_image_dir = "images/AccredibleBadges"  # Default
+```
+
+**Usage:**
+```hugo
+<!-- Display all Accredible badges -->
+{{< accredible-badges >}}
+
+<!-- Display with custom options -->
+{{< accredible-badges size="small" hide_expired="true" >}}
+```
+
+#### Unified Badge Display
+
+Display badges from both platforms in a unified grid:
+
+```hugo
+<!-- Display badges from both Credly and Accredible -->
+{{< badges >}}
+
+<!-- Display only Credly badges -->
+{{< badges show_accredible="false" >}}
+
+<!-- Display only Accredible badges -->
+{{< badges show_credly="false" >}}
+
+<!-- Custom sizing and filtering -->
+{{< badges size="small" hide_expired="true" >}}
+```
+
+**Badge Features:**
+- **Automatic API fetching** with intelligent caching for performance
+- **Fallback system**: API → cached data → Site.Data → graceful degradation
+- **Expiration handling**: Show/hide expired badges with visual indicators
+- **Responsive design**: Adapts to different screen sizes
+- **Local image caching**: Reduces API calls and improves load times
+- **Error handling**: Graceful fallbacks when APIs are unavailable
+- **Unified display**: Mix badges from multiple platforms seamlessly
+
+## Automated Deployment
+
+The theme includes GitHub Actions for automated testing and demo site deployment:
+
+- **Continuous Testing** - Automatic theme validation on every push and pull request
+- **Demo Deployment** - Automatic GitHub Pages deployment on new releases
+- **Multi-version Testing** - Tests against multiple Hugo versions for compatibility
+- **HTML Validation** - Automated checks for generated content quality
+
+The demo site is automatically updated whenever a new release is published, ensuring the latest features are always showcased.
