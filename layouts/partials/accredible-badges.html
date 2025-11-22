@@ -1,0 +1,256 @@
+{{ $page := . }}
+{{ $params := dict }}
+{{ if reflect.IsMap . }}
+  {{ $page = .page }}
+  {{ $params = . }}
+{{ else }}
+  {{ $params = dict "page" $page }}
+{{ end }}
+{{ $username := $page.Site.Params.accredible_username }}
+{{ $imageDir := $page.Site.Params.accredible_image_dir | default "images/AccredibleBadges" }}
+{{ $size := $params.size | default "normal" }}
+{{ $showExpiredOnly := eq ($params.show_expired | default "false") "true" }}
+{{ $hideExpired := eq ($params.hide_expired | default "false") "true" }}
+{{ $isSmall := eq $size "small" }}
+
+{{ if $username }}
+  {{/* API Configuration */}}
+  {{ $secretKey := "chtM@CyP_.7iF.kuQXBv" }}
+  {{ $apiPath := printf "/v1/credential-net/users/%s/user_wallet" $username }}
+  {{ $apiUrl := printf "https://api.accredible.com%s" $apiPath }}
+  
+  {{/* Try to fetch from API first, fallback to cached data if API fails */}}
+  {{ $badgesData := false }}
+  {{ $badges := false }}
+  
+  {{/* Try cached data first (from previous build) */}}
+  {{ $cachedJson := resources.Get "data/AccredibleBadges.json" }}
+  {{ if $cachedJson }}
+    {{ with try ($cachedJson.Content | transform.Unmarshal) }}
+      {{ with .Err }}
+        {{ warnf "Error parsing cached Accredible badges JSON: %s" . }}
+      {{ else }}
+        {{ $badgesData = .Value }}
+        {{ warnf "Using cached Accredible badges data from assets/data/AccredibleBadges.json" }}
+      {{ end }}
+    {{ end }}
+  {{ end }}
+  
+  {{/* Try API to get fresh data and update cache */}}
+  {{ $timestamp := now.Unix | string }}
+  {{ $message := printf "GET %s HTTP/1.1 %s" $apiPath $timestamp }}
+  {{ $signature := hmac "sha256" $secretKey $message }}
+  {{ $headers := dict "accept" "application/json, text/plain, */*" "x-signature" $signature "x-timestamp" $timestamp }}
+  {{ with try (resources.GetRemote $apiUrl (dict "headers" $headers)) }}
+    {{ with .Err }}
+      {{ if not $badgesData }}
+        {{ warnf "Error fetching Accredible badges from API: %s. No cached data available." . }}
+      {{ else }}
+        {{ warnf "Error fetching Accredible badges from API: %s. Using cached data." . }}
+      {{ end }}
+    {{ else }}
+      {{/* Save API response to cache for next build (copy raw response before unmarshaling) */}}
+      {{ $cachePath := "data/AccredibleBadges.json" }}
+      {{ $copiedJson := .Value | resources.Copy $cachePath }}
+      {{ if $copiedJson }}
+        {{ warnf "Cached Accredible badges API response to assets/%s" $cachePath }}
+      {{ end }}
+      
+      {{ with try (.Value | transform.Unmarshal) }}
+        {{ with .Err }}
+          {{ if not $badgesData }}
+            {{ warnf "Error parsing Accredible badges JSON from API: %s" . }}
+          {{ end }}
+        {{ else }}
+          {{ $badgesData = .Value }}
+        {{ end }}
+      {{ end }}
+    {{ end }}
+  {{ end }}
+  
+  {{/* Fallback to Site.Data if available (for initial setup) */}}
+  {{ if not $badgesData }}
+    {{ $siteData := $page.Site.Data.AccredibleBadges }}
+    {{ if $siteData }}
+      {{ warnf "Using Accredible badges data from Site.Data (initial setup)" }}
+      {{ $badgesData = $siteData }}
+    {{ else }}
+      {{ warnf "No Accredible badges data available. API request failed and no cache found." }}
+    {{ end }}
+  {{ end }}
+  
+  {{ if $badgesData }}
+    {{/* Handle different possible response structures */}}
+    {{ if reflect.IsMap $badgesData }}
+      {{/* API response structure */}}
+      {{ $badges = $badgesData.data.credentials | default $badgesData.data | default $badgesData.credentials | default $badgesData }}
+    {{ else }}
+      {{/* Cached data structure (array) */}}
+      {{ $badges = $badgesData }}
+    {{ end }}
+          
+    {{ if $badges }}
+      {{/* Sort badges by issued_at or issued_on (most recent first) */}}
+      {{ $sortedBadges := sort $badges "issued_at" "desc" }}
+      {{ if not $sortedBadges }}
+        {{ $sortedBadges = sort $badges "issued_on" "desc" }}
+      {{ end }}
+      {{ if not $sortedBadges }}
+        {{/* For cached data, might be sorted by IssuedAt */}}
+        {{ $sortedBadges = sort $badges "IssuedAt" "desc" }}
+      {{ end }}
+    
+      {{/* Filter badges based on expired options */}}
+      {{ $filteredBadges := slice }}
+      {{ range $sortedBadges }}
+        {{ $expiresAt := .expires_at | default .expired_on | default .expires_on | default .ExpiresAt }}
+        {{ $isExpired := false }}
+        {{ if $expiresAt }}
+          {{ $expireTime := time $expiresAt }}
+          {{ if lt $expireTime now }}
+            {{ $isExpired = true }}
+          {{ end }}
+        {{ end }}
+        
+        {{ $includeBadge := true }}
+        {{ if $showExpiredOnly }}
+          {{ if not $isExpired }}
+            {{ $includeBadge = false }}
+          {{ end }}
+        {{ else if $hideExpired }}
+          {{ if $isExpired }}
+            {{ $includeBadge = false }}
+          {{ end }}
+        {{ end }}
+        
+        {{ if $includeBadge }}
+          {{ $filteredBadges = $filteredBadges | append . }}
+        {{ end }}
+      {{ end }}
+      
+      <div class="credly-badges{{ if $isSmall }} credly-badges-small{{ end }}">
+        {{ range $filteredBadges }}
+          {{ $badgeId := .id | default .achievement_id | default .encoded_id | default .Id | string }}
+          {{ $badgeName := .name | default .credential_name | default .title | default .Name | default "Unnamed Badge" }}
+          {{ $badgeDescription := .description | default .credential_description | default .Description }}
+          {{ $badgeImageUrl := .image_url | default .badge_image_url | default .credential_image_url | default .RemoteImageUrl }}
+          {{ if not $badgeImageUrl }}
+            {{/* Extract image URL from SVG if available */}}
+            {{ $svg := .group.badge_design.svg | default "" }}
+            {{ if $svg }}
+              {{ $matches := findRE `xlink:href="([^"]+)"` $svg }}
+              {{ if $matches }}
+                {{ $fullMatch := index $matches 0 }}
+                {{ $badgeImageUrl = replace $fullMatch `xlink:href="` "" }}
+                {{ $badgeImageUrl = replace $badgeImageUrl `"` "" }}
+              {{ end }}
+            {{ end }}
+          {{ end }}
+          {{ $issuedAt := .issued_at | default .issued_on | default .created_at | default .IssuedAt }}
+          {{ $expiresAt := .expires_at | default .expired_on | default .expires_on | default .ExpiresAt }}
+          {{ $accredibleUrl := .url | default .credential_url | default .AccredibleUrl | default (printf "https://www.accredible.com/credential/%s" (.encoded_id | default $badgeId | string)) }}
+        
+          {{/* Check if badge is expired */}}
+          {{ $isExpired := false }}
+          {{ if $expiresAt }}
+            {{ $expireTime := time $expiresAt }}
+            {{ if lt $expireTime now }}
+              {{ $isExpired = true }}
+            {{ end }}
+          {{ end }}
+          
+          {{/* Download and store badge image in assets directory */}}
+          {{ $badgeImage := "" }}
+          {{ if $badgeImageUrl }}
+            {{/* Determine image extension from URL */}}
+            {{ $imageExt := "png" }}
+            {{ if findRE "\\.(jpg|jpeg|png|gif|webp)" $badgeImageUrl }}
+              {{ $urlParts := split $badgeImageUrl "." }}
+              {{ $imageExt = index $urlParts (sub (len $urlParts) 1) }}
+            {{ end }}
+            
+            {{/* Construct asset path */}}
+            {{ $assetPath := printf "%s/%s.%s" $imageDir $badgeId $imageExt }}
+            
+            {{/* Check if image already exists in assets (cached) */}}
+            {{ $existingImage := resources.Get $assetPath }}
+            
+            {{ if $existingImage }}
+              {{/* Use existing cached image from assets */}}
+              {{ $badgeImage = $existingImage }}
+            {{ else }}
+              {{/* Download image using resources.GetRemote (gets highest resolution) */}}
+              {{ with try (resources.GetRemote $badgeImageUrl) }}
+                {{ with .Err }}
+                  {{ warnf "Error downloading Accredible badge image %s: %s" $badgeImageUrl . }}
+                {{ else }}
+                  {{/* Copy remote resource to assets directory for caching */}}
+                  {{ $remoteImage := .Value }}
+                  {{ $copiedImage := $remoteImage | resources.Copy $assetPath }}
+                  {{ if $copiedImage }}
+                    {{ $badgeImage = $copiedImage }}
+                  {{ else }}
+                    {{/* Fallback to remote image if copy fails */}}
+                    {{ $badgeImage = $remoteImage }}
+                  {{ end }}
+                {{ end }}
+              {{ end }}
+            {{ end }}
+          {{ end }}
+  
+          <div class="credly-badge{{ if $isExpired }} credly-badge-expired{{ end }}{{ if $isSmall }} credly-badge-small{{ end }}">
+            <a href="{{ $accredibleUrl }}" target="_blank" rel="noopener noreferrer" class="credly-badge-link"{{ if $isSmall }} title="{{ $badgeName }}{{ if $badgeDescription }} - {{ $badgeDescription }}{{ end }}"{{ end }}>
+              {{ if $badgeImage }}
+                {{/* Use Hugo's image processing - resize based on size option */}}
+                {{ if $isSmall }}
+                  {{ $processedImage := $badgeImage.Resize "64x64 q90" }}
+                  <img src="{{ $processedImage.RelPermalink }}" 
+                       alt="{{ $badgeName }}" 
+                       class="credly-badge-image" 
+                       loading="lazy" />
+                {{ else }}
+                  {{ $processedImage := $badgeImage.Resize "400x400 q90" }}
+                  <img src="{{ $processedImage.RelPermalink }}" 
+                       srcset="{{ ($badgeImage.Resize "800x800 q90").RelPermalink }} 2x"
+                       alt="{{ $badgeName }}" 
+                       class="credly-badge-image" 
+                       loading="lazy" />
+                {{ end }}
+              {{ else }}
+                <div class="credly-badge-placeholder">Badge Image</div>
+              {{ end }}
+              {{ if not $isSmall }}
+                <div class="credly-badge-content">
+                  {{ if $badgeName }}
+                    <h3 class="credly-badge-name">
+                      {{ $badgeName }}
+                      {{ if $badgeDescription }}
+                        <span class="credly-badge-tooltip" data-tooltip="{{ $badgeDescription }}">ℹ️</span>
+                      {{ end }}
+                    </h3>
+                  {{ end }}
+                  <div class="credly-badge-meta">
+                    {{ if $issuedAt }}
+                      {{ $issueDate := time.Format "2 Jan 2006" (time $issuedAt) }}
+                      {{ if $expiresAt }}
+                        {{ $expireDate := time.Format "2 Jan 2006" (time $expiresAt) }}
+                        <span class="credly-badge-date{{ if $isExpired }} credly-badge-expired-text{{ end }}">
+                          {{ $issueDate }} - {{ $expireDate }}
+                        </span>
+                      {{ else }}
+                        <span class="credly-badge-date">
+                          {{ $issueDate }}
+                        </span>
+                      {{ end }}
+                    {{ end }}
+                  </div>
+                </div>
+              {{ end }}
+            </a>
+          </div>
+        {{ end }}
+      </div>
+    {{ end }}
+  {{ end }}
+{{ end }}
+

@@ -1,0 +1,233 @@
+{{ $page := . }}
+{{ $params := dict }}
+{{ if reflect.IsMap . }}
+  {{ $page = .page }}
+  {{ $params = . }}
+{{ else }}
+  {{ $params = dict "page" $page }}
+{{ end }}
+{{ $username := $page.Site.Params.credly_username }}
+{{ $imageDir := $page.Site.Params.credly_image_dir | default "images/CredlyBadges" }}
+{{ $size := $params.size | default "normal" }}
+{{ $showExpiredOnly := eq ($params.show_expired | default "false") "true" }}
+{{ $hideExpired := eq ($params.hide_expired | default "false") "true" }}
+{{ $isSmall := eq $size "small" }}
+
+{{ if $username }}
+  {{ $badgeUrl := printf "https://www.credly.com/users/%s/badges.json" $username }}
+  
+  {{/* Try to fetch from API first, fallback to cached data if API fails */}}
+  {{ $badgesData := false }}
+  {{ $badges := false }}
+  
+  {{/* Try cached data first (from previous build) */}}
+  {{ $cachedJson := resources.Get "data/CredlyBadges.json" }}
+  {{ if $cachedJson }}
+    {{ with try ($cachedJson.Content | transform.Unmarshal) }}
+      {{ with .Err }}
+        {{ warnf "Error parsing cached Credly badges JSON: %s" . }}
+      {{ else }}
+        {{ $badgesData = .Value }}
+        {{ warnf "Using cached Credly badges data from assets/data/CredlyBadges.json" }}
+      {{ end }}
+    {{ end }}
+  {{ end }}
+  
+  {{/* Try API to get fresh data and update cache */}}
+  {{ with try (resources.GetRemote $badgeUrl) }}
+    {{ with .Err }}
+      {{ if not $badgesData }}
+        {{ warnf "Error fetching Credly badges from API: %s. No cached data available." . }}
+      {{ else }}
+        {{ warnf "Error fetching Credly badges from API: %s. Using cached data." . }}
+      {{ end }}
+    {{ else }}
+      {{/* Save API response to cache for next build (copy raw response before unmarshaling) */}}
+      {{ $cachePath := "data/CredlyBadges.json" }}
+      {{ $copiedJson := .Value | resources.Copy $cachePath }}
+      {{ if $copiedJson }}
+        {{ warnf "Cached Credly badges API response to assets/%s" $cachePath }}
+      {{ end }}
+      
+      {{ with try (.Value | transform.Unmarshal) }}
+        {{ with .Err }}
+          {{ if not $badgesData }}
+            {{ warnf "Error parsing Credly badges JSON from API: %s" . }}
+          {{ end }}
+        {{ else }}
+          {{ $badgesData = .Value }}
+        {{ end }}
+      {{ end }}
+    {{ end }}
+  {{ end }}
+  
+  {{/* Fallback to Site.Data if available (for initial setup) */}}
+  {{ if not $badgesData }}
+    {{ $siteData := $page.Site.Data.CredlyBadges }}
+    {{ if $siteData }}
+      {{ warnf "Using Credly badges data from Site.Data (initial setup)" }}
+      {{ $badgesData = $siteData }}
+    {{ else }}
+      {{ warnf "No Credly badges data available. API request failed and no cache found." }}
+    {{ end }}
+  {{ end }}
+  
+  {{ if $badgesData }}
+    {{ if reflect.IsMap $badgesData }}
+      {{/* API response structure */}}
+      {{ $badges = $badgesData.data }}
+    {{ else }}
+      {{/* Cached data structure (array) */}}
+      {{ $badges = $badgesData }}
+    {{ end }}
+          
+    {{ if $badges }}
+      {{/* Sort badges by issued_at (most recent first) */}}
+      {{ $sortedBadges := sort $badges "issued_at" "desc" }}
+      {{ if not $sortedBadges }}
+        {{/* For cached data, might be sorted by IssuedAt */}}
+        {{ $sortedBadges = sort $badges "IssuedAt" "desc" }}
+      {{ end }}
+            
+      {{/* Filter badges based on expired options */}}
+      {{ $filteredBadges := slice }}
+      {{ range $sortedBadges }}
+        {{ $expiresAt := .expires_at | default .ExpiresAt }}
+        {{ $isExpired := false }}
+        {{ if $expiresAt }}
+          {{ $expireTime := time $expiresAt }}
+          {{ if lt $expireTime now }}
+            {{ $isExpired = true }}
+          {{ end }}
+        {{ end }}
+        
+        {{ $includeBadge := true }}
+        {{ if $showExpiredOnly }}
+          {{ if not $isExpired }}
+            {{ $includeBadge = false }}
+          {{ end }}
+        {{ else if $hideExpired }}
+          {{ if $isExpired }}
+            {{ $includeBadge = false }}
+          {{ end }}
+        {{ end }}
+        
+        {{ if $includeBadge }}
+          {{ $filteredBadges = $filteredBadges | append . }}
+        {{ end }}
+      {{ end }}
+      
+      <div class="credly-badges{{ if $isSmall }} credly-badges-small{{ end }}">
+        {{ range $filteredBadges }}
+          {{ $badgeId := .id | default .Id | string }}
+          {{ $badgeName := .badge_template.name | default .Name }}
+          {{ $badgeDescription := .badge_template.description | default .Description }}
+          {{ $badgeImageUrl := .badge_template.image_url | default .RemoteImageUrl }}
+          {{ $issuedAt := .issued_at | default .IssuedAt }}
+          {{ $expiresAt := .expires_at | default .ExpiresAt }}
+          {{ $credlyUrl := printf "https://www.credly.com/badges/%s" $badgeId }}
+                
+                {{/* Check if badge is expired */}}
+                {{ $isExpired := false }}
+                {{ if $expiresAt }}
+                  {{ $expireTime := time $expiresAt }}
+                  {{ if lt $expireTime now }}
+                    {{ $isExpired = true }}
+                  {{ end }}
+                {{ end }}
+                
+                {{/* Download and store badge image in assets directory */}}
+                {{ $badgeImage := "" }}
+                {{ if $badgeImageUrl }}
+                  {{/* Determine image extension from URL */}}
+                  {{ $imageExt := "png" }}
+                  {{ if findRE "\\.(jpg|jpeg|png|gif|webp)" $badgeImageUrl }}
+                    {{ $urlParts := split $badgeImageUrl "." }}
+                    {{ $imageExt = index $urlParts (sub (len $urlParts) 1) }}
+                  {{ end }}
+                  
+                  {{/* Construct asset path */}}
+                  {{ $assetPath := printf "%s/%s.%s" $imageDir $badgeId $imageExt }}
+                  
+          {{/* Check if image already exists in assets (cached) */}}
+          {{ $existingImage := resources.Get $assetPath }}
+          
+          {{ if $existingImage }}
+            {{/* Use existing cached image from assets */}}
+            {{ $badgeImage = $existingImage }}
+          {{ else }}
+            {{/* Download image using resources.GetRemote (gets highest resolution) */}}
+            {{ with try (resources.GetRemote $badgeImageUrl) }}
+              {{ with .Err }}
+                {{ warnf "Error downloading Credly badge image %s: %s" $badgeImageUrl . }}
+              {{ else }}
+                {{/* Copy remote resource to assets directory for caching */}}
+                {{ $remoteImage := .Value }}
+                {{ $copiedImage := $remoteImage | resources.Copy $assetPath }}
+                {{ if $copiedImage }}
+                  {{ $badgeImage = $copiedImage }}
+                {{ else }}
+                  {{/* Fallback to remote image if copy fails */}}
+                  {{ $badgeImage = $remoteImage }}
+                {{ end }}
+              {{ end }}
+            {{ end }}
+          {{ end }}
+                {{ end }}
+                
+                <div class="credly-badge{{ if $isExpired }} credly-badge-expired{{ end }}{{ if $isSmall }} credly-badge-small{{ end }}">
+                  <a href="{{ $credlyUrl }}" target="_blank" rel="noopener noreferrer" class="credly-badge-link"{{ if $isSmall }} title="{{ $badgeName }}{{ if $badgeDescription }} - {{ $badgeDescription }}{{ end }}"{{ end }}>
+                    {{ if $badgeImage }}
+                      {{/* Use Hugo's image processing - resize based on size option */}}
+                      {{ if $isSmall }}
+                        {{ $processedImage := $badgeImage.Resize "64x64 q90" }}
+                        <img src="{{ $processedImage.RelPermalink }}" 
+                             alt="{{ $badgeName }}" 
+                             class="credly-badge-image" 
+                             loading="lazy" />
+                      {{ else }}
+                        {{ $processedImage := $badgeImage.Resize "400x400 q90" }}
+                        <img src="{{ $processedImage.RelPermalink }}" 
+                             srcset="{{ ($badgeImage.Resize "800x800 q90").RelPermalink }} 2x"
+                             alt="{{ $badgeName }}" 
+                             class="credly-badge-image" 
+                             loading="lazy" />
+                      {{ end }}
+                    {{ else }}
+                      <div class="credly-badge-placeholder">Badge Image</div>
+                    {{ end }}
+                    {{ if not $isSmall }}
+                      <div class="credly-badge-content">
+                        {{ if $badgeName }}
+                          <h3 class="credly-badge-name">
+                            {{ $badgeName }}
+                            {{ if $badgeDescription }}
+                              <span class="credly-badge-tooltip" data-tooltip="{{ $badgeDescription }}">ℹ️</span>
+                            {{ end }}
+                          </h3>
+                        {{ end }}
+                        <div class="credly-badge-meta">
+                          {{ if $issuedAt }}
+                            {{ $issueDate := time.Format "2 Jan 2006" (time $issuedAt) }}
+                            {{ if $expiresAt }}
+                              {{ $expireDate := time.Format "2 Jan 2006" (time $expiresAt) }}
+                              <span class="credly-badge-date{{ if $isExpired }} credly-badge-expired-text{{ end }}">
+                                {{ $issueDate }} - {{ $expireDate }}
+                              </span>
+                            {{ else }}
+                              <span class="credly-badge-date">
+                                {{ $issueDate }}
+                              </span>
+                            {{ end }}
+                          {{ end }}
+                        </div>
+                      </div>
+                    {{ end }}
+                  </a>
+                </div>
+        {{ end }}
+      </div>
+    {{ end }}
+  {{ end }}
+{{ end }}
+

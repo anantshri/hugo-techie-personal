@@ -2038,6 +2038,270 @@ body:not([class*="home-layout-"]) {
 }
 
 /* ===============================================
+   CREDLY BADGES
+   =============================================== */
+
+/* Credly Badges Container */
+.credly-badges {
+  display: inline-grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-6);
+  margin: var(--space-6) 0;
+  vertical-align: top;
+}
+
+/* Group consecutive badge containers to sit side by side */
+.credly-badges + .credly-badges,
+.credly-badges + .credly-badges-small,
+.credly-badges-small + .credly-badges,
+.credly-badges-small + .credly-badges-small {
+  margin-top: calc(-1 * var(--space-6)) !important;
+  margin-left: var(--space-4) !important;
+}
+
+/* Small badges container (icon-only view) */
+.credly-badges-small {
+  display: inline-grid;
+  grid-template-columns: repeat(auto-fill, minmax(64px, 64px)) !important;
+  gap: var(--space-2) !important;
+  margin: var(--space-6) 0 !important;
+  justify-content: center;
+  vertical-align: top;
+}
+
+/* Individual Badge Card */
+.credly-badge {
+  background-color: var(--color-background-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-normal);
+  overflow: hidden;
+}
+
+.credly-badge:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
+/* Badge Link */
+.credly-badge-link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+
+.credly-badge-link:hover {
+  text-decoration: none;
+}
+
+/* Badge Image */
+.credly-badge-image {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+/* Badge Placeholder */
+.credly-badge-placeholder {
+  width: 100%;
+  aspect-ratio: 1;
+  background-color: var(--color-background);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+/* Badge Content */
+.credly-badge-content {
+  padding: var(--space-4);
+  text-align: center;
+}
+
+.credly-badge-name {
+  margin: 0 0 var(--space-2) 0;
+  /* font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold); */
+  color: var(--color-text-primary);
+  line-height: var(--line-height-tight);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+/* Tooltip for badge description */
+.credly-badge-tooltip {
+  position: relative;
+  display: inline-block;
+  cursor: help;
+  font-size: var(--font-size-xs);
+  opacity: 0.6;
+  transition: opacity var(--transition-normal);
+}
+
+.credly-badge-tooltip:hover {
+  opacity: 1;
+}
+
+.credly-badge-tooltip::before {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background-color: var(--color-text-primary);
+  color: var(--color-background);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-relaxed);
+  white-space: normal;
+  width: 250px;
+  max-width: calc(100vw - 2rem);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-normal);
+  z-index: 1000;
+  text-align: left;
+}
+
+.credly-badge-tooltip::after {
+  content: "";
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: calc(var(--space-2) - 5px);
+  border: 5px solid transparent;
+  border-top-color: var(--color-text-primary);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-normal);
+  z-index: 1000;
+}
+
+.credly-badge-tooltip:hover::before,
+.credly-badge-tooltip:hover::after {
+  opacity: 1;
+}
+
+/* Small badge styling */
+.credly-badge-small {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-md);
+}
+
+.credly-badge-small .credly-badge-image {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  border-radius: var(--radius-md);
+}
+
+.credly-badge-small .credly-badge-link {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Expired badge styling */
+.credly-badge-expired {
+  opacity: 0.5;
+  position: relative;
+  /* filter: grayscale(100%); */
+}
+
+.credly-badge-expired::before {
+  content: "Expired";
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  background-color: var(--color-error, #dc3545);
+  color: var(--color-text-inverse, #fff);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  z-index: 10;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Smaller expired text for small badges */
+.credly-badge-small.credly-badge-expired::before {
+  top: 2px;
+  right: 2px;
+  padding: 1px 3px;
+  font-size: 8px;
+  line-height: 1.2;
+}
+
+.credly-badge-expired-text {
+  color: var(--color-error, #dc3545);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Badge Metadata */
+.credly-badge-meta {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+}
+
+.credly-badge-date {
+  display: block;
+}
+
+/* Responsive Design */
+@media (max-width: 767px) {
+  .credly-badges:not(.credly-badges-small) {
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+  }
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  .credly-badges:not(.credly-badges-small) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 992px) {
+  .credly-badges:not(.credly-badges-small) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Small badges responsive */
+@media (max-width: 767px) {
+  .credly-badges-small {
+    grid-template-columns: repeat(auto-fill, minmax(48px, 48px)) !important;
+    gap: var(--space-2) !important;
+  }
+  
+  .credly-badge-small {
+    width: 48px;
+    height: 48px;
+  }
+  
+  .credly-badge-small .credly-badge-image {
+    width: 48px;
+    height: 48px;
+  }
+  
+  .credly-badge-small.credly-badge-expired::before {
+    font-size: 7px;
+    padding: 1px 2px;
+  }
+}
+
+/* ===============================================
    NOTICE/ADMONITION STYLES
    =============================================== */
 
