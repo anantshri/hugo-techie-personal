@@ -67,7 +67,7 @@ Thank you for your interest in contributing to Hugo Techie Personal! This docume
 ## Testing
 
 ### Required Tests
-- [ ] Theme builds successfully with Hugo 0.18+
+- [ ] Theme builds successfully with Hugo 0.141.0+
 - [ ] ExampleSite generates without errors
 - [ ] Responsive design works on mobile, tablet, and desktop
 - [ ] All configuration options work as documented

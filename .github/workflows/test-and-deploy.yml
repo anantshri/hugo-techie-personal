@@ -34,15 +34,33 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
+      - name: Extract minimum Hugo version from theme.toml
+        id: hugo-version
+        run: |
+          if [ ! -f theme.toml ]; then
+            echo "Error: theme.toml not found"
+            exit 1
+          fi
+          MIN_VERSION=$(grep '^min_version' theme.toml | sed 's/min_version = "\(.*\)"/\1/')
+          if [ -z "$MIN_VERSION" ]; then
+            echo "Error: Could not extract min_version from theme.toml"
+            exit 1
+          fi
+          echo "Extracted minimum Hugo version: $MIN_VERSION"
+          echo "min_version=$MIN_VERSION" >> $GITHUB_OUTPUT
       - name: Test theme build
         run: |
           cd exampleSite
           hugo --gc --minify --buildDrafts --buildFuture
-      - name: Test theme with different Hugo versions
+      - name: Test theme with minimum supported Hugo version
         run: |
-          # Test with minimum supported version
-          wget -O ${{ runner.temp }}/hugo-min.deb https://github.com/gohugoio/hugo/releases/download/v0.120.0/hugo_extended_0.120.0_linux-amd64.deb \
+          # Test with minimum supported version dynamically extracted from theme.toml
+          # This ensures CI always tests with the exact minimum version specified in the theme
+          MIN_VERSION="${{ steps.hugo-version.outputs.min_version }}"
+          echo "Testing with minimum Hugo version: $MIN_VERSION"
+          wget -O ${{ runner.temp }}/hugo-min.deb https://github.com/gohugoio/hugo/releases/download/v${MIN_VERSION}/hugo_extended_${MIN_VERSION}_linux-amd64.deb \
           && sudo dpkg -i ${{ runner.temp }}/hugo-min.deb
+          hugo version
           cd exampleSite
           hugo --gc --minify --buildDrafts --buildFuture
       - name: Validate HTML output

@@ -5,6 +5,16 @@ All notable changes to the Hugo Techie Personal theme will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- **BREAKING**: Minimum Hugo version requirement updated from 0.18 to 0.141.0
+- **CI Improvement**: Workflow now dynamically extracts minimum Hugo version from `theme.toml`
+- Updated documentation to reflect new Hugo version requirement
+
+### Fixed
+- Fixed compatibility issues with Hugo versions below 0.141.0 due to `try` function usage
+
 ## [1.1.0] - 2024-12-28
 
 ### Added
@@ -58,7 +68,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Performance optimized** with minified CSS and optimized assets
 
 ### Technical
-- **Hugo compatibility**: 0.18+
+- **Hugo compatibility**: 0.141.0+
 - **Template engine**: Go templates with advanced logic
 - **CSS framework**: Custom responsive CSS with Grid and Flexbox
 - **Icon format**: SVG for scalability and performance

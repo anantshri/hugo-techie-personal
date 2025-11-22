@@ -4,7 +4,7 @@ This is a complete example site demonstrating the Hugo Techie Personal theme fea
 
 ## Quick Start
 
-1. **Install Hugo** (version 0.18 or later)
+1. **Install Hugo** (version 0.141.0 or later)
 2. **Clone or download** this example site
 3. **Run the development server**:
    ```bash

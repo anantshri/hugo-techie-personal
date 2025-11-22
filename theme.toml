@@ -5,7 +5,7 @@ description = "A timeline-based personal site theme for tech professionals who l
 homepage = "https://anantshri.info"
 tags = ["minimal", "blog", "personal", "clean", "simple", "starter", "minimalist", "timeline", "portfolio", "tech", "developer", "projects"]
 features = ["blog", "portfolio", "timeline", "responsive"]
-min_version = "0.18"
+min_version = "0.141.0"
 
 [author]
   name = "Anant Shrivastava"
