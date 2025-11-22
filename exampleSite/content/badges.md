@@ -48,25 +48,46 @@ To display your own badges, configure your `config.toml`:
 ## Usage Examples
 
 
-<!-- Display all badges (normal size) -->
+### Display all badges (normal size)
+```
+{{< badges >}}
+```
 {{< badges >}}
 
-<!-- Display big badges -->
+### Display big badges
+```
+{{< badges size="big" >}}
+```
 {{< badges size="big" >}}
 
-<!-- Display small badges -->
+###  Display small badges
+```
+{{< badges size="small" >}}
+```
 {{< badges size="small" >}}
 
-<!-- Hide expired badges -->
+###  Hide expired badges 
+```
+{{< badges hide_expired="true" >}}
+```
 {{< badges hide_expired="true" >}}
 
-<!-- Show only expired badges -->
+###  Show only expired badges 
+```
+{{< badges show_expired="true" >}}
+```
 {{< badges show_expired="true" >}}
 
-<!-- Display only Credly badges -->
+###  Display only Credly badges 
+```
+{{< badges show_accredible="false" >}}
+```
 {{< badges show_accredible="false" >}}
 
-<!-- Display only Accredible badges -->
+### Display only Accredible badges 
+```
+{{< badges show_credly="false" >}}
+```
 {{< badges show_credly="false" >}}
 
 
