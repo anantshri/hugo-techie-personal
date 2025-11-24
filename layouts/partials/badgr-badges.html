@@ -18,7 +18,11 @@
   {{ if $cachedJson }}
     {{ with try ($cachedJson.Content | transform.Unmarshal) }}
       {{ if not .Err }}
-        {{ $badgesData = .Value }}
+        {{/* Only use cached data if it actually contains badges */}}
+        {{ $cachedBadges := .Value.result | default .Value }}
+        {{ if and $cachedBadges (gt (len $cachedBadges) 0) }}
+          {{ $badgesData = .Value }}
+        {{ end }}
       {{ end }}
     {{ end }}
   {{ end }}

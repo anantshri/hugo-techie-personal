@@ -27,8 +27,14 @@
       {{ with .Err }}
         {{ warnf "Error parsing cached Credly badges JSON: %s" . }}
       {{ else }}
-        {{ $badgesData = .Value }}
-        {{ warnf "Using cached Credly badges data from assets/data/CredlyBadges.json" }}
+        {{/* Only use cached data if it actually contains badges */}}
+        {{ $cachedBadges := .Value.data | default .Value }}
+        {{ if and $cachedBadges (gt (len $cachedBadges) 0) }}
+          {{ $badgesData = .Value }}
+          {{ warnf "Using cached Credly badges data from assets/data/CredlyBadges.json" }}
+        {{ else }}
+          {{ warnf "Cached Credly badges file is empty, will fetch fresh data from API" }}
+        {{ end }}
       {{ end }}
     {{ end }}
   {{ end }}
