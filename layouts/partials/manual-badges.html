@@ -13,7 +13,11 @@
   
   {{ if $badges }}
     {{ range $badges }}
-      {{ $expiresAt := .expires_at | default .expiresAt | default .expired_at }}
+      {{ if and . (reflect.IsMap .) }}
+        {{ $expiresAt := "" }}
+        {{ with .expires_at }}{{ $expiresAt = . }}{{ end }}
+        {{ if not $expiresAt }}{{ with .expiresAt }}{{ $expiresAt = . }}{{ end }}{{ end }}
+        {{ if not $expiresAt }}{{ with .expired_at }}{{ $expiresAt = . }}{{ end }}{{ end }}
       {{ $isExpired := false }}
       {{ if $expiresAt }}
         {{ $expireTime := time $expiresAt }}
@@ -47,6 +51,7 @@
           "source" "manual"
         }}
         {{ $allBadges = $allBadges | append $normalizedBadge }}
+      {{ end }}
       {{ end }}
     {{ end }}
   {{ end }}
