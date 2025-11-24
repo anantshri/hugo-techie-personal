@@ -2131,6 +2131,13 @@ body:not([class*="home-layout-"]) {
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 }
 
+/* SVG badge images - maintain aspect ratio and fit container */
+.badge-image-svg {
+  object-fit: contain;
+  max-width: 100%;
+  max-height: 100%;
+}
+
 /* Badge Placeholder */
 .badge-placeholder {
   width: 100%;
@@ -2142,6 +2149,30 @@ body:not([class*="home-layout-"]) {
   color: var(--color-text-secondary);
   font-size: var(--font-size-sm);
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+/* Badge Icon Container (for FontAwesome icons) */
+.badge-icon-container {
+  width: 100%;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--color-primary, #3b82f6) 0%, var(--color-secondary, #8b5cf6) 100%);
+  color: var(--color-text-inverse, #fff);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.badge-icon-container i {
+  font-size: 4rem;
+}
+
+.badge-small .badge-icon-container i {
+  font-size: 2rem;
+}
+
+.badge-big .badge-icon-container i {
+  font-size: 6rem;
 }
 
 /* Badge Content */

@@ -1,0 +1,22 @@
+{
+  "badges": [
+    {
+      "id": "custom-1",
+      "name": "Example Custom Badge",
+      "description": "This is an example of a manually added badge. You can add your own custom badges by editing data/ManualBadges.json",
+      "image_url": "https://via.placeholder.com/400x400/4A90E2/FFFFFF?text=Custom+Badge",
+      "issued_at": "2024-01-15T00:00:00Z",
+      "url": "https://example.com/badge"
+    },
+    {
+      "id": "custom-2",
+      "name": "Community Contributor",
+      "description": "Awarded for significant contributions to open source projects",
+      "image_url": "https://via.placeholder.com/400x400/50C878/FFFFFF?text=Contributor",
+      "issued_at": "2024-03-20T00:00:00Z",
+      "expires_at": "2025-03-20T00:00:00Z",
+      "url": "https://example.com/contributor"
+    }
+  ]
+}
+

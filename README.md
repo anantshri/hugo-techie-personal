@@ -363,25 +363,168 @@ Display your Accredible credentials with API integration:
 {{< accredible-badges size="small" hide_expired="true" >}}
 ```
 
+#### Badgr Integration
+
+Display your Badgr badges with API integration:
+
+```toml
+[params]
+  # Your Badgr username
+  badgr_username = "your-username"
+  
+  # API token (required for API access)
+  badgr_api_token = "your-api-token"
+  
+  # Optional: Custom image directory for cached badge images
+  badgr_image_dir = "images/BadgrBadges"  # Default
+```
+
+**Usage:**
+```hugo
+<!-- Display all Badgr badges -->
+{{< badgr-badges >}}
+
+<!-- Display with custom options -->
+{{< badgr-badges size="small" hide_expired="true" >}}
+```
+
+#### Manual/Custom Badges
+
+Add custom badges by creating `data/ManualBadges.json`:
+
+```json
+{
+  "badges": [
+    {
+      "id": "custom-1",
+      "name": "Custom Badge Name",
+      "description": "Badge description",
+      "image_url": "https://example.com/badge-image.png",
+      "issued_at": "2024-01-15T00:00:00Z",
+      "expires_at": "2025-01-15T00:00:00Z",
+      "url": "https://example.com/badge-link"
+    }
+  ]
+}
+```
+
+**Usage:**
+```hugo
+{{< manual-badges >}}
+```
+
+#### Open Badges Support
+
+Add Open Badges (JSON-LD format) by creating `data/OpenBadges.json`:
+
+```json
+{
+  "badges": [
+    {
+      "@context": "https://w3id.org/openbadges/v2",
+      "type": "Assertion",
+      "id": "https://example.com/badges/badge-1",
+      "badge": {
+        "type": "BadgeClass",
+        "name": "Badge Name",
+        "description": "Badge description",
+        "image": "https://example.com/badge-image.png"
+      },
+      "issuedOn": "2024-01-15T00:00:00Z",
+      "url": "https://example.com/badge-link"
+    }
+  ]
+}
+```
+
+**Usage:**
+```hugo
+{{< openbadges-badges >}}
+```
+
+#### Bugcrowd Integration
+
+Display your Bugcrowd badges with API integration. By default, only awarded badges are displayed, but performance statistics and hall of fame data are automatically fetched and cached:
+
+```toml
+[params]
+  # Your Bugcrowd username
+  bugcrowd_username = "your-username"
+  
+  # Optional: Custom image directory for cached badge images
+  bugcrowd_image_dir = "images/BugcrowdBadges"  # Default
+```
+
+**Usage:**
+```hugo
+<!-- Display all awarded Bugcrowd badges -->
+{{< bugcrowd-badges >}}
+
+<!-- Display with custom options -->
+{{< bugcrowd-badges size="small" hide_expired="true" >}}
+
+<!-- Display with statistics and hall of fame (if needed) -->
+{{< bugcrowd-badges show_statistics="true" show_hall_of_fame="true" >}}
+```
+
+**Features:**
+- **Automatic API fetching** from Bugcrowd profile endpoints
+- **Awarded badges only** displayed by default
+- **Performance statistics** fetched and cached (displayed only if requested)
+- **Hall of Fame** data fetched and cached (displayed only if requested)
+- **Intelligent caching** for all data types
+
+#### HackerOne Integration
+
+Display your HackerOne badges with API integration:
+
+```toml
+[params]
+  # Your HackerOne username
+  hackerone_username = "your-username"
+  
+  # Optional: Custom image directory for cached badge images
+  hackerone_image_dir = "images/HackerOneBadges"  # Default
+```
+
+**Usage:**
+```hugo
+<!-- Display all HackerOne badges -->
+{{< hackerone-badges >}}
+
+<!-- Display with custom options -->
+{{< hackerone-badges size="small" hide_expired="true" >}}
+```
+
+**API Endpoint:**
+The integration uses the HackerOne public API endpoint: `https://hackerone.com/{username}/badges.json`
+
+**Features:**
+- **Automatic API fetching** from HackerOne profile badges endpoint
+- **Relative image URL handling** - automatically converts relative URLs to absolute
+- **Intelligent caching** for badge data and images
+- **Unified display** - integrates seamlessly with other badge platforms
+
 #### Unified Badge Display
 
-Display badges from both platforms in a unified grid:
+Display badges from all platforms in a unified grid:
 
 ```hugo
-<!-- Display badges from both Credly and Accredible -->
+<!-- Display badges from all platforms -->
 {{< badges >}}
 
-<!-- Display only Credly badges -->
-{{< badges show_accredible="false" >}}
+<!-- Display only specific platforms -->
+{{< badges show_accredible="false" show_badgr="false" >}}
 
-<!-- Display only Accredible badges -->
-{{< badges show_credly="false" >}}
+<!-- Display only Credly badges -->
+{{< badges show_accredible="false" show_manual="false" show_openbadges="false" show_badgr="false" >}}
 
 <!-- Custom sizing and filtering -->
 {{< badges size="small" hide_expired="true" >}}
 ```
 
 **Badge Features:**
+- **Multiple platform support**: Credly, Accredible, Badgr, Bugcrowd, HackerOne, Open Badges, and Manual badges
 - **Automatic API fetching** with intelligent caching for performance
 - **Fallback system**: API → cached data → Site.Data → graceful degradation
 - **Expiration handling**: Show/hide expired badges with visual indicators

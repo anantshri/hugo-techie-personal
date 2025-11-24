@@ -8,8 +8,13 @@
 {{ $isNormal := or (eq $size "normal") (and (ne $size "small") (ne $size "big")) }}
 {{ $showCredly := ne ($params.show_credly | default "true") "false" }}
 {{ $showAccredible := ne ($params.show_accredible | default "true") "false" }}
+{{ $showManual := ne ($params.show_manual | default "true") "false" }}
+{{ $showOpenBadges := ne ($params.show_openbadges | default "true") "false" }}
+{{ $showBadgr := ne ($params.show_badgr | default "true") "false" }}
+{{ $showBugcrowd := ne ($params.show_bugcrowd | default "true") "false" }}
+{{ $showHackerone := ne ($params.show_hackerone | default "true") "false" }}
 
-{{/* Collect all badges from both sources */}}
+{{/* Collect all badges from all sources */}}
 {{ $allBadges := slice }}
 
 {{/* Fetch Credly badges */}}
@@ -203,8 +208,75 @@
   {{ end }}
 {{ end }}
 
-{{/* Sort all badges by issued date (most recent first) */}}
-{{ $sortedBadges := sort $allBadges "issuedAt" "desc" }}
+{{/* Fetch Manual badges */}}
+{{ if $showManual }}
+  {{ $manualBadges := partial "manual-badges.html" $params }}
+  {{ if $manualBadges }}
+    {{ range $manualBadges }}
+      {{ $allBadges = $allBadges | append . }}
+    {{ end }}
+  {{ end }}
+{{ end }}
+
+{{/* Fetch Open Badges */}}
+{{ if $showOpenBadges }}
+  {{ $openBadges := partial "openbadges-badges.html" $params }}
+  {{ if $openBadges }}
+    {{ range $openBadges }}
+      {{ $allBadges = $allBadges | append . }}
+    {{ end }}
+  {{ end }}
+{{ end }}
+
+{{/* Fetch Badgr badges */}}
+{{ if $showBadgr }}
+  {{ $badgrBadges := partial "badgr-badges.html" $params }}
+  {{ if $badgrBadges }}
+    {{ range $badgrBadges }}
+      {{ $allBadges = $allBadges | append . }}
+    {{ end }}
+  {{ end }}
+{{ end }}
+
+{{/* Fetch Bugcrowd badges */}}
+{{ if $showBugcrowd }}
+  {{ $bugcrowdBadges := partial "bugcrowd-badges.html" $params }}
+  {{ if $bugcrowdBadges }}
+    {{ range $bugcrowdBadges }}
+      {{ $allBadges = $allBadges | append . }}
+    {{ end }}
+  {{ end }}
+{{ end }}
+
+{{/* Fetch HackerOne badges */}}
+{{ if $showHackerone }}
+  {{ $hackeroneBadges := partial "hackerone-badges.html" $params }}
+  {{ if $hackeroneBadges }}
+    {{ range $hackeroneBadges }}
+      {{ $allBadges = $allBadges | append . }}
+    {{ end }}
+  {{ end }}
+{{ end }}
+
+{{/* Separate badges into expired and non-expired, then sort each group */}}
+{{ $activeBadges := slice }}
+{{ $expiredBadges := slice }}
+{{ range $allBadges }}
+  {{ if .isExpired }}
+    {{ $expiredBadges = $expiredBadges | append . }}
+  {{ else }}
+    {{ $activeBadges = $activeBadges | append . }}
+  {{ end }}
+{{ end }}
+
+{{/* Sort active badges by issued date (most recent first) */}}
+{{ $sortedActiveBadges := sort $activeBadges "issuedAt" "desc" }}
+
+{{/* Sort expired badges by issued date (most recent first) */}}
+{{ $sortedExpiredBadges := sort $expiredBadges "issuedAt" "desc" }}
+
+{{/* Combine: active badges first, then expired badges at the end */}}
+{{ $sortedBadges := $sortedActiveBadges | append $sortedExpiredBadges }}
 
 {{/* Render all badges in a single grid container */}}
 {{ if $sortedBadges }}
@@ -219,10 +291,36 @@
       {{ $badgeUrl := .url }}
       {{ $imageDir := .imageDir }}
       {{ $isExpired := .isExpired }}
+      {{ $badgeSource := .source | default "" }}
+      {{ $publisher := .publisher | default "" }}
+      {{ $badgeIcon := .icon | default "" }}
+      {{ $badgeKey := .badgeKey | default "" }}
       
       {{/* Download and store badge image in assets directory */}}
       {{ $badgeImage := "" }}
-      {{ if $badgeImageUrl }}
+      
+      {{/* First, check for local badge image (useful for Bugcrowd and other platforms without image URLs) */}}
+      {{ $localImageExtensions := slice "svg" "png" "jpg" "jpeg" "gif" "webp" }}
+      {{ range $localImageExtensions }}
+        {{ $localImagePath := printf "%s/%s.%s" $imageDir $badgeId . }}
+        {{ $localImage := resources.Get $localImagePath }}
+        {{ if $localImage }}
+          {{ $badgeImage = $localImage }}
+          {{ break }}
+        {{ end }}
+      {{ end }}
+      
+      {{/* Also check for badgeKey-based local files (for Bugcrowd badges) */}}
+      {{ if and (not $badgeImage) (eq $badgeSource "bugcrowd") $badgeKey }}
+        {{ $badgeKeyPath := printf "%s/%s.svg" $imageDir $badgeKey }}
+        {{ $badgeKeyImage := resources.Get $badgeKeyPath }}
+        {{ if $badgeKeyImage }}
+          {{ $badgeImage = $badgeKeyImage }}
+        {{ end }}
+      {{ end }}
+      
+      {{/* If no local image found and we have a URL, try to download */}}
+      {{ if and (not $badgeImage) $badgeImageUrl }}
         {{/* Determine image extension from URL */}}
         {{ $imageExt := "png" }}
         {{ if findRE "\\.(jpg|jpeg|png|gif|webp)" $badgeImageUrl }}
@@ -261,29 +359,44 @@
       
       <div class="badge{{ if $isExpired }} badge-expired{{ end }}{{ if $isSmall }} badge-small{{ else if $isBig }} badge-big{{ else }} badge-normal{{ end }}{{ if $badgeDescription }} badge-has-tooltip{{ end }}"{{ if and (not $isSmall) $badgeDescription }} data-tooltip="{{ $badgeDescription }}"{{ end }}>
         <a href="{{ $badgeUrl }}" target="_blank" rel="noopener noreferrer" class="badge-link" title="{{ $badgeName }}{{ if $badgeDescription }} - {{ $badgeDescription }}{{ end }}">
-          {{ if $badgeImage }}
-            {{/* Use Hugo's image processing - resize based on size option */}}
-            {{ if $isSmall }}
-              {{ $processedImage := $badgeImage.Resize "64x64 q90" }}
-              <img src="{{ $processedImage.RelPermalink }}" 
+          {{ if $badgeIcon }}
+            {{/* Display FontAwesome icon badge */}}
+            <div class="badge-icon-container">
+              <i class="{{ $badgeIcon }}" aria-hidden="true"></i>
+            </div>
+          {{ else if $badgeImage }}
+            {{/* Check if image is SVG - SVGs can't be resized */}}
+            {{ $isSvg := eq $badgeImage.MediaType.SubType "svg" }}
+            {{ if $isSvg }}
+              {{/* SVG files - display directly without resizing */}}
+              <img src="{{ $badgeImage.RelPermalink }}" 
                    alt="{{ $badgeName }}" 
-                   class="badge-image" 
-                   loading="lazy" />
-            {{ else if $isBig }}
-              {{ $processedImage := $badgeImage.Resize "500x500 q90" }}
-              <img src="{{ $processedImage.RelPermalink }}" 
-                   srcset="{{ ($badgeImage.Resize "1000x1000 q90").RelPermalink }} 2x"
-                   alt="{{ $badgeName }}" 
-                   class="badge-image" 
+                   class="badge-image badge-image-svg" 
                    loading="lazy" />
             {{ else }}
-              {{/* Normal size: 250x250 */}}
-              {{ $processedImage := $badgeImage.Resize "250x250 q90" }}
-              <img src="{{ $processedImage.RelPermalink }}" 
-                   srcset="{{ ($badgeImage.Resize "500x500 q90").RelPermalink }} 2x"
-                   alt="{{ $badgeName }}" 
-                   class="badge-image" 
-                   loading="lazy" />
+              {{/* Raster images - use Hugo's image processing - resize based on size option */}}
+              {{ if $isSmall }}
+                {{ $processedImage := $badgeImage.Resize "64x64 q90" }}
+                <img src="{{ $processedImage.RelPermalink }}" 
+                     alt="{{ $badgeName }}" 
+                     class="badge-image" 
+                     loading="lazy" />
+              {{ else if $isBig }}
+                {{ $processedImage := $badgeImage.Resize "500x500 q90" }}
+                <img src="{{ $processedImage.RelPermalink }}" 
+                     srcset="{{ ($badgeImage.Resize "1000x1000 q90").RelPermalink }} 2x"
+                     alt="{{ $badgeName }}" 
+                     class="badge-image" 
+                     loading="lazy" />
+              {{ else }}
+                {{/* Normal size: 250x250 */}}
+                {{ $processedImage := $badgeImage.Resize "250x250 q90" }}
+                <img src="{{ $processedImage.RelPermalink }}" 
+                     srcset="{{ ($badgeImage.Resize "500x500 q90").RelPermalink }} 2x"
+                     alt="{{ $badgeName }}" 
+                     class="badge-image" 
+                     loading="lazy" />
+              {{ end }}
             {{ end }}
           {{ else }}
             <div class="badge-placeholder">Badge Image</div>
@@ -296,6 +409,9 @@
                 </h3>
               {{ end }}
               <div class="badge-meta">
+                {{ if $publisher }}
+                  <span class="badge-publisher">{{ $publisher }}</span>
+                {{ end }}
                 {{ if $issuedAt }}
                   {{ $issueDate := time.Format "2 Jan 2006" (time $issuedAt) }}
                   {{ if $expiresAt }}

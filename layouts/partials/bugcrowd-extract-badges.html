@@ -1,0 +1,121 @@
+{{/* 
+  Extract Bugcrowd badge SVG mappings from AchievementsList JavaScript file
+  This runs during Hugo build and automatically extracts badge mappings
+*/}}
+{{ $page := .page }}
+{{ $username := $page.Site.Params.bugcrowd_username }}
+{{ $imageDir := $page.Site.Params.bugcrowd_image_dir | default "images/BugcrowdBadges" }}
+
+{{ if $username }}
+  {{ $baseUrl := "https://bugcrowd.com" }}
+  {{ $achievementsUrl := printf "%s/h/%s/achievements" $baseUrl $username }}
+  
+  {{/* Fetch achievements page */}}
+  {{ with try (resources.GetRemote $achievementsUrl) }}
+    {{ if not .Err }}
+      {{ $htmlContent := .Value.Content }}
+      
+      {{/* Find AchievementsList JavaScript file from dependency map */}}
+      {{ $achievementsListMatch := findRE "AchievementsList-([A-Za-z0-9_-]+)\\.js" $htmlContent }}
+      {{ if not $achievementsListMatch }}
+        {{/* Try fetching main bundle to find it in dependency map */}}
+        {{ $indexMatch := findRE "/h/assets/index-([^\"']+)\\.js" $htmlContent }}
+        {{ if $indexMatch }}
+          {{ $indexPath := index $indexMatch 0 }}
+          {{ $indexUrl := printf "%s%s" $baseUrl $indexPath }}
+          {{ with try (resources.GetRemote $indexUrl) }}
+            {{ if not .Err }}
+              {{ $indexContent := .Value.Content }}
+              {{ $achievementsListMatch = findRE "AchievementsList-([A-Za-z0-9_-]+)\\.js" $indexContent }}
+            {{ end }}
+          {{ end }}
+        {{ end }}
+      {{ end }}
+      
+      {{ if $achievementsListMatch }}
+        {{ $hash := index (findRE "AchievementsList-([A-Za-z0-9_-]+)\\.js" (index $achievementsListMatch 0)) 1 }}
+        {{ if not $hash }}
+          {{ $hash = index (findRE "([A-Za-z0-9_-]+)" (index $achievementsListMatch 0)) 0 }}
+        {{ end }}
+        {{ $jsUrl := printf "%s/h/assets/AchievementsList-%s.js" $baseUrl $hash }}
+        
+        {{/* Fetch AchievementsList JavaScript file */}}
+        {{ with try (resources.GetRemote $jsUrl) }}
+          {{ if not .Err }}
+            {{ $jsContent := .Value.Content }}
+            
+            {{/* Extract SVG variable mappings: varName="/h/assets/level-X-HASH.svg" */}}
+            {{ $svgVars := dict }}
+            {{ $svgLines := split $jsContent "\n" }}
+            {{ range $svgLines }}
+              {{ $line := . }}
+              {{ if findRE `=/h/assets/.*\.svg` $line }}
+                {{ $varMatch := findRE `^(\w+)=` $line }}
+                {{ $pathMatch := findRE `(/h/assets/[^"']+\.svg)` $line }}
+                {{ if and $varMatch $pathMatch }}
+                  {{ $varName := replace (index $varMatch 0) "=" "" }}
+                  {{ $svgPath := index $pathMatch 0 }}
+                  {{ $svgVars = merge $svgVars (dict $varName $svgPath) }}
+                {{ end }}
+              {{ end }}
+            {{ end }}
+            
+            {{/* Extract badge key mappings: [identifier.BADGE_KEY]:varName */}}
+            {{ $badgeMappings := dict }}
+            {{ range $svgLines }}
+              {{ $line := . }}
+              {{ if findRE `\[.*\.[A-Z_0-9-]+\]:` $line }}
+                {{ $badgeKeyMatch := findRE `\.([A-Z_0-9-]+)\]` $line }}
+                {{ $varNameMatch := findRE `:(\w+)[,\}]` $line }}
+                {{ if and $badgeKeyMatch $varNameMatch }}
+                  {{ $badgeKey := index $badgeKeyMatch 0 | replace "." "" | replace "]" "" }}
+                  {{ $varName := index $varNameMatch 0 | replace ":" "" | replace "," "" | replace "}" "" }}
+                  {{ $svgPath := index $svgVars $varName }}
+                  {{ if $svgPath }}
+                    {{ $badgeMappings = merge $badgeMappings (dict $badgeKey $svgPath) }}
+                  {{ end }}
+                {{ end }}
+              {{ end }}
+            {{ end }}
+            
+            {{/* Download SVG files and create mapping JSON */}}
+            {{ $mappingData := dict }}
+            {{ range $badgeKey, $svgPath := $badgeMappings }}
+              {{ $svgUrl := printf "%s%s" $baseUrl $svgPath }}
+              {{ $svgFilename := printf "%s.svg" $badgeKey }}
+              {{ $svgAssetPath := printf "%s/%s" $imageDir $svgFilename }}
+              
+              {{/* Download SVG file */}}
+              {{ with try (resources.GetRemote $svgUrl) }}
+                {{ if not .Err }}
+                  {{ $svgResource := .Value }}
+                  {{ with resources.FromString $svgAssetPath $svgResource.Content }}
+                    {{ $copiedSvg := . | resources.Copy $svgAssetPath }}
+                    {{ if $copiedSvg }}
+                      {{ $mappingEntry := dict 
+                        "badgeKey" $badgeKey
+                        "svgPath" $svgPath
+                        "url" $svgUrl
+                      }}
+                      {{ $mappingData = merge $mappingData (dict $badgeKey $mappingEntry) }}
+                    {{ end }}
+                  {{ end }}
+                {{ end }}
+              {{ end }}
+            {{ end }}
+            
+            {{/* Save mapping JSON file */}}
+            {{ if $mappingData }}
+              {{ $mappingJson := $mappingData | jsonify }}
+              {{ $mappingPath := "data/BugcrowdBadgeMappings.json" }}
+              {{ with resources.FromString $mappingPath $mappingJson }}
+                {{ $copiedMapping := . | resources.Copy $mappingPath }}
+              {{ end }}
+            {{ end }}
+          {{ end }}
+        {{ end }}
+      {{ end }}
+    {{ end }}
+  {{ end }}
+{{ end }}
+

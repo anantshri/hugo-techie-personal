@@ -82,11 +82,18 @@ This demonstration includes:
 - Smart home and IoT devices
 
 ### Professional Badges
-- Credly badge integration demonstration
-- Accredible credential display
+- **Credly** - API integration with automatic badge fetching
+- **Accredible** - Professional credential management platform
+- **Badgr** - Open Badges platform with API support
+- **Bugcrowd** - Bug bounty platform badges, statistics, and hall of fame
+- **HackerOne** - Bug bounty platform badges and achievements
+- **Open Badges** - Standards-based badges (JSON-LD format)
+- **Manual/Custom Badges** - User-defined badges via data files
 - Multiple badge sizes (small, normal, big)
-- Expired badge handling
+- Expired badge handling with visual indicators
 - Tooltip descriptions on hover
+- Unified display combining badges from all platforms
+- Customizable display options (statistics, hall of fame, etc.)
 
 ## Technical Implementation
 

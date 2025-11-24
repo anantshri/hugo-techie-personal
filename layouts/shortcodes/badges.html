@@ -14,6 +14,27 @@
 {{ if .Get "show_accredible" }}
   {{ $params = merge $params (dict "show_accredible" (.Get "show_accredible")) }}
 {{ end }}
+{{ if .Get "show_manual" }}
+  {{ $params = merge $params (dict "show_manual" (.Get "show_manual")) }}
+{{ end }}
+{{ if .Get "show_openbadges" }}
+  {{ $params = merge $params (dict "show_openbadges" (.Get "show_openbadges")) }}
+{{ end }}
+{{ if .Get "show_badgr" }}
+  {{ $params = merge $params (dict "show_badgr" (.Get "show_badgr")) }}
+{{ end }}
+{{ if .Get "show_bugcrowd" }}
+  {{ $params = merge $params (dict "show_bugcrowd" (.Get "show_bugcrowd")) }}
+{{ end }}
+{{ if .Get "show_hackerone" }}
+  {{ $params = merge $params (dict "show_hackerone" (.Get "show_hackerone")) }}
+{{ end }}
+{{ if .Get "show_statistics" }}
+  {{ $params = merge $params (dict "show_statistics" (.Get "show_statistics")) }}
+{{ end }}
+{{ if .Get "show_hall_of_fame" }}
+  {{ $params = merge $params (dict "show_hall_of_fame" (.Get "show_hall_of_fame")) }}
+{{ end }}
 
 {{/* Display unified badges in a single grid container */}}
 {{ partial "badges.html" $params }}

@@ -1,0 +1,83 @@
+{{ $page := .page }}
+{{ $params := . }}
+{{ $size := $params.size | default "normal" }}
+{{ $showExpiredOnly := eq ($params.show_expired | default "false") "true" }}
+{{ $hideExpired := eq ($params.hide_expired | default "false") "true" }}
+
+{{/* Fetch Open Badges from Site.Data (JSON-LD format) */}}
+{{ $badgesData := $page.Site.Data.OpenBadges }}
+{{ $allBadges := slice }}
+
+{{ if $badgesData }}
+  {{ $badges := $badgesData.badges | default $badgesData }}
+  
+  {{ if $badges }}
+    {{ range $badges }}
+      {{/* Open Badges JSON-LD structure support */}}
+      {{ $badgeData := . }}
+      {{ if reflect.IsMap . }}
+        {{/* Handle both direct badge objects and nested structures */}}
+        {{ $atId := index . "@id" }}
+        {{ $badgeId := .id | default $atId | default (printf "openbadge-%d" (now.Unix)) | string }}
+        {{ $badgeName := .name | default .badge.name | default .credentialSubject.name | default "Unnamed Badge" }}
+        {{ $badgeDescription := .description | default .badge.description | default .credentialSubject.description }}
+        {{ $badgeImageUrl := .image | default .badge.image | default .credentialSubject.image | default .badge.imageUrl }}
+        {{ $issuedAt := .issuedOn | default .issuanceDate | default .issued_at | default .date }}
+        {{ $expiresAt := .expires | default .expirationDate | default .expires_at }}
+        {{ $badgeUrl := .id | default $atId | default .url | default "#" }}
+        
+        {{/* Handle Open Badges 2.0 structure */}}
+        {{ if .credentialSubject }}
+          {{ $badgeName = .credentialSubject.name | default $badgeName }}
+          {{ $badgeDescription = .credentialSubject.description | default $badgeDescription }}
+          {{ $badgeImageUrl = .credentialSubject.image | default $badgeImageUrl }}
+        {{ end }}
+        
+        {{ if .badge }}
+          {{ $badgeName = .badge.name | default $badgeName }}
+          {{ $badgeDescription = .badge.description | default $badgeDescription }}
+          {{ $badgeImageUrl = .badge.image | default $badgeImageUrl }}
+        {{ end }}
+        
+        {{ $isExpired := false }}
+        {{ if $expiresAt }}
+          {{ $expireTime := time $expiresAt }}
+          {{ if lt $expireTime now }}
+            {{ $isExpired = true }}
+          {{ end }}
+        {{ end }}
+        
+        {{ $includeBadge := true }}
+        {{ if $showExpiredOnly }}
+          {{ if not $isExpired }}
+            {{ $includeBadge = false }}
+          {{ end }}
+        {{ else if $hideExpired }}
+          {{ if $isExpired }}
+            {{ $includeBadge = false }}
+          {{ end }}
+        {{ end }}
+        
+        {{ if $includeBadge }}
+          {{ $normalizedBadge := dict 
+            "id" $badgeId
+            "name" $badgeName
+            "description" $badgeDescription
+            "imageUrl" $badgeImageUrl
+            "issuedAt" $issuedAt
+            "expiresAt" $expiresAt
+            "url" $badgeUrl
+            "imageDir" "images/OpenBadges"
+            "isExpired" $isExpired
+            "source" "openbadges"
+          }}
+          {{ $allBadges = $allBadges | append $normalizedBadge }}
+        {{ end }}
+      {{ end }}
+    {{ end }}
+  {{ end }}
+{{ end }}
+
+{{/* Return normalized badges for unified display */}}
+{{ return $allBadges }}
+

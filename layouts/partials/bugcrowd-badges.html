@@ -1,0 +1,260 @@
+{{ $page := .page }}
+{{ $params := . }}
+{{ $size := $params.size | default "normal" }}
+{{ $showExpiredOnly := eq ($params.show_expired | default "false") "true" }}
+{{ $hideExpired := eq ($params.hide_expired | default "false") "true" }}
+{{ $showStatistics := eq ($params.show_statistics | default "false") "true" }}
+{{ $showHallOfFame := eq ($params.show_hall_of_fame | default "false") "true" }}
+
+{{ $username := $page.Site.Params.bugcrowd_username }}
+{{ $imageDir := $page.Site.Params.bugcrowd_image_dir | default "images/BugcrowdBadges" }}
+{{ $allBadges := slice }}
+
+{{ if $username }}
+  {{/* Extract badge mappings from AchievementsList JavaScript (runs during build) */}}
+  {{ partial "bugcrowd-extract-badges.html" (dict "page" $page) }}
+  {{/* Bugcrowd API endpoints */}}
+  {{ $badgeAttainmentsUrl := printf "https://bugcrowd.com/profile-service/v1/profiles/%s/badgeAttainments" $username }}
+  {{ $performanceStatsUrl := printf "https://bugcrowd.com/profile-service/v1/profiles/%s/performanceStatistics" $username }}
+  {{ $hallOfFameUrl := printf "https://bugcrowd.com/profile-service/v1/profiles/%s/hallOfFame" $username }}
+  
+  {{ $badgesData := false }}
+  {{ $statsData := false }}
+  {{ $hallOfFameData := false }}
+  
+  {{/* Try cached data first */}}
+  {{ $cachedBadgesJson := resources.Get "data/BugcrowdBadges.json" }}
+  {{ $cachedStatsJson := resources.Get "data/BugcrowdStats.json" }}
+  {{ $cachedHallOfFameJson := resources.Get "data/BugcrowdHallOfFame.json" }}
+  
+  {{ if $cachedBadgesJson }}
+    {{ with try ($cachedBadgesJson.Content | transform.Unmarshal) }}
+      {{ if not .Err }}
+        {{ $badgesData = .Value }}
+      {{ end }}
+    {{ end }}
+  {{ end }}
+  
+  {{ if $cachedStatsJson }}
+    {{ with try ($cachedStatsJson.Content | transform.Unmarshal) }}
+      {{ if not .Err }}
+        {{ $statsData = .Value }}
+      {{ end }}
+    {{ end }}
+  {{ end }}
+  
+  {{ if $cachedHallOfFameJson }}
+    {{ with try ($cachedHallOfFameJson.Content | transform.Unmarshal) }}
+      {{ if not .Err }}
+        {{ $hallOfFameData = .Value }}
+      {{ end }}
+    {{ end }}
+  {{ end }}
+  
+  {{/* Try API to get fresh data and update cache */}}
+  {{/* Fetch badge attainments (awarded badges) */}}
+  {{ with try (resources.GetRemote $badgeAttainmentsUrl) }}
+    {{ if not .Err }}
+      {{ $cachePath := "data/BugcrowdBadges.json" }}
+      {{ $remoteResource := .Value }}
+      {{ with resources.FromString $cachePath $remoteResource.Content }}
+        {{ $copiedResource := . | resources.Copy $cachePath }}
+      {{ end }}
+      {{ with try ($remoteResource.Content | transform.Unmarshal) }}
+        {{ if not .Err }}
+          {{ $badgesData = .Value }}
+        {{ end }}
+      {{ end }}
+    {{ end }}
+  {{ end }}
+  
+  {{/* Fetch performance statistics (store but don't display by default) */}}
+  {{ with try (resources.GetRemote $performanceStatsUrl) }}
+    {{ if not .Err }}
+      {{ $cachePath := "data/BugcrowdStats.json" }}
+      {{ $remoteResource := .Value }}
+      {{ with resources.FromString $cachePath $remoteResource.Content }}
+        {{ $copiedResource := . | resources.Copy $cachePath }}
+      {{ end }}
+      {{ with try ($remoteResource.Content | transform.Unmarshal) }}
+        {{ if not .Err }}
+          {{ $statsData = .Value }}
+        {{ end }}
+      {{ end }}
+    {{ end }}
+  {{ end }}
+  
+  {{/* Fetch hall of fame (store but don't display by default) */}}
+  {{ with try (resources.GetRemote $hallOfFameUrl) }}
+    {{ if not .Err }}
+      {{ $cachePath := "data/BugcrowdHallOfFame.json" }}
+      {{ $remoteResource := .Value }}
+      {{ with resources.FromString $cachePath $remoteResource.Content }}
+        {{ $copiedResource := . | resources.Copy $cachePath }}
+      {{ end }}
+      {{ with try ($remoteResource.Content | transform.Unmarshal) }}
+        {{ if not .Err }}
+          {{ $hallOfFameData = .Value }}
+        {{ end }}
+      {{ end }}
+    {{ end }}
+  {{ end }}
+  
+  {{/* Fallback to Site.Data if available */}}
+  {{ if not $badgesData }}
+    {{ $badgesData = $page.Site.Data.BugcrowdBadges }}
+  {{ end }}
+  {{ if not $statsData }}
+    {{ $statsData = $page.Site.Data.BugcrowdStats }}
+  {{ end }}
+  {{ if not $hallOfFameData }}
+    {{ $hallOfFameData = $page.Site.Data.BugcrowdHallOfFame }}
+  {{ end }}
+  
+  {{/* Process badge attainments - only show awarded badges by default */}}
+  {{ if $badgesData }}
+    {{/* Handle different possible response structures - Bugcrowd API returns awardedBadges array */}}
+    {{ $allBadgesRaw := $badgesData.awardedBadges | default $badgesData.badgeAttainments | default $badgesData.badges | default $badgesData.data | default $badgesData }}
+    
+    {{/* First pass: collect all awarded badges with their levels */}}
+    {{ $badgesBySet := dict }}
+    {{ if $allBadgesRaw }}
+      {{ range $allBadgesRaw }}
+        {{/* Only process map items (skip non-map entries) */}}
+        {{ if not (reflect.IsMap .) }}
+          {{ continue }}
+        {{ end }}
+        
+        {{/* Only process awarded badges by default - check badgeAttainment.awarded */}}
+        {{ $isAwarded := true }}
+        {{ if reflect.IsMap .badgeAttainment }}
+          {{ $isAwarded = .badgeAttainment.awarded | default true }}
+        {{ else }}
+          {{ $isAwarded = .awarded | default .isAwarded | default true }}
+        {{ end }}
+        {{ if not $isAwarded }}
+          {{ continue }}
+        {{ end }}
+        
+        {{ $badgeSetSlug := .badgeSetSlug | default "" }}
+        {{ $badgeLevel := .badgeLevel | default 0 }}
+        
+        {{/* Group badges by badgeSetSlug, keeping only the highest level */}}
+        {{ if $badgeSetSlug }}
+          {{ $existingBadge := index $badgesBySet $badgeSetSlug }}
+          {{ if not $existingBadge }}
+            {{ $badgesBySet = merge $badgesBySet (dict $badgeSetSlug .) }}
+          {{ else }}
+            {{ $existingLevel := $existingBadge.badgeLevel | default 0 }}
+            {{ if gt $badgeLevel $existingLevel }}
+              {{ $badgesBySet = merge $badgesBySet (dict $badgeSetSlug .) }}
+            {{ end }}
+          {{ end }}
+        {{ else }}
+          {{/* If no badgeSetSlug, include all badges (fallback) */}}
+          {{ $badgesBySet = merge $badgesBySet (dict (printf "single-%s" (.badgeId | default .id | string)) .) }}
+        {{ end }}
+      {{ end }}
+    {{ end }}
+    
+    {{/* Second pass: process filtered badges (highest level per set) */}}
+    {{ range $badgeSetSlug, $badge := $badgesBySet }}
+      {{/* Extract badge information from Bugcrowd API structure */}}
+      {{ $badgeId := "" }}
+      {{ if reflect.IsMap $badge.badgeAttainment }}
+        {{ $badgeId = $badge.badgeAttainment.id | default $badge.badgeId | string }}
+      {{ else }}
+        {{ $badgeId = $badge.id | default $badge.badgeId | default $badge.badge_id | string }}
+      {{ end }}
+        {{ $badgeName := $badge.badgeName | default $badge.name | default "Unnamed Badge" }}
+        {{ $badgeDescription := $badge.badgeThresholdDescription | default $badge.description | default $badge.badgeDescription | default "" }}
+        {{/* Bugcrowd badge image - use mapping file if available */}}
+        {{ $badgeImageUrl := $badge.imageUrl | default $badge.image_url | default $badge.badge.imageUrl | default $badge.badge.image_url | default "" }}
+        {{ $badgeKey := $badge.badgeKey | default "" }}
+        
+        {{/* Try to get SVG path from mapping file */}}
+        {{ if and (not $badgeImageUrl) $badgeKey }}
+          {{ $mappingsData := $page.Site.Data.BugcrowdBadgeMappings }}
+          {{ if $mappingsData }}
+            {{ $mapping := index $mappingsData $badgeKey }}
+            {{ if $mapping }}
+              {{/* Use the URL from mapping (will be downloaded by Hugo) */}}
+              {{ $badgeImageUrl = $mapping.url | default $mapping.svgPath | default "" }}
+              {{ if and $badgeImageUrl (not (findRE "^https?://" $badgeImageUrl)) }}
+                {{/* If relative path, make it absolute */}}
+                {{ $badgeImageUrl = printf "https://bugcrowd.com%s" $badgeImageUrl }}
+              {{ end }}
+            {{ end }}
+          {{ end }}
+        {{ end }}
+        
+        {{/* Fallback: try constructing badge image URL from badgeKey or badgeSetSlug */}}
+        {{ if not $badgeImageUrl }}
+          {{ $badgeSetSlug := $badge.badgeSetSlug | default "" }}
+          {{ if $badgeKey }}
+            {{/* Try badgeKey-based URL pattern */}}
+            {{ $badgeImageUrl = printf "https://assets.bugcrowdusercontent.com/badges/%s.png" ($badgeKey | lower) }}
+          {{ else if $badgeSetSlug }}
+            {{/* Try badgeSetSlug-based URL pattern */}}
+            {{ $badgeImageUrl = printf "https://assets.bugcrowdusercontent.com/badges/%s.png" ($badgeSetSlug | lower) }}
+          {{ end }}
+        {{ end }}
+      {{ $badgeUrl := printf "https://bugcrowd.com/h/%s" $username }}
+      {{ $issuedAt := $badge.badgeAttainment.awardedAt | default $badge.awardedAt | default $badge.awarded_at | default $badge.issuedAt | default $badge.issued_at | default $badge.date }}
+      {{ $expiresAt := $badge.badgeAttainment.expiresAt | default $badge.expiresAt | default $badge.expires_at }}
+      
+      {{ $isExpired := false }}
+      {{ if $expiresAt }}
+        {{ $expireTime := time $expiresAt }}
+        {{ if lt $expireTime now }}
+          {{ $isExpired = true }}
+        {{ end }}
+      {{ end }}
+      
+      {{ $includeBadge := true }}
+      {{ if $showExpiredOnly }}
+        {{ if not $isExpired }}
+          {{ $includeBadge = false }}
+        {{ end }}
+      {{ else if $hideExpired }}
+        {{ if $isExpired }}
+          {{ $includeBadge = false }}
+        {{ end }}
+      {{ end }}
+      
+      {{ if $includeBadge }}
+        {{ $normalizedBadge := dict 
+          "id" $badgeId
+          "name" $badgeName
+          "description" $badgeDescription
+          "imageUrl" $badgeImageUrl
+          "issuedAt" $issuedAt
+          "expiresAt" $expiresAt
+          "url" $badgeUrl
+          "imageDir" $imageDir
+          "isExpired" $isExpired
+          "source" "bugcrowd"
+          "publisher" "Bugcrowd"
+          "badgeKey" $badgeKey
+        }}
+        {{ $allBadges = $allBadges | append $normalizedBadge }}
+      {{ end }}
+    {{ end }}
+  {{ end }}
+  
+  {{/* Store statistics and hall of fame data for potential future use */}}
+  {{/* These are stored in cache but not displayed unless explicitly requested */}}
+  {{ if $showStatistics }}
+    {{/* Statistics can be displayed separately if needed */}}
+    {{/* For now, we just ensure it's cached */}}
+  {{ end }}
+  
+  {{ if $showHallOfFame }}
+    {{/* Hall of Fame can be displayed separately if needed */}}
+    {{/* For now, we just ensure it's cached */}}
+  {{ end }}
+{{ end }}
+
+{{/* Return normalized badges for unified display */}}
+{{ return $allBadges }}
+

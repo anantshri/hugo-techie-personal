@@ -1,0 +1,107 @@
+{{ $page := .page }}
+{{ $params := . }}
+{{ $size := $params.size | default "normal" }}
+{{ $showExpiredOnly := eq ($params.show_expired | default "false") "true" }}
+{{ $hideExpired := eq ($params.hide_expired | default "false") "true" }}
+
+{{ $username := $page.Site.Params.badgr_username }}
+{{ $imageDir := $page.Site.Params.badgr_image_dir | default "images/BadgrBadges" }}
+{{ $allBadges := slice }}
+
+{{ if $username }}
+  {{/* Badgr API endpoint - uses Open Badges format */}}
+  {{ $badgeUrl := printf "https://api.badgr.io/v2/users/%s/badge-assertions" $username }}
+  {{ $badgesData := false }}
+  
+  {{/* Try cached data first */}}
+  {{ $cachedJson := resources.Get "data/BadgrBadges.json" }}
+  {{ if $cachedJson }}
+    {{ with try ($cachedJson.Content | transform.Unmarshal) }}
+      {{ if not .Err }}
+        {{ $badgesData = .Value }}
+      {{ end }}
+    {{ end }}
+  {{ end }}
+  
+  {{/* Try API - Badgr uses bearer token authentication */}}
+  {{ $apiToken := $page.Site.Params.badgr_api_token }}
+  {{ if and $apiToken (not $badgesData) }}
+    {{ $headers := dict "Authorization" (printf "Bearer %s" $apiToken) "Accept" "application/json" }}
+    {{ with try (resources.GetRemote $badgeUrl (dict "headers" $headers)) }}
+      {{ if not .Err }}
+        {{ $cachePath := "data/BadgrBadges.json" }}
+        {{ $remoteResource := .Value }}
+        {{ with resources.FromString $cachePath $remoteResource.Content }}
+          {{ $copiedResource := . | resources.Copy $cachePath }}
+        {{ end }}
+        {{ with try ($remoteResource.Content | transform.Unmarshal) }}
+          {{ if not .Err }}
+            {{ $badgesData = .Value }}
+          {{ end }}
+        {{ end }}
+      {{ end }}
+    {{ end }}
+  {{ end }}
+  
+  {{/* Fallback to Site.Data */}}
+  {{ if not $badgesData }}
+    {{ $badgesData = $page.Site.Data.BadgrBadges }}
+  {{ end }}
+  
+  {{ if $badgesData }}
+    {{/* Badgr API returns results array */}}
+    {{ $badges := $badgesData.result | default $badgesData }}
+    
+    {{ if $badges }}
+      {{ range $badges }}
+        {{/* Badgr uses Open Badges format */}}
+        {{ $badgeId := .entityId | default .id | default (printf "badgr-%d" (now.Unix)) | string }}
+        {{ $badgeName := .badgeclass.name | default .name | default "Unnamed Badge" }}
+        {{ $badgeDescription := .badgeclass.description | default .description }}
+        {{ $badgeImageUrl := .image | default .badgeclass.image | default .badgeclass.imageUrl }}
+        {{ $issuedAt := .issuedOn | default .createdAt | default .issued_at }}
+        {{ $expiresAt := .expires | default .expiresAt }}
+        {{ $badgeUrl := .openBadgeId | default (printf "https://badgr.com/public/assertions/%s" $badgeId) }}
+        
+        {{ $isExpired := false }}
+        {{ if $expiresAt }}
+          {{ $expireTime := time $expiresAt }}
+          {{ if lt $expireTime now }}
+            {{ $isExpired = true }}
+          {{ end }}
+        {{ end }}
+        
+        {{ $includeBadge := true }}
+        {{ if $showExpiredOnly }}
+          {{ if not $isExpired }}
+            {{ $includeBadge = false }}
+          {{ end }}
+        {{ else if $hideExpired }}
+          {{ if $isExpired }}
+            {{ $includeBadge = false }}
+          {{ end }}
+        {{ end }}
+        
+        {{ if $includeBadge }}
+          {{ $normalizedBadge := dict 
+            "id" $badgeId
+            "name" $badgeName
+            "description" $badgeDescription
+            "imageUrl" $badgeImageUrl
+            "issuedAt" $issuedAt
+            "expiresAt" $expiresAt
+            "url" $badgeUrl
+            "imageDir" $imageDir
+            "isExpired" $isExpired
+            "source" "badgr"
+          }}
+          {{ $allBadges = $allBadges | append $normalizedBadge }}
+        {{ end }}
+      {{ end }}
+    {{ end }}
+  {{ end }}
+{{ end }}
+
+{{/* Return normalized badges for unified display */}}
+{{ return $allBadges }}
+

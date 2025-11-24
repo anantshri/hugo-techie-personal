@@ -1,0 +1,15 @@
+{{ $params := dict "page" $.Page }}
+{{ if .Get "size" }}
+  {{ $params = merge $params (dict "size" (.Get "size")) }}
+{{ end }}
+{{ if .Get "show_expired" }}
+  {{ $params = merge $params (dict "show_expired" (.Get "show_expired")) }}
+{{ end }}
+{{ if .Get "hide_expired" }}
+  {{ $params = merge $params (dict "hide_expired" (.Get "hide_expired")) }}
+{{ end }}
+{{ $params = merge $params (dict "show_credly" "false" "show_accredible" "false" "show_manual" "false" "show_openbadges" "false" "show_badgr" "false" "show_bugcrowd" "false" "show_hackerone" "false" "show_hackthebox" "true") }}
+
+{{/* Display HackTheBox badges only */}}
+{{ partial "badges.html" $params }}
+

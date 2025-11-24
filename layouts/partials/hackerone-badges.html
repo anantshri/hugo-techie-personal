@@ -1,0 +1,113 @@
+{{ $page := .page }}
+{{ $params := . }}
+{{ $size := $params.size | default "normal" }}
+{{ $showExpiredOnly := eq ($params.show_expired | default "false") "true" }}
+{{ $hideExpired := eq ($params.hide_expired | default "false") "true" }}
+
+{{ $username := $page.Site.Params.hackerone_username }}
+{{ $imageDir := $page.Site.Params.hackerone_image_dir | default "images/HackerOneBadges" }}
+{{ $allBadges := slice }}
+
+{{ if $username }}
+  {{/* HackerOne API endpoint */}}
+  {{ $badgeUrl := printf "https://hackerone.com/%s/badges.json" $username }}
+  {{ $badgesData := false }}
+  
+  {{/* Try cached data first */}}
+  {{ $cachedJson := resources.Get "data/HackerOneBadges.json" }}
+  {{ if $cachedJson }}
+    {{ with try ($cachedJson.Content | transform.Unmarshal) }}
+      {{ if not .Err }}
+        {{ $badgesData = .Value }}
+      {{ end }}
+    {{ end }}
+  {{ end }}
+  
+  {{/* Try API to get fresh data and update cache */}}
+  {{ with try (resources.GetRemote $badgeUrl) }}
+    {{ if not .Err }}
+      {{ $cachePath := "data/HackerOneBadges.json" }}
+      {{ $remoteResource := .Value }}
+      {{ with resources.FromString $cachePath $remoteResource.Content }}
+        {{ $copiedResource := . | resources.Copy $cachePath }}
+      {{ end }}
+      {{ with try ($remoteResource.Content | transform.Unmarshal) }}
+        {{ if not .Err }}
+          {{ $badgesData = .Value }}
+        {{ end }}
+      {{ end }}
+    {{ end }}
+  {{ end }}
+  
+  {{/* Fallback to Site.Data if available */}}
+  {{ if not $badgesData }}
+    {{ $badgesData = $page.Site.Data.HackerOneBadges }}
+  {{ end }}
+  
+  {{/* Process HackerOne badges */}}
+  {{ if $badgesData }}
+    {{/* HackerOne API returns items array */}}
+    {{ $badges := $badgesData.items | default $badgesData.badges | default $badgesData.data | default $badgesData }}
+    
+    {{ if $badges }}
+      {{ range $badges }}
+        {{ $badgeId := .id | default .badge_id | default (printf "hackerone-%s" (.name | urlize)) | string }}
+        {{ $badgeName := .name | default "Unnamed Badge" }}
+        {{ $badgeDescription := .description | default .badgeName }}
+        {{/* HackerOne image URLs are relative, need to prepend domain */}}
+        {{ $imageUrl := .image_url | default .imageUrl | default .image }}
+        {{ if and $imageUrl (not (findRE "^https?://" $imageUrl)) }}
+          {{ $imageUrl = printf "https://hackerone.com%s" $imageUrl }}
+        {{ end }}
+        {{ $badgeImageUrl := $imageUrl }}
+        {{ $issuedAt := .issued_at | default .issuedAt | default .awarded_at | default .awardedAt | default .date }}
+        {{ $expiresAt := .expires_at | default .expiresAt }}
+        {{/* Use the link from root response or construct profile URL */}}
+        {{ $badgeUrl := $badgesData.link | default .link | default .url | default (printf "https://hackerone.com/%s/badges" $username) }}
+        {{ if and $badgeUrl (not (findRE "^https?://" $badgeUrl)) }}
+          {{ $badgeUrl = printf "https://hackerone.com%s" $badgeUrl }}
+        {{ end }}
+        
+        {{ $isExpired := false }}
+        {{ if $expiresAt }}
+          {{ $expireTime := time $expiresAt }}
+          {{ if lt $expireTime now }}
+            {{ $isExpired = true }}
+          {{ end }}
+        {{ end }}
+        
+        {{ $includeBadge := true }}
+        {{ if $showExpiredOnly }}
+          {{ if not $isExpired }}
+            {{ $includeBadge = false }}
+          {{ end }}
+        {{ else if $hideExpired }}
+          {{ if $isExpired }}
+            {{ $includeBadge = false }}
+          {{ end }}
+        {{ end }}
+        
+        {{ if $includeBadge }}
+          {{ $normalizedBadge := dict 
+            "id" $badgeId
+            "name" $badgeName
+            "description" $badgeDescription
+            "imageUrl" $badgeImageUrl
+            "issuedAt" $issuedAt
+            "expiresAt" $expiresAt
+            "url" $badgeUrl
+            "imageDir" $imageDir
+            "isExpired" $isExpired
+            "source" "hackerone"
+            "publisher" "HackerOne"
+          }}
+          {{ $allBadges = $allBadges | append $normalizedBadge }}
+        {{ end }}
+      {{ end }}
+    {{ end }}
+  {{ end }}
+{{ end }}
+
+{{/* Return normalized badges for unified display */}}
+{{ return $allBadges }}
+

@@ -1,0 +1,114 @@
+{{ $page := .page }}
+{{ $params := . }}
+{{ $size := $params.size | default "normal" }}
+{{ $showExpiredOnly := eq ($params.show_expired | default "false") "true" }}
+{{ $hideExpired := eq ($params.hide_expired | default "false") "true" }}
+
+{{ $userId := $page.Site.Params.hackthebox_user_id }}
+{{ $allBadges := slice }}
+
+{{ if $userId }}
+  {{/* HackTheBox API endpoint */}}
+  {{ $badgeUrl := printf "https://labs.hackthebox.com/api/v4/profile/badges/%s" $userId }}
+  {{ $badgesData := false }}
+  
+  {{/* Try cached data first */}}
+  {{ $cachedJson := resources.Get "data/HackTheBoxBadges.json" }}
+  {{ if $cachedJson }}
+    {{ with try ($cachedJson.Content | transform.Unmarshal) }}
+      {{ if not .Err }}
+        {{ $badgesData = .Value }}
+      {{ end }}
+    {{ end }}
+  {{ end }}
+  
+  {{/* Try API to get fresh data and update cache */}}
+  {{ with try (resources.GetRemote $badgeUrl) }}
+    {{ if not .Err }}
+      {{ $cachePath := "data/HackTheBoxBadges.json" }}
+      {{ $remoteResource := .Value }}
+      {{ with resources.FromString $cachePath $remoteResource.Content }}
+        {{ $copiedResource := . | resources.Copy $cachePath }}
+      {{ end }}
+      {{ with try ($remoteResource.Content | transform.Unmarshal) }}
+        {{ if not .Err }}
+          {{ $badgesData = .Value }}
+        {{ end }}
+      {{ end }}
+    {{ end }}
+  {{ end }}
+  
+  {{/* Fallback to Site.Data if available */}}
+  {{ if not $badgesData }}
+    {{ $badgesData = $page.Site.Data.HackTheBoxBadges }}
+  {{ end }}
+  
+  {{/* Process HackTheBox badges - only show the latest badge (highest ID) */}}
+  {{ if $badgesData }}
+    {{ $badges := $badgesData.badges | default $badgesData.data | default $badgesData }}
+    
+    {{ if $badges }}
+      {{/* Find the latest badge (highest ID, which represents highest rank) */}}
+      {{ $latestBadge := false }}
+      {{ $highestId := 0 }}
+      {{ range $badges }}
+        {{ $badgeId := .id | default 0 }}
+        {{ if gt $badgeId $highestId }}
+          {{ $highestId = $badgeId }}
+          {{ $latestBadge = . }}
+        {{ end }}
+      {{ end }}
+      
+      {{ if $latestBadge }}
+        {{ $badgeId := $latestBadge.id | default (printf "hackthebox-%d" (now.Unix)) | string }}
+        {{ $badgeName := $latestBadge.name | default "Unnamed Badge" }}
+        {{ $badgeDescription := $latestBadge.description | default "" }}
+        {{ $badgeIcon := $latestBadge.icon | default "fa-solid fa-certificate" }}
+        {{ $issuedAt := $latestBadge.pivot.created_at | default $latestBadge.created_at | default $latestBadge.date }}
+        {{ $expiresAt := "" }}
+        {{ $badgeUrl := printf "https://app.hackthebox.com/users/%s" $userId }}
+        
+        {{ $isExpired := false }}
+        {{ if $expiresAt }}
+          {{ $expireTime := time $expiresAt }}
+          {{ if lt $expireTime now }}
+            {{ $isExpired = true }}
+          {{ end }}
+        {{ end }}
+        
+        {{ $includeBadge := true }}
+        {{ if $showExpiredOnly }}
+          {{ if not $isExpired }}
+            {{ $includeBadge = false }}
+          {{ end }}
+        {{ else if $hideExpired }}
+          {{ if $isExpired }}
+            {{ $includeBadge = false }}
+          {{ end }}
+        {{ end }}
+        
+        {{ if $includeBadge }}
+          {{ $normalizedBadge := dict 
+            "id" $badgeId
+            "name" $badgeName
+            "description" $badgeDescription
+            "imageUrl" ""
+            "icon" $badgeIcon
+            "issuedAt" $issuedAt
+            "expiresAt" $expiresAt
+            "url" $badgeUrl
+            "imageDir" ""
+            "isExpired" $isExpired
+            "source" "hackthebox"
+            "publisher" "HackTheBox"
+          }}
+          {{ $allBadges = $allBadges | append $normalizedBadge }}
+        {{ end }}
+      {{ end }}
+    {{ end }}
+  {{ end }}
+{{ end }}
+
+{{/* Return normalized badges for unified display */}}
+{{ return $allBadges }}
+

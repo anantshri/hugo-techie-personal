@@ -57,6 +57,19 @@ enableRobotsTXT = true
   # Accredible badge integration (for demonstration)
   accredible_username = "anantshrivastava"
   accredible_image_dir = "images/AccredibleBadges"
+  
+  # Badgr badge integration (optional)
+  badgr_username = ""
+  badgr_api_token = ""
+  badgr_image_dir = "images/BadgrBadges"
+  
+  # Bugcrowd badge integration (optional)
+  bugcrowd_username = ""
+  bugcrowd_image_dir = "images/BugcrowdBadges"
+  
+  # HackerOne badge integration (optional)
+  hackerone_username = ""
+  hackerone_image_dir = "images/HackerOneBadges"
 
   # Analytics configuration (Plausible example)
   [params.analytics]

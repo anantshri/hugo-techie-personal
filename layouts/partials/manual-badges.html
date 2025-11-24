@@ -1,0 +1,57 @@
+{{ $page := .page }}
+{{ $params := . }}
+{{ $size := $params.size | default "normal" }}
+{{ $showExpiredOnly := eq ($params.show_expired | default "false") "true" }}
+{{ $hideExpired := eq ($params.hide_expired | default "false") "true" }}
+
+{{/* Fetch manual badges from Site.Data */}}
+{{ $badgesData := $page.Site.Data.ManualBadges }}
+{{ $allBadges := slice }}
+
+{{ if $badgesData }}
+  {{ $badges := $badgesData.badges | default $badgesData }}
+  
+  {{ if $badges }}
+    {{ range $badges }}
+      {{ $expiresAt := .expires_at | default .expiresAt | default .expired_at }}
+      {{ $isExpired := false }}
+      {{ if $expiresAt }}
+        {{ $expireTime := time $expiresAt }}
+        {{ if lt $expireTime now }}
+          {{ $isExpired = true }}
+        {{ end }}
+      {{ end }}
+      
+      {{ $includeBadge := true }}
+      {{ if $showExpiredOnly }}
+        {{ if not $isExpired }}
+          {{ $includeBadge = false }}
+        {{ end }}
+      {{ else if $hideExpired }}
+        {{ if $isExpired }}
+          {{ $includeBadge = false }}
+        {{ end }}
+      {{ end }}
+      
+      {{ if $includeBadge }}
+        {{ $normalizedBadge := dict 
+          "id" (.id | default (printf "manual-%d" (now.Unix)) | string)
+          "name" (.name | default .title | default "Unnamed Badge")
+          "description" (.description | default .desc)
+          "imageUrl" (.image_url | default .imageUrl | default .image)
+          "issuedAt" (.issued_at | default .issuedAt | default .date | default .issued_date)
+          "expiresAt" $expiresAt
+          "url" (.url | default .link | default "#")
+          "imageDir" "images/ManualBadges"
+          "isExpired" $isExpired
+          "source" "manual"
+        }}
+        {{ $allBadges = $allBadges | append $normalizedBadge }}
+      {{ end }}
+    {{ end }}
+  {{ end }}
+{{ end }}
+
+{{/* Return normalized badges for unified display */}}
+{{ return $allBadges }}
+

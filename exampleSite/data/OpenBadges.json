@@ -1,0 +1,19 @@
+{
+  "badges": [
+    {
+      "@context": "https://w3id.org/openbadges/v2",
+      "type": "Assertion",
+      "id": "https://example.com/badges/openbadge-1",
+      "badge": {
+        "id": "https://example.com/badges/badge-class-1",
+        "type": "BadgeClass",
+        "name": "Open Badges Example",
+        "description": "This is an example Open Badge in JSON-LD format",
+        "image": "https://via.placeholder.com/400x400/9B59B6/FFFFFF?text=Open+Badge"
+      },
+      "issuedOn": "2024-02-10T00:00:00Z",
+      "url": "https://example.com/badges/openbadge-1"
+    }
+  ]
+}
+
