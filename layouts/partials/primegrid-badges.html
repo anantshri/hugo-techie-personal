@@ -1,0 +1,227 @@
+{{/* PrimeGrid Badges - Scraped from profile page */}}
+{{ $page := .page }}
+{{ $params := . }}
+{{ $size := $params.size | default "normal" }}
+{{ $isSmall := eq $size "small" }}
+
+{{ $userId := $page.Site.Params.primegrid_userid }}
+{{ $imageDir := $page.Site.Params.primegrid_image_dir | default "images/PrimeGridBadges" }}
+{{ $primegridBadges := slice }}
+{{ $totalCredit := 0.0 }}
+
+{{ if $userId }}
+  {{ $badgesUrl := printf "https://www.primegrid.com/show_badges.php?userid=%s" $userId }}
+  {{ $profileUrl := printf "https://www.primegrid.com/show_user.php?userid=%s" $userId }}
+  {{ $htmlContent := "" }}
+  {{ $profileHtmlContent := "" }}
+  
+  {{/* Try cached HTML first */}}
+  {{ $cachedHtml := resources.Get "data/PrimeGridBadges.html" }}
+  {{ if $cachedHtml }}
+    {{ $htmlContent = $cachedHtml.Content }}
+  {{ end }}
+  
+  {{ $cachedProfileHtml := resources.Get "data/PrimeGridProfile.html" }}
+  {{ if $cachedProfileHtml }}
+    {{ $profileHtmlContent = $cachedProfileHtml.Content }}
+  {{ end }}
+  
+  {{/* Try to fetch fresh badges page */}}
+  {{ with try (resources.GetRemote $badgesUrl) }}
+    {{ if not .Err }}
+      {{ $remoteResource := .Value }}
+      {{ $htmlContent = $remoteResource.Content }}
+      {{/* Cache the HTML */}}
+      {{ $cachePath := "data/PrimeGridBadges.html" }}
+      {{ with resources.FromString $cachePath $htmlContent }}
+        {{ $copiedResource := . | resources.Copy $cachePath }}
+      {{ end }}
+    {{ end }}
+  {{ end }}
+  
+  {{/* Try to fetch fresh profile page for total credit */}}
+  {{ with try (resources.GetRemote $profileUrl) }}
+    {{ if not .Err }}
+      {{ $remoteResource := .Value }}
+      {{ $profileHtmlContent = $remoteResource.Content }}
+      {{/* Cache the HTML */}}
+      {{ $cachePath := "data/PrimeGridProfile.html" }}
+      {{ with resources.FromString $cachePath $profileHtmlContent }}
+        {{ $copiedResource := . | resources.Copy $cachePath }}
+      {{ end }}
+    {{ end }}
+  {{ end }}
+  
+  {{/* Extract total credit from profile page */}}
+  {{/* Look for pattern like "Total credit: 123,456" or similar */}}
+  {{ if $profileHtmlContent }}
+    {{/* Pattern: Total credit</td><td>NUMBER</td> or Total credit: NUMBER */}}
+    {{ $creditMatches := findRE `Total credit[^0-9]*([0-9,]+(?:\.[0-9]+)?)` $profileHtmlContent }}
+    {{ if $creditMatches }}
+      {{ $creditMatch := index $creditMatches 0 }}
+      {{/* Extract just the number */}}
+      {{ $numberMatches := findRE `[0-9,]+(?:\.[0-9]+)?` $creditMatch }}
+      {{ if $numberMatches }}
+        {{ $creditStr := index $numberMatches 0 }}
+        {{/* Remove commas and convert to float */}}
+        {{ $creditStr = replace $creditStr "," "" }}
+        {{ $totalCredit = float $creditStr }}
+      {{ end }}
+    {{ end }}
+  {{ end }}
+  
+  {{ if $htmlContent }}
+    {{/* Extract earned badge images (not the white/unearned ones) */}}
+    {{/* Pattern: <img src="/img/badges/BADGE_NAME.png" title="BADGE_TITLE"> */}}
+    {{/* Earned badges have colored names (bronze, silver, gold, etc.), unearned have "_white" suffix */}}
+    
+    {{/* Find all badge img tags */}}
+    {{ $badgeMatches := findRE `<img[^>]*src="/img/badges/([^"]+)"[^>]*title="([^"]+)"[^>]*>` $htmlContent }}
+    
+    {{ range $badgeMatches }}
+      {{/* Extract src and title from the match */}}
+      {{ $srcMatch := findRE `src="/img/badges/([^"]+)"` . }}
+      {{ $titleMatch := findRE `title="([^"]+)"` . }}
+      
+      {{ if and $srcMatch $titleMatch }}
+        {{ $srcFull := index $srcMatch 0 }}
+        {{ $titleFull := index $titleMatch 0 }}
+        
+        {{/* Extract the badge filename */}}
+        {{ $badgeFile := replaceRE `src="/img/badges/` "" $srcFull }}
+        {{ $badgeFile = replaceRE `"` "" $badgeFile }}
+        
+        {{/* Extract the title text */}}
+        {{ $badgeTitle := replaceRE `title="` "" $titleFull }}
+        {{ $badgeTitle = replaceRE `"` "" $badgeTitle }}
+        
+        {{/* Skip unearned badges (white variants) and "credits for" descriptions */}}
+        {{ $isUnearned := or (findRE `_white\.png$` $badgeFile) (findRE `credits for` $badgeTitle) }}
+        
+        {{ if not $isUnearned }}
+          {{ $badgeId := replaceRE `\.(png|jpg|gif)$` "" $badgeFile }}
+          {{ $badgeImageUrl := printf "https://www.primegrid.com/img/badges/%s" $badgeFile }}
+          
+          {{/* Extract badge name and level from title */}}
+          {{/* Format: "Project Name Level: More than X credits (Y)" */}}
+          {{ $badgeName := $badgeTitle }}
+          {{ if findRE `:` $badgeTitle }}
+            {{ $parts := split $badgeTitle ":" }}
+            {{ $badgeName = index $parts 0 }}
+          {{ end }}
+          
+          {{ $badge := dict
+            "id" $badgeId
+            "name" $badgeName
+            "title" $badgeTitle
+            "imageUrl" $badgeImageUrl
+            "imageDir" $imageDir
+          }}
+          {{ $primegridBadges = $primegridBadges | append $badge }}
+        {{ end }}
+      {{ end }}
+    {{ end }}
+  {{ end }}
+{{ end }}
+
+{{/* Render PrimeGrid badges if any found */}}
+{{ if $primegridBadges }}
+  <div class="boinc-project-card primegrid-card">
+    <div class="boinc-project-header">
+      <h3 class="boinc-project-name">
+        <a href="https://www.primegrid.com/show_user.php?userid={{ $userId }}" target="_blank" rel="noopener noreferrer" title="View profile on PrimeGrid">
+          PrimeGrid
+        </a>
+      </h3>
+      {{ if gt $totalCredit 0 }}
+        <span class="boinc-project-credit">
+          {{ if ge $totalCredit 1000000 }}
+            {{ printf "%.2fM" (div $totalCredit 1000000.0) }} credits
+          {{ else if ge $totalCredit 1000 }}
+            {{ printf "%.1fK" (div $totalCredit 1000.0) }} credits
+          {{ else }}
+            {{ printf "%.0f" $totalCredit }} credits
+          {{ end }}
+        </span>
+      {{ else }}
+        <span class="boinc-project-credit primegrid-note">
+          {{ len $primegridBadges }} badge{{ if gt (len $primegridBadges) 1 }}s{{ end }}
+        </span>
+      {{ end }}
+    </div>
+    
+    <div class="boinc-badges-grid">
+      {{ range $primegridBadges }}
+        {{ $badgeId := .id }}
+        {{ $badgeName := .name }}
+        {{ $badgeTitle := .title }}
+        {{ $badgeImageUrl := .imageUrl }}
+        {{ $imageDir := .imageDir }}
+        
+        {{/* Try to get/cache badge image */}}
+        {{ $badgeImage := "" }}
+        
+        {{/* Check for local badge image first */}}
+        {{ $localImageExtensions := slice "png" "jpg" "jpeg" "gif" "webp" "svg" }}
+        {{ range $localImageExtensions }}
+          {{ $localImagePath := printf "%s/%s.%s" $imageDir $badgeId . }}
+          {{ $localImage := resources.Get $localImagePath }}
+          {{ if $localImage }}
+            {{ $badgeImage = $localImage }}
+            {{ break }}
+          {{ end }}
+        {{ end }}
+        
+        {{/* If no local image and we have URL, try to download */}}
+        {{ if and (not $badgeImage) $badgeImageUrl }}
+          {{ $imageExt := "png" }}
+          {{ if findRE `\.(jpg|jpeg|png|gif|webp|svg)` $badgeImageUrl }}
+            {{ $urlParts := split $badgeImageUrl "." }}
+            {{ $imageExt = index $urlParts (sub (len $urlParts) 1) }}
+          {{ end }}
+          
+          {{ $assetPath := printf "%s/%s.%s" $imageDir $badgeId $imageExt }}
+          {{ $existingImage := resources.Get $assetPath }}
+          
+          {{ if $existingImage }}
+            {{ $badgeImage = $existingImage }}
+          {{ else }}
+            {{ with try (resources.GetRemote $badgeImageUrl) }}
+              {{ with .Err }}
+                {{ warnf "Error downloading PrimeGrid badge image %s: %s" $badgeImageUrl . }}
+              {{ else }}
+                {{ $remoteImage := .Value }}
+                {{ $copiedImage := $remoteImage | resources.Copy $assetPath }}
+                {{ if $copiedImage }}
+                  {{ $badgeImage = $copiedImage }}
+                {{ else }}
+                  {{ $badgeImage = $remoteImage }}
+                {{ end }}
+              {{ end }}
+            {{ end }}
+          {{ end }}
+        {{ end }}
+        
+        <div class="boinc-badge" title="{{ $badgeTitle }}">
+          {{ if $badgeImage }}
+            <img src="{{ $badgeImage.RelPermalink }}" 
+                 alt="{{ $badgeTitle }}" 
+                 class="boinc-badge-image"
+                 loading="lazy" />
+          {{ else if $badgeImageUrl }}
+            {{/* Fallback to direct URL */}}
+            <img src="{{ $badgeImageUrl }}" 
+                 alt="{{ $badgeTitle }}" 
+                 class="boinc-badge-image"
+                 loading="lazy" />
+          {{ else }}
+            <div class="boinc-badge-placeholder">{{ $badgeName }}</div>
+          {{ end }}
+          {{ if not $isSmall }}
+            <span class="boinc-badge-title">{{ $badgeName }}</span>
+          {{ end }}
+        </div>
+      {{ end }}
+    </div>
+  </div>
+{{ end }}

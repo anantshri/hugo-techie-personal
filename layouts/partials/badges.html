@@ -151,7 +151,19 @@
     {{ end }}
     
     {{ if $badgesData }}
-      {{ $badges := $badgesData.data.credentials | default $badgesData.data | default $badgesData.credentials | default $badgesData }}
+      {{/* Handle different Accredible data formats - could be array or object with nested data */}}
+      {{ $badges := $badgesData }}
+      {{ if reflect.IsMap $badgesData }}
+        {{ if $badgesData.data }}
+          {{ if reflect.IsMap $badgesData.data }}
+            {{ $badges = $badgesData.data.credentials | default $badgesData.data }}
+          {{ else }}
+            {{ $badges = $badgesData.data }}
+          {{ end }}
+        {{ else if $badgesData.credentials }}
+          {{ $badges = $badgesData.credentials }}
+        {{ end }}
+      {{ end }}
       {{ if $badges }}
         {{ range $badges }}
           {{ $expiresAt := .expires_at | default .expired_on | default .expires_on | default .ExpiresAt }}
@@ -432,5 +444,11 @@
       </div>
     {{ end }}
   </div>
+{{ end }}
+
+{{/* Fetch and display BOINC badges (grouped by project) */}}
+{{ $showBoinc := ne ($params.show_boinc | default "true") "false" }}
+{{ if $showBoinc }}
+  {{ partial "boinc-badges.html" $params }}
 {{ end }}
 

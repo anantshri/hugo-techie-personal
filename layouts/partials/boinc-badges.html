@@ -1,0 +1,316 @@
+{{ $page := .page }}
+{{ $params := . }}
+{{ $size := $params.size | default "normal" }}
+{{ $isSmall := eq $size "small" }}
+{{ $isBig := eq $size "big" }}
+{{ $isNormal := or (eq $size "normal") (and (ne $size "small") (ne $size "big")) }}
+
+{{ $cpid := $page.Site.Params.boinc_cpid }}
+{{ $imageDir := $page.Site.Params.boinc_image_dir | default "images/BoincBadges" }}
+{{ $boincProjects := slice }}
+
+{{/* Fetch and cache BOINC projects data (for project URLs) */}}
+{{ $projectsApiUrl := "https://boincstats.apps.anantshri.info/api/projects" }}
+{{ $projectsData := false }}
+
+{{ $cachedProjectsJson := resources.Get "data/BoincProjects.json" }}
+{{ if $cachedProjectsJson }}
+  {{ with try ($cachedProjectsJson.Content | transform.Unmarshal) }}
+    {{ if not .Err }}
+      {{ $projectsData = .Value }}
+    {{ end }}
+  {{ end }}
+{{ end }}
+
+{{ with try (resources.GetRemote $projectsApiUrl) }}
+  {{ if not .Err }}
+    {{ $cachePath := "data/BoincProjects.json" }}
+    {{ $remoteResource := .Value }}
+    {{ with resources.FromString $cachePath $remoteResource.Content }}
+      {{ $copiedResource := . | resources.Copy $cachePath }}
+    {{ end }}
+    {{ with try ($remoteResource.Content | transform.Unmarshal) }}
+      {{ if not .Err }}
+        {{ $projectsData = .Value }}
+      {{ end }}
+    {{ end }}
+  {{ end }}
+{{ end }}
+
+{{ if not $projectsData }}
+  {{ $projectsData = $page.Site.Data.BoincProjects }}
+{{ end }}
+
+{{/* Create a map of project URLs for quick lookup */}}
+{{ $projectUrlMap := dict }}
+{{ if $projectsData }}
+  {{ range $projectsData.projects }}
+    {{ $projectUrlMap = merge $projectUrlMap (dict .id .url) }}
+  {{ end }}
+{{ end }}
+
+{{ if $cpid }}
+  {{ $apiUrl := printf "https://boincstats.apps.anantshri.info/api/cpid/%s" $cpid }}
+  {{ $userData := false }}
+  
+  {{/* Try cached data first */}}
+  {{ $cachedJson := resources.Get "data/BoincStats.json" }}
+  {{ if $cachedJson }}
+    {{ with try ($cachedJson.Content | transform.Unmarshal) }}
+      {{ if not .Err }}
+        {{ $userData = .Value }}
+      {{ end }}
+    {{ end }}
+  {{ end }}
+  
+  {{/* Try API to get fresh data */}}
+  {{ with try (resources.GetRemote $apiUrl) }}
+    {{ if not .Err }}
+      {{ $cachePath := "data/BoincStats.json" }}
+      {{ $remoteResource := .Value }}
+      {{ with resources.FromString $cachePath $remoteResource.Content }}
+        {{ $copiedResource := . | resources.Copy $cachePath }}
+      {{ end }}
+      {{ with try ($remoteResource.Content | transform.Unmarshal) }}
+        {{ if not .Err }}
+          {{ $userData = .Value }}
+        {{ end }}
+      {{ end }}
+    {{ end }}
+  {{ end }}
+  
+  {{/* Fallback to Site.Data */}}
+  {{ if not $userData }}
+    {{ $userData = $page.Site.Data.BoincStats }}
+  {{ end }}
+  
+  {{ if $userData }}
+    {{ $badges := $userData.badges | default slice }}
+    {{ $projects := $userData.projects | default slice }}
+    {{ $primaryUsername := $userData.primary_username | default "" }}
+    
+    {{/* Create a map of project info for quick lookup */}}
+    {{ $projectInfoMap := dict }}
+    {{ range $projects }}
+      {{ $projectInfoMap = merge $projectInfoMap (dict .project_id .) }}
+    {{ end }}
+    
+    {{/* Group badges by project_id */}}
+    {{ $badgesByProject := dict }}
+    {{ range $badges }}
+      {{ $projectId := .project_id }}
+      {{ $existingBadges := index $badgesByProject $projectId | default slice }}
+      {{ $existingBadges = $existingBadges | append . }}
+      {{ $badgesByProject = merge $badgesByProject (dict $projectId $existingBadges) }}
+    {{ end }}
+    
+    {{/* Build project data with badges */}}
+    {{ range $projectId, $projectBadges := $badgesByProject }}
+      {{ $projectInfo := index $projectInfoMap $projectId }}
+      {{ $projectName := "" }}
+      {{ $projectUrl := "" }}
+      {{ $userId := "" }}
+      {{ $totalCredit := 0.0 }}
+      {{ $username := $primaryUsername }}
+      
+      {{/* Get project info from the projects array if available */}}
+      {{ if $projectInfo }}
+        {{ $projectName = $projectInfo.project_name }}
+        {{ $userId = $projectInfo.user_id | string }}
+        {{ $totalCredit = $projectInfo.total_credit | default 0 }}
+        {{ $username = $projectInfo.username | default $primaryUsername }}
+      {{ else }}
+        {{/* Fallback to badge data for project name */}}
+        {{ $firstBadge := index $projectBadges 0 }}
+        {{ $projectName = $firstBadge.project_name | default $projectId }}
+        {{ $userId = $firstBadge.user_id | string }}
+      {{ end }}
+      
+      {{/* Get project URL from the pre-fetched project URL map */}}
+      {{ $projectUrl = index $projectUrlMap $projectId }}
+      
+      {{/* Construct user profile URL */}}
+      {{ $userProfileUrl := "" }}
+      {{ if and $projectUrl $userId }}
+        {{/* Remove trailing slash from project URL if present */}}
+        {{ $baseUrl := strings.TrimSuffix "/" $projectUrl }}
+        {{ $userProfileUrl = printf "%s/show_user.php?userid=%s" $baseUrl $userId }}
+      {{ end }}
+      
+      {{/* Sort badges by create_time (most recent first) */}}
+      {{ $sortedBadges := sort $projectBadges "create_time" "desc" }}
+      
+      {{ $projectData := dict 
+        "projectId" $projectId
+        "projectName" $projectName
+        "projectUrl" $projectUrl
+        "userProfileUrl" $userProfileUrl
+        "userId" $userId
+        "username" $username
+        "totalCredit" $totalCredit
+        "badgeCount" (len $sortedBadges)
+        "badges" $sortedBadges
+        "imageDir" $imageDir
+      }}
+      {{ $boincProjects = $boincProjects | append $projectData }}
+    {{ end }}
+    
+    {{/* Sort projects by number of badges (fewest badges first) for better visual alignment */}}
+    {{ $boincProjects = sort $boincProjects "badgeCount" "asc" }}
+  {{ end }}
+{{ end }}
+
+{{/* Render BOINC badges grouped by project */}}
+{{ if $boincProjects }}
+  <div class="boinc-badges-section">
+    <h2 class="boinc-section-title">BOINC Project Badges</h2>
+    <p class="boinc-section-description">Distributed computing contributions across various scientific research projects. Statistics aggregated via <a href="https://boincstats.apps.anantshri.info/" target="_blank" rel="noopener noreferrer">BOINC Stats</a>.</p>
+    
+    <div class="boinc-projects{{ if $isSmall }} boinc-projects-small{{ else if $isBig }} boinc-projects-big{{ end }}">
+      {{ range $boincProjects }}
+        {{ $projectId := .projectId }}
+        {{ $projectName := .projectName }}
+        {{ $projectUrl := .projectUrl }}
+        {{ $userProfileUrl := .userProfileUrl }}
+        {{ $totalCredit := .totalCredit }}
+        {{ $badges := .badges }}
+        {{ $imageDir := .imageDir }}
+        
+        <div class="boinc-project-card">
+          <div class="boinc-project-header">
+            <h3 class="boinc-project-name">
+              {{ if $userProfileUrl }}
+                <a href="{{ $userProfileUrl }}" target="_blank" rel="noopener noreferrer" title="View profile on {{ $projectName }}">
+                  {{ $projectName }}
+                </a>
+              {{ else if $projectUrl }}
+                <a href="{{ $projectUrl }}" target="_blank" rel="noopener noreferrer" title="Visit {{ $projectName }}">
+                  {{ $projectName }}
+                </a>
+              {{ else }}
+                {{ $projectName }}
+              {{ end }}
+            </h3>
+            {{ if gt $totalCredit 0 }}
+              <span class="boinc-project-credit">
+                {{ if ge $totalCredit 1000000 }}
+                  {{ printf "%.2fM" (div $totalCredit 1000000.0) }} credits
+                {{ else if ge $totalCredit 1000 }}
+                  {{ printf "%.1fK" (div $totalCredit 1000.0) }} credits
+                {{ else }}
+                  {{ printf "%.0f" $totalCredit }} credits
+                {{ end }}
+              </span>
+            {{ end }}
+          </div>
+          
+          <div class="boinc-badges-grid">
+            {{ range $badges }}
+              {{/* Convert badge_id to int to handle float64 from JSON */}}
+              {{ $badgeIdNum := .badge_id | int }}
+              {{ $badgeId := printf "%s-%d" $projectId $badgeIdNum }}
+              {{ $badgeName := .badge_name | default "Badge" }}
+              {{ $badgeTitle := .badge_title | default $badgeName }}
+              {{ $badgeImageUrl := .badge_image_url | default "" }}
+              {{ $createTime := .create_time | default "" }}
+              
+              {{/* Try to get/cache badge image */}}
+              {{ $badgeImage := "" }}
+              
+              {{/* Check for local badge image first */}}
+              {{ $localImageExtensions := slice "png" "jpg" "jpeg" "gif" "webp" "svg" }}
+              {{ range $localImageExtensions }}
+                {{ $localImagePath := printf "%s/%s.%s" $imageDir $badgeId . }}
+                {{ $localImage := resources.Get $localImagePath }}
+                {{ if $localImage }}
+                  {{ $badgeImage = $localImage }}
+                  {{ break }}
+                {{ end }}
+              {{ end }}
+              
+              {{/* If no local image and we have URL, try to download */}}
+              {{ if and (not $badgeImage) $badgeImageUrl }}
+                {{ $imageExt := "png" }}
+                {{ if findRE "\\.(jpg|jpeg|png|gif|webp|svg)" $badgeImageUrl }}
+                  {{ $urlParts := split $badgeImageUrl "." }}
+                  {{ $imageExt = index $urlParts (sub (len $urlParts) 1) }}
+                {{ end }}
+                
+                {{ $assetPath := printf "%s/%s.%s" $imageDir $badgeId $imageExt }}
+                {{ $existingImage := resources.Get $assetPath }}
+                
+                {{ if $existingImage }}
+                  {{ $badgeImage = $existingImage }}
+                {{ else }}
+                  {{ with try (resources.GetRemote $badgeImageUrl) }}
+                    {{ with .Err }}
+                      {{ warnf "Error downloading BOINC badge image %s: %s" $badgeImageUrl . }}
+                    {{ else }}
+                      {{ $remoteImage := .Value }}
+                      {{ $copiedImage := $remoteImage | resources.Copy $assetPath }}
+                      {{ if $copiedImage }}
+                        {{ $badgeImage = $copiedImage }}
+                      {{ else }}
+                        {{ $badgeImage = $remoteImage }}
+                      {{ end }}
+                    {{ end }}
+                  {{ end }}
+                {{ end }}
+              {{ end }}
+              
+              <div class="boinc-badge" title="{{ $badgeTitle }}">
+                {{ if $badgeImage }}
+                  {{ $isSvg := eq $badgeImage.MediaType.SubType "svg" }}
+                  {{ if $isSvg }}
+                    <img src="{{ $badgeImage.RelPermalink }}" 
+                         alt="{{ $badgeTitle }}" 
+                         class="boinc-badge-image boinc-badge-svg"
+                         loading="lazy" />
+                  {{ else }}
+                    {{/* Don't resize - keep original size to avoid stretching small images */}}
+                    <img src="{{ $badgeImage.RelPermalink }}" 
+                         alt="{{ $badgeTitle }}" 
+                         class="boinc-badge-image"
+                         loading="lazy" />
+                  {{ end }}
+                {{ else if $badgeImageUrl }}
+                  {{/* Fallback to direct URL if download failed */}}
+                  <img src="{{ $badgeImageUrl }}" 
+                       alt="{{ $badgeTitle }}" 
+                       class="boinc-badge-image"
+                       loading="lazy" />
+                {{ else }}
+                  <div class="boinc-badge-placeholder">{{ $badgeName }}</div>
+                {{ end }}
+                {{ if not $isSmall }}
+                  <span class="boinc-badge-title">{{ $badgeTitle }}</span>
+                {{ end }}
+              </div>
+            {{ end }}
+          </div>
+        </div>
+      {{ end }}
+      
+      {{/* Include PrimeGrid badges (scraped from profile page) */}}
+      {{ partial "primegrid-badges.html" $params }}
+      
+      {{/* Include World Community Grid badges (scraped from profile page) */}}
+      {{ partial "wcg-badges.html" $params }}
+    </div>
+  </div>
+{{ else }}
+  {{/* If no BOINC stats projects but PrimeGrid or WCG is configured, still show the section */}}
+  {{ $primegridUserId := $page.Site.Params.primegrid_userid }}
+  {{ $wcgUsername := $page.Site.Params.wcg_username }}
+  {{ if or $primegridUserId $wcgUsername }}
+    <div class="boinc-badges-section">
+      <h2 class="boinc-section-title">BOINC Project Badges</h2>
+      <p class="boinc-section-description">Distributed computing contributions across various scientific research projects. Statistics aggregated via <a href="https://boincstats.apps.anantshri.info/" target="_blank" rel="noopener noreferrer">BOINC Stats</a>.</p>
+      
+      <div class="boinc-projects{{ if $isSmall }} boinc-projects-small{{ else if $isBig }} boinc-projects-big{{ end }}">
+        {{ partial "primegrid-badges.html" $params }}
+        {{ partial "wcg-badges.html" $params }}
+      </div>
+    </div>
+  {{ end }}
+{{ end }}

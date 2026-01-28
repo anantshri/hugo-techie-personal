@@ -35,6 +35,9 @@
 {{ if .Get "show_hall_of_fame" }}
   {{ $params = merge $params (dict "show_hall_of_fame" (.Get "show_hall_of_fame")) }}
 {{ end }}
+{{ if .Get "show_boinc" }}
+  {{ $params = merge $params (dict "show_boinc" (.Get "show_boinc")) }}
+{{ end }}
 
 {{/* Display unified badges in a single grid container */}}
 {{ partial "badges.html" $params }}

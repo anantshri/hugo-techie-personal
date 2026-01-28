@@ -1,0 +1,214 @@
+{{/* World Community Grid Badges - Scraped from profile page */}}
+{{ $page := .page }}
+{{ $params := . }}
+{{ $size := $params.size | default "normal" }}
+{{ $isSmall := eq $size "small" }}
+
+{{ $username := $page.Site.Params.wcg_username }}
+{{ $imageDir := $page.Site.Params.wcg_image_dir | default "images/WCGBadges" }}
+{{ $wcgBadges := slice }}
+{{ $totalPoints := 0.0 }}
+
+{{ if $username }}
+  {{ $profileUrl := printf "https://www.worldcommunitygrid.org/stat/viewMemberInfo.do?userName=%s" $username }}
+  {{ $htmlContent := "" }}
+  
+  {{/* Try cached HTML first */}}
+  {{ $cachedHtml := resources.Get "data/WCGProfile.html" }}
+  {{ if $cachedHtml }}
+    {{ $htmlContent = $cachedHtml.Content }}
+  {{ end }}
+  
+  {{/* Try to fetch fresh profile page */}}
+  {{ with try (resources.GetRemote $profileUrl) }}
+    {{ if not .Err }}
+      {{ $remoteResource := .Value }}
+      {{ $htmlContent = $remoteResource.Content }}
+      {{/* Cache the HTML */}}
+      {{ $cachePath := "data/WCGProfile.html" }}
+      {{ with resources.FromString $cachePath $htmlContent }}
+        {{ $copiedResource := . | resources.Copy $cachePath }}
+      {{ end }}
+    {{ end }}
+  {{ end }}
+  
+  {{ if $htmlContent }}
+    {{/* Extract points generated */}}
+    {{/* WCG shows points in table: Points generated (rank) | spacer | 3,497,436 (#83,679) */}}
+    {{/* Look for the specific pattern after "points" or "Points" */}}
+    {{ $pointsSection := findRE `(?i)points\s+generated[^<]*</td>[^<]*<td[^>]*>[^<]*</td>[^<]*<td[^>]*>\s*([0-9,]+)\s*\(#` $htmlContent }}
+    {{ if $pointsSection }}
+      {{ $section := index $pointsSection 0 }}
+      {{ $numberMatches := findRE `([0-9]{1,3}(?:,[0-9]{3})+)` $section }}
+      {{ if $numberMatches }}
+        {{/* Get the last number which should be the points value */}}
+        {{ $pointsStr := index $numberMatches (sub (len $numberMatches) 1) }}
+        {{ $pointsStr = replace $pointsStr "," "" }}
+        {{ $totalPoints = float $pointsStr }}
+      {{ end }}
+    {{ else }}
+      {{/* Fallback: look for any large number (millions) with rank pattern */}}
+      {{ $fallbackMatches := findRE `([0-9],[0-9]{3},[0-9]{3})\s*\(#[0-9,]+\)` $htmlContent }}
+      {{ if $fallbackMatches }}
+        {{ $match := index $fallbackMatches 0 }}
+        {{ $numberMatches := findRE `[0-9],[0-9]{3},[0-9]{3}` $match }}
+        {{ if $numberMatches }}
+          {{ $pointsStr := index $numberMatches 0 }}
+          {{ $pointsStr = replace $pointsStr "," "" }}
+          {{ $totalPoints = float $pointsStr }}
+        {{ end }}
+      {{ end }}
+    {{ end }}
+    
+    {{/* Extract badge images */}}
+    {{/* Pattern: <img src="/images/pb/BADGE.png" title="BADGE_TITLE"> or similar */}}
+    {{/* Also handles: ![](/images/pb/mcm1_5_34.png "2 year badge for...") markdown style */}}
+    
+    {{/* HTML img tags */}}
+    {{ $badgeMatches := findRE `<img[^>]*src="(/images/pb/[^"]+)"[^>]*(?:title="([^"]*)")?[^>]*>` $htmlContent }}
+    {{ range $badgeMatches }}
+      {{ $srcMatch := findRE `src="(/images/pb/[^"]+)"` . }}
+      {{ $titleMatch := findRE `title="([^"]+)"` . }}
+      {{ $altMatch := findRE `alt="([^"]+)"` . }}
+      
+      {{ if $srcMatch }}
+        {{ $srcFull := index $srcMatch 0 }}
+        {{ $badgePath := replaceRE `src="` "" $srcFull }}
+        {{ $badgePath = replaceRE `"` "" $badgePath }}
+        
+        {{ $badgeTitle := "" }}
+        {{ if $titleMatch }}
+          {{ $titleFull := index $titleMatch 0 }}
+          {{ $badgeTitle = replaceRE `title="` "" $titleFull }}
+          {{ $badgeTitle = replaceRE `"` "" $badgeTitle }}
+        {{ else if $altMatch }}
+          {{ $altFull := index $altMatch 0 }}
+          {{ $badgeTitle = replaceRE `alt="` "" $altFull }}
+          {{ $badgeTitle = replaceRE `"` "" $badgeTitle }}
+        {{ end }}
+        
+        {{/* Extract badge filename for ID */}}
+        {{ $badgeFile := path.Base $badgePath }}
+        {{ $badgeId := replaceRE `\.(png|jpg|gif)$` "" $badgeFile }}
+        {{ $badgeImageUrl := printf "https://www.worldcommunitygrid.org%s" $badgePath }}
+        
+        {{/* Extract badge name from title or filename */}}
+        {{ $badgeName := $badgeTitle }}
+        {{ if not $badgeName }}
+          {{ $badgeName = $badgeId }}
+        {{ end }}
+        
+        {{ $badge := dict
+          "id" $badgeId
+          "name" $badgeName
+          "title" $badgeTitle
+          "imageUrl" $badgeImageUrl
+          "imageDir" $imageDir
+        }}
+        {{ $wcgBadges = $wcgBadges | append $badge }}
+      {{ end }}
+    {{ end }}
+  {{ end }}
+{{ end }}
+
+{{/* Render WCG badges if any found */}}
+{{ if $wcgBadges }}
+  <div class="boinc-project-card wcg-card">
+    <div class="boinc-project-header">
+      <h3 class="boinc-project-name">
+        <a href="https://www.worldcommunitygrid.org/stat/viewMemberInfo.do?userName={{ $username }}" target="_blank" rel="noopener noreferrer" title="View profile on World Community Grid">
+          World Community Grid
+        </a>
+      </h3>
+      {{ if gt $totalPoints 0 }}
+        <span class="boinc-project-credit">
+          {{ if ge $totalPoints 1000000 }}
+            {{ printf "%.2fM" (div $totalPoints 1000000.0) }} points
+          {{ else if ge $totalPoints 1000 }}
+            {{ printf "%.1fK" (div $totalPoints 1000.0) }} points
+          {{ else }}
+            {{ printf "%.0f" $totalPoints }} points
+          {{ end }}
+        </span>
+      {{ else }}
+        <span class="boinc-project-credit wcg-note">
+          {{ len $wcgBadges }} badge{{ if gt (len $wcgBadges) 1 }}s{{ end }}
+        </span>
+      {{ end }}
+    </div>
+    
+    <div class="boinc-badges-grid">
+      {{ range $wcgBadges }}
+        {{ $badgeId := .id }}
+        {{ $badgeName := .name }}
+        {{ $badgeTitle := .title }}
+        {{ $badgeImageUrl := .imageUrl }}
+        {{ $imageDir := .imageDir }}
+        
+        {{/* Try to get/cache badge image */}}
+        {{ $badgeImage := "" }}
+        
+        {{/* Check for local badge image first */}}
+        {{ $localImageExtensions := slice "png" "jpg" "jpeg" "gif" "webp" "svg" }}
+        {{ range $localImageExtensions }}
+          {{ $localImagePath := printf "%s/%s.%s" $imageDir $badgeId . }}
+          {{ $localImage := resources.Get $localImagePath }}
+          {{ if $localImage }}
+            {{ $badgeImage = $localImage }}
+            {{ break }}
+          {{ end }}
+        {{ end }}
+        
+        {{/* If no local image and we have URL, try to download */}}
+        {{ if and (not $badgeImage) $badgeImageUrl }}
+          {{ $imageExt := "png" }}
+          {{ if findRE `\.(jpg|jpeg|png|gif|webp|svg)` $badgeImageUrl }}
+            {{ $urlParts := split $badgeImageUrl "." }}
+            {{ $imageExt = index $urlParts (sub (len $urlParts) 1) }}
+          {{ end }}
+          
+          {{ $assetPath := printf "%s/%s.%s" $imageDir $badgeId $imageExt }}
+          {{ $existingImage := resources.Get $assetPath }}
+          
+          {{ if $existingImage }}
+            {{ $badgeImage = $existingImage }}
+          {{ else }}
+            {{ with try (resources.GetRemote $badgeImageUrl) }}
+              {{ with .Err }}
+                {{ warnf "Error downloading WCG badge image %s: %s" $badgeImageUrl . }}
+              {{ else }}
+                {{ $remoteImage := .Value }}
+                {{ $copiedImage := $remoteImage | resources.Copy $assetPath }}
+                {{ if $copiedImage }}
+                  {{ $badgeImage = $copiedImage }}
+                {{ else }}
+                  {{ $badgeImage = $remoteImage }}
+                {{ end }}
+              {{ end }}
+            {{ end }}
+          {{ end }}
+        {{ end }}
+        
+        <div class="boinc-badge" title="{{ $badgeTitle }}">
+          {{ if $badgeImage }}
+            <img src="{{ $badgeImage.RelPermalink }}" 
+                 alt="{{ $badgeTitle }}" 
+                 class="boinc-badge-image"
+                 loading="lazy" />
+          {{ else if $badgeImageUrl }}
+            {{/* Fallback to direct URL */}}
+            <img src="{{ $badgeImageUrl }}" 
+                 alt="{{ $badgeTitle }}" 
+                 class="boinc-badge-image"
+                 loading="lazy" />
+          {{ else }}
+            <div class="boinc-badge-placeholder">{{ $badgeName }}</div>
+          {{ end }}
+          {{ if not $isSmall }}
+            <span class="boinc-badge-title">{{ $badgeName }}</span>
+          {{ end }}
+        </div>
+      {{ end }}
+    </div>
+  </div>
+{{ end }}

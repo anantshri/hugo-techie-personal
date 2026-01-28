@@ -2392,6 +2392,210 @@ body:not([class*="home-layout-"]) {
 }
 
 /* ===============================================
+   BOINC BADGES STYLES
+   =============================================== */
+
+.boinc-badges-section {
+  margin-top: var(--space-8);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--color-border);
+}
+
+.boinc-section-title {
+  margin: 0 0 var(--space-2) 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.boinc-section-description {
+  margin: 0 0 var(--space-6) 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.boinc-projects {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: var(--space-6);
+  padding-bottom: var(--space-8);
+}
+
+.boinc-projects-small {
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: var(--space-4);
+}
+
+.boinc-projects-big {
+  grid-template-columns: 1fr;
+  gap: var(--space-6);
+}
+
+.boinc-project-card {
+  background-color: var(--color-background-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.boinc-project-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.boinc-project-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--color-border-light);
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.boinc-project-name {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.boinc-project-name a {
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.boinc-project-name a:hover {
+  color: var(--color-primary-dark);
+  text-decoration: underline;
+}
+
+.boinc-project-credit {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  background-color: var(--color-background);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+.boinc-badges-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+
+.boinc-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: 100px;
+  text-align: center;
+}
+
+.boinc-badge-image {
+  max-width: 80px;
+  max-height: 80px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+  background-color: var(--color-background);
+  padding: var(--space-1);
+}
+
+.boinc-badge-svg {
+  max-width: 80px;
+  max-height: 80px;
+}
+
+.boinc-badge-title {
+  font-size: 0.7rem;
+  color: var(--color-text-secondary);
+  line-height: 1.3;
+  word-wrap: break-word;
+  max-width: 100%;
+}
+
+.boinc-badge-placeholder {
+  width: 60px;
+  height: 60px;
+  background-color: var(--color-background);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  color: var(--color-text-muted);
+  text-align: center;
+  padding: var(--space-1);
+}
+
+/* Small variant */
+.boinc-projects-small .boinc-badge {
+  max-width: 60px;
+}
+
+.boinc-projects-small .boinc-badge-image {
+  max-width: 50px;
+  max-height: 50px;
+}
+
+.boinc-projects-small .boinc-badge-title {
+  display: none;
+}
+
+.boinc-projects-small .boinc-project-header {
+  margin-bottom: var(--space-2);
+  padding-bottom: var(--space-2);
+}
+
+.boinc-projects-small .boinc-badges-grid {
+  gap: var(--space-2);
+}
+
+/* Big variant */
+.boinc-projects-big .boinc-badge {
+  max-width: 150px;
+}
+
+.boinc-projects-big .boinc-badge-image {
+  max-width: 120px;
+  max-height: 120px;
+}
+
+.boinc-projects-big .boinc-badge-title {
+  font-size: 0.8rem;
+}
+
+/* Responsive */
+@media (max-width: 767px) {
+  .boinc-projects {
+    grid-template-columns: 1fr;
+  }
+  
+  .boinc-project-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .boinc-badge-image {
+    max-width: 60px;
+    max-height: 60px;
+  }
+  
+  .boinc-badge {
+    max-width: 80px;
+  }
+}
+
+/* ===============================================
    NOTICE/ADMONITION STYLES
    =============================================== */
 
