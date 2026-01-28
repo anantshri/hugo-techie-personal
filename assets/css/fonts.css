@@ -1,19 +1,21 @@
-/* Modern Font Stack - Using CSS Custom Properties from modern-design.css */
+/* JetBrains Mono - Single font for entire site */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap');
+
 body {
-  font-family: var(--font-family-sans);
+  font-family: var(--font-family-mono);
   font-weight: var(--font-weight-normal);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Serif for specific content areas */
+/* All text uses JetBrains Mono */
 .serif, 
 main p,
 blockquote {
-  font-family: var(--font-family-serif);
+  font-family: var(--font-family-mono);
 }
 
-/* Monospace for code */
+/* Code elements */
 code, 
 pre,
 .mono {
@@ -22,25 +24,21 @@ pre,
   font-weight: var(--font-weight-normal);
 }
 
-/* Headings use sans-serif for modern look */
+/* Headings */
 h1, h2, h3, h4, h5, h6,
 .brand,
 .nav-title,
 .timeline-section-title {
-  font-family: var(--font-family-sans);
+  font-family: var(--font-family-mono);
 }
 
 /* Fallback for systems without custom fonts */
 @supports not (font-variation-settings: normal) {
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  }
-  
-  .serif, main p, blockquote {
-    font-family: Georgia, 'Times New Roman', Times, serif;
-  }
-  
-  code, pre, .mono {
-    font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  body,
+  .serif, main p, blockquote,
+  code, pre, .mono,
+  h1, h2, h3, h4, h5, h6,
+  .brand, .nav-title, .timeline-section-title {
+    font-family: 'JetBrains Mono', 'Fira Code', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
   }
 }
