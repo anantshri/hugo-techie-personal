@@ -1,0 +1,331 @@
+{{ partial "header.html" . }}
+
+{{ if not .IsHome }}
+<h1>{{ .Title | markdownify }}</h1>
+{{ end }}
+
+{{ partial "work_in_progress.html" . }}
+
+{{ .Content }}
+
+<!-- Get all projects from the projects section -->
+{{ $allProjects := where site.RegularPages "Section" "projects" }}
+
+<!-- Separate active and discontinued projects -->
+{{ $activeProjects := slice }}
+{{ $discontinuedProjects := slice }}
+
+{{ range $allProjects }}
+  {{ $status := .Params.status | default "active" }}
+  {{ if eq $status "discontinued" }}
+    {{ $discontinuedProjects = $discontinuedProjects | append . }}
+  {{ else }}
+    {{ $activeProjects = $activeProjects | append . }}
+  {{ end }}
+{{ end }}
+
+<!-- Get featured projects from frontmatter -->
+{{ $featuredSlugs := .Params.featured_projects | default slice }}
+{{ $featuredProjects := slice }}
+{{ $nonFeaturedActive := slice }}
+
+{{ range $activeProjects }}
+  {{ $slug := path.Base .File.Dir | default (replace .File.BaseFileName ".md" "") }}
+  {{ $fileName := .File.BaseFileName }}
+  {{ if or (in $featuredSlugs $slug) (in $featuredSlugs $fileName) }}
+    {{ $featuredProjects = $featuredProjects | append . }}
+  {{ else }}
+    {{ $nonFeaturedActive = $nonFeaturedActive | append . }}
+  {{ end }}
+{{ end }}
+
+<style>
+/* Bifurcated Layout Styles */
+.section-title {
+  font-size: 1.5rem;
+  margin: 2rem 0 1rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--color-primary, #0066cc);
+  display: inline-block;
+}
+
+.section-title-muted {
+  border-bottom-color: var(--color-border, #e0e0e0);
+  color: var(--color-text-secondary, #666);
+}
+
+/* Featured Projects */
+.featured-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.featured-card {
+  border-radius: var(--radius-xl, 16px);
+  overflow: hidden;
+  background: var(--color-background-alt, #f5f5f5);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.featured-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+}
+
+.featured-link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+
+.featured-image {
+  height: 200px;
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--color-primary, #0066cc) 0%, var(--color-secondary, #004499) 100%);
+}
+
+.featured-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.featured-card:hover .featured-image img {
+  transform: scale(1.05);
+}
+
+.featured-content {
+  padding: 1.25rem;
+}
+
+.featured-content h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.25rem;
+}
+
+.featured-content p {
+  margin: 0 0 0.75rem 0;
+  color: var(--color-text-secondary, #666);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.focus-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  background: var(--color-primary, #0066cc);
+  color: white;
+  border-radius: var(--radius-full, 999px);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* Active Projects Grid */
+.active-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+@media (min-width: 768px) {
+  .active-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  }
+}
+
+.active-card {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: var(--radius-lg, 12px);
+  overflow: hidden;
+  background: var(--color-background-alt, #f5f5f5);
+}
+
+.active-link {
+  display: block;
+  width: 100%;
+  height: 100%;
+  text-decoration: none;
+}
+
+.active-image {
+  width: 100%;
+  height: 100%;
+}
+
+.active-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.active-card:hover .active-image img {
+  transform: scale(1.1);
+}
+
+.active-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 0.75rem;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.5) 80%, transparent 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.active-card:hover .active-overlay {
+  opacity: 1;
+}
+
+.active-overlay h4 {
+  margin: 0;
+  color: #ffffff !important;
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+/* Discontinued Compact */
+.discontinued-compact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+}
+
+.discontinued-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem 0.5rem 0.5rem;
+  background: var(--color-background-alt, #f5f5f5);
+  border-radius: var(--radius-full, 999px);
+  text-decoration: none;
+  color: var(--color-text-secondary, #666);
+  transition: background 0.2s ease, color 0.2s ease;
+  font-size: 0.85rem;
+}
+
+.discontinued-chip:hover {
+  background: var(--color-background, #fff);
+  color: var(--color-text, #333);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.chip-img {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.chip-name {
+  font-weight: 500;
+}
+
+.chip-date {
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+</style>
+
+<!-- Featured Projects Section -->
+{{ if $featuredProjects }}
+<section class="bifurcated-featured">
+  <h2 class="section-title">Featured Projects</h2>
+  <div class="featured-grid">
+    {{ range $featuredProjects }}
+      <div class="featured-card">
+        <a href="{{ .RelPermalink }}" class="featured-link">
+          <div class="featured-image">
+            {{ if .Params.featured_image }}
+              {{ $img := resources.Get .Params.featured_image }}
+              {{ if $img }}
+                {{ if eq $img.MediaType.SubType "svg" }}
+                  <img src="{{ $img.RelPermalink }}" alt="{{ .Title }}" />
+                {{ else }}
+                  <img src="{{ ($img.Resize "500x q90").RelPermalink }}" alt="{{ .Title }}" />
+                {{ end }}
+              {{ end }}
+            {{ end }}
+          </div>
+          <div class="featured-content">
+            <h3>{{ .Title }}</h3>
+            {{ if .Params.tldr_description }}
+              <p>{{ .Params.tldr_description }}</p>
+            {{ end }}
+            {{ if .Params.focus_area }}
+              <span class="focus-badge">{{ .Params.focus_area }}</span>
+            {{ end }}
+          </div>
+        </a>
+      </div>
+    {{ end }}
+  </div>
+</section>
+{{ end }}
+
+<!-- Active Projects Grid -->
+<section class="bifurcated-active">
+  <h2 class="section-title">Active Projects</h2>
+  <div class="active-grid">
+    {{ range $nonFeaturedActive }}
+      <div class="active-card">
+        <a href="{{ .RelPermalink }}" class="active-link">
+          <div class="active-image">
+            {{ if .Params.featured_image }}
+              {{ $img := resources.Get .Params.featured_image }}
+              {{ if $img }}
+                {{ if eq $img.MediaType.SubType "svg" }}
+                  <img src="{{ $img.RelPermalink }}" alt="{{ .Title }}" />
+                {{ else }}
+                  <img src="{{ ($img.Resize "300x q85").RelPermalink }}" alt="{{ .Title }}" />
+                {{ end }}
+              {{ end }}
+            {{ end }}
+          </div>
+          <div class="active-overlay">
+            <h4>{{ .Title }}</h4>
+          </div>
+        </a>
+      </div>
+    {{ end }}
+  </div>
+</section>
+
+<!-- Discontinued Projects Strip -->
+{{ if $discontinuedProjects }}
+<section class="bifurcated-discontinued">
+  <h2 class="section-title section-title-muted">Archived Projects</h2>
+  <div class="discontinued-compact">
+    {{ range $discontinuedProjects }}
+      <a href="{{ .RelPermalink }}" class="discontinued-chip">
+        {{ if .Params.featured_image }}
+          {{ $img := resources.Get .Params.featured_image }}
+          {{ if $img }}
+            {{ if eq $img.MediaType.SubType "svg" }}
+              <img src="{{ $img.RelPermalink }}" alt="{{ .Title }}" class="chip-img" />
+            {{ else }}
+              <img src="{{ ($img.Resize "60x q80").RelPermalink }}" alt="{{ .Title }}" class="chip-img" />
+            {{ end }}
+          {{ end }}
+        {{ end }}
+        <span class="chip-name">{{ .Title }}</span>
+        {{ if .Params.discontinue_date }}
+          <span class="chip-date">{{ dateFormat "2006" .Params.discontinue_date }}</span>
+        {{ end }}
+      </a>
+    {{ end }}
+  </div>
+</section>
+{{ end }}
+
+<div class="clear"></div>
+
+{{ partial "footer.html" . }}

@@ -6,21 +6,32 @@
 
 {{ partial "work_in_progress.html" . }}
 
-{{ $content := .Content | string }}
-{{ $supportIndex := findRE "## Support My Work" $content }}
-{{ if $supportIndex }}
-  {{ $beforeSupport := split $content "## Support My Work" }}
-  {{ index $beforeSupport 0 | markdownify }}
-{{ else }}
-  {{ .Content }}
-{{ end }}
+{{ .Content }}
+
+<!-- Support Buttons -->
+<div class="support-buttons">
+  <a href="https://github.com/sponsors/anantshri" target="_blank" rel="noopener" class="sponsor-btn sponsor-github">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+      <path fill-rule="evenodd" d="M4.25 2.5c-1.336 0-2.75 1.164-2.75 3 0 2.15 1.58 4.144 3.365 5.682A20.565 20.565 0 008 13.393a20.561 20.561 0 003.135-2.211C12.92 9.644 14.5 7.65 14.5 5.5c0-1.836-1.414-3-2.75-3-1.373 0-2.609.986-3.029 2.456a.75.75 0 01-1.442 0C6.859 3.486 5.623 2.5 4.25 2.5zM8 14.25l-.345.666-.002-.001-.006-.003-.018-.01a7.643 7.643 0 01-.31-.17 22.075 22.075 0 01-3.434-2.414C2.045 10.731 0 8.35 0 5.5 0 2.836 2.086 1 4.25 1 5.797 1 7.153 1.802 8 3.02 8.847 1.802 10.203 1 11.75 1 13.914 1 16 2.836 16 5.5c0 2.85-2.045 5.231-3.885 6.818a22.08 22.08 0 01-3.744 2.584l-.018.01-.006.003h-.002L8 14.25zm0 0l.345.666a.752.752 0 01-.69 0L8 14.25z"></path>
+    </svg>
+    GitHub Sponsors
+  </a>
+  <a href="https://www.buymeacoffee.com/anantshri" target="_blank" rel="noopener" class="sponsor-btn sponsor-coffee">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M20.216 6.415l-.132-.666c-.119-.598-.388-1.163-1.001-1.379-.197-.069-.42-.098-.57-.241-.152-.143-.196-.366-.231-.572-.065-.378-.125-.756-.192-1.133-.057-.325-.102-.69-.25-.987-.195-.4-.597-.634-.996-.788a5.723 5.723 0 00-.626-.194c-1-.263-2.05-.36-3.077-.416a25.834 25.834 0 00-3.7.062c-.915.083-1.88.184-2.75.5-.318.116-.646.256-.888.501-.297.302-.393.77-.177 1.146.154.267.415.456.692.58.36.162.737.284 1.123.366 1.075.238 2.189.331 3.287.37 1.218.05 2.437.01 3.65-.118.299-.033.598-.073.896-.119.352-.054.578-.513.474-.834-.124-.383-.457-.531-.834-.473-.466.074-.96.108-1.382.146-1.177.08-2.358.082-3.536.006a22.228 22.228 0 01-1.157-.107c-.086-.01-.18-.025-.258-.036-.243-.036-.484-.08-.724-.13-.111-.027-.111-.185 0-.212h.005c.277-.06.557-.108.838-.147h.002c.131-.009.263-.032.394-.048a25.076 25.076 0 013.426-.12c.674.019 1.347.067 2.017.144l.228.031c.267.04.533.088.798.145.392.085.895.113 1.07.542.055.137.08.288.111.431l.319 1.484a.237.237 0 01-.199.284h-.003c-.037.006-.075.01-.112.015a36.704 36.704 0 01-4.743.295 37.059 37.059 0 01-4.699-.304c-.14-.017-.293-.042-.417-.06-.326-.048-.65-.104-.973-.16-.393-.07-.67.479-.355.766.186.17.378.331.574.484 1.287.991 2.812 1.555 4.387 1.918a24.68 24.68 0 005.06.465c.99-.012 1.975-.089 2.953-.219.35-.046.668-.13.996-.205.235-.054.472-.103.707-.158.423-.098.844-.199 1.256-.329.363-.116.741-.243.986-.563.204-.27.244-.64.196-.966l-.156-.746z"></path>
+      <path d="M7.5 20.25c0 .414.336.75.75.75h7.5a.75.75 0 000-1.5h-7.5a.75.75 0 00-.75.75zM8 18h8v-1H8v1z"></path>
+      <path d="M6 18.75V8h12v10.75c0 .966-.784 1.75-1.75 1.75H7.75A1.75 1.75 0 016 18.75z"></path>
+    </svg>
+    Buy Me a Coffee
+  </a>
+</div>
 
 {{ $pages := where .Pages "Section" "!=" "" }}
 {{ if .IsHome }}
   {{ $pages = .Site.RegularPages }}
 {{ end }}
 
-<!-- First filter: separate active and discontinued projects -->
+<!-- Separate active and discontinued projects -->
 {{ $activeProjects := slice }}
 {{ $discontinuedProjects := slice }}
 
@@ -33,308 +44,351 @@
   {{ end }}
 {{ end }}
 
-<!-- Get priority order for focus areas from page params, with fallback -->
-{{ $priorityFocusAreas := .Params.priority_focus_areas | default (slice "Long Term Project" "Security Tools" "Security Research" "Developer Tools" "AI & Automation") }}
+<!-- Get featured projects from frontmatter -->
+{{ $featuredSlugs := .Params.featured_projects | default slice }}
 
-<!-- Second filter: group active projects by focus_area -->
-{{ $focusGroups := dict }}
+<!-- Separate featured and non-featured projects -->
+{{ $featuredProjects := slice }}
+{{ $nonFeaturedProjects := slice }}
 
 {{ range $activeProjects }}
-  {{ $focusArea := .Params.focus_area | default "Other" }}
-  {{ $existingGroup := index $focusGroups $focusArea }}
-  {{ if $existingGroup }}
-    {{ $focusGroups = merge $focusGroups (dict $focusArea ($existingGroup | append .)) }}
+  {{ $slug := .File.BaseFileName }}
+  {{ if in $featuredSlugs $slug }}
+    {{ $featuredProjects = $featuredProjects | append . }}
   {{ else }}
-    {{ $focusGroups = merge $focusGroups (dict $focusArea (slice .)) }}
+    {{ $nonFeaturedProjects = $nonFeaturedProjects | append . }}
   {{ end }}
 {{ end }}
 
-<!-- Separate priority focus areas from others -->
-{{ $priorityKeys := slice }}
-{{ $remainingKeys := slice }}
-
-{{ range $key, $value := $focusGroups }}
-  {{ if in $priorityFocusAreas $key }}
-    {{ $priorityKeys = $priorityKeys | append $key }}
-  {{ else }}
-    {{ $remainingKeys = $remainingKeys | append $key }}
-  {{ end }}
-{{ end }}
-
-<!-- Sort priority keys by their order in the priority array -->
-{{ $orderedPriorityKeys := slice }}
-{{ range $priorityArea := $priorityFocusAreas }}
-  {{ if in $priorityKeys $priorityArea }}
-    {{ $orderedPriorityKeys = $orderedPriorityKeys | append $priorityArea }}
-  {{ end }}
-{{ end }}
-
-<!-- Sort remaining keys alphabetically -->
-{{ $remainingKeys = sort $remainingKeys }}
-
-<!-- Combine ordered priority keys with remaining keys -->
-{{ $focusKeys := $orderedPriorityKeys }}
-{{ range $remainingKey := $remainingKeys }}
-  {{ $focusKeys = $focusKeys | append $remainingKey }}
-{{ end }}
-
-<!-- Display focus areas in priority order, then alphabetically -->
-{{ range $focusKey := $focusKeys }}
-  {{ $projects := index $focusGroups $focusKey }}
-  {{ if $projects }}
-    <div class="project-section-header">
-      <h2 class="project-section-title">{{ $focusKey }}</h2>
-    </div>
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {{ range $projects }}
-        <div id="featured_home">
-          <center>
-            <a href="{{ .RelPermalink }}">
-              <b>{{ .Title }}</b>
-              <br />
-              {{ if .Params.featured_image }}
-                {{ $img := resources.Get .Params.featured_image }}
-                {{ if $img }}
-                  {{ if eq $img.MediaType.SubType "svg" }}
-                    <img src="{{ $img.RelPermalink }}" alt="Image for {{ .Title }}" class="img_gadget project-list-image-svg" />
-                  {{ else }}
-                    <img src="{{ ($img.Resize "x200 q100").RelPermalink }}" alt="Image for {{ .Title }}" class="img_gadget project-list-image-regular" />
-                  {{ end }}
-                {{ else }}
-                  {{ $placeholder := resources.Get "images/project-placeholder.svg" }}
-                  {{ if $placeholder }}
-                    <img src="{{ $placeholder.RelPermalink }}" alt="Placeholder for {{ .Title }}" class="img_gadget project-list-image-svg" style="opacity: 0.7;" />
-                  {{ else }}
-                    <p>No Image</p>
-                  {{ end }}
-                {{ end }}
-              {{ else }}
-                {{ $img_loc := printf "%s.*" ( replace .Path "projects" "images/projects" ) }}
-                {{ $img_found := resources.GetMatch $img_loc }}
-                {{ if $img_found }}
-                  {{ if eq $img_found.MediaType.SubType "svg" }}
-                    <img src="{{ $img_found.RelPermalink }}" alt="Image for {{ $.Title }}" class="img_gadget project-list-image-square" />
-                  {{ else }}
-                    <img src="{{ ($img_found.Resize "x180 q100").RelPermalink }}" alt="Image for {{ $.Title }}" class="img_gadget" />
-                  {{ end }}
-                {{ else }}
-                  {{ $placeholder := resources.Get "images/project-placeholder.svg" }}
-                  {{ if $placeholder }}
-                    <img src="{{ $placeholder.RelPermalink }}" alt="Placeholder for {{ $.Title }}" class="img_gadget project-list-image-svg" style="opacity: 0.7;" />
-                  {{ else }}
-                    {{ $.Title }}
-                  {{ end }}
-                {{ end }}
-                <br />
-              {{ end }}
-              <br />
-            </a>
-          </center>
-          <div class="project-links">
-            {{ if .Params.website_url }}
-              <a href="{{ .Params.website_url }}" target="_blank" rel="noopener" title="Website">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.94-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
-                </svg>
-              </a>
-            {{ end }}
-            {{ if .Params.github_url }}
-              <a href="{{ .Params.github_url }}" target="_blank" rel="noopener" title="GitHub">
-                {{ $githubIcon := resources.Get "images/github.svg" }}
-                {{ if $githubIcon }}
-                  <img src="{{ $githubIcon.RelPermalink }}" alt="GitHub" style="width: 20px; height: 20px;" />
-                {{ end }}
-              </a>
-            {{ end }}
-          </div>
-        </div>
-      {{ end }}
-      <div class="clear"></div>
-    </div>
-  {{ end }}
-{{ end }}
-
-<!-- Display discontinued projects section -->
-{{ if $discontinuedProjects }}
-  <div class="project-section-header">
-    <h2 class="project-section-title">{{ $.Site.Params.navigation.labels.discontinued_projects | default "Discontinued Projects" }}</h2>
-    <p style="color: #666; font-style: italic; margin-bottom: 20px;">
-      {{ $.Site.Params.navigation.labels.discontinued_project_description | default "The following projects are no longer actively maintained or developed, sorted by discontinuation date." }}
-    </p>
-  </div>
-  
-  <!-- Separate discontinued projects with and without dates -->
-  {{ $discontinuedWithDates := slice }}
-  {{ $discontinuedWithoutDates := slice }}
-  
-  {{ range $discontinuedProjects }}
-    {{ if .Params.discontinue_date }}
-      {{ $discontinuedWithDates = $discontinuedWithDates | append . }}
-    {{ else }}
-      {{ $discontinuedWithoutDates = $discontinuedWithoutDates | append . }}
-    {{ end }}
-  {{ end }}
-  
-  <!-- Sort projects with dates by discontinue_date (most recent first) -->
-  {{ $sortedDiscontinuedWithDates := sort $discontinuedWithDates ".Params.discontinue_date" "desc" }}
-  
-  <!-- Sort projects without dates alphabetically by title -->
-  {{ $sortedDiscontinuedWithoutDates := sort $discontinuedWithoutDates ".Title" }}
-  
-  <!-- Display discontinued projects with dates first -->
-  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-    {{ range $sortedDiscontinuedWithDates }}
-      <div id="featured_home" style="opacity: 0.7;">
-        <center>
-          <a href="{{ .RelPermalink }}">
-            <b>{{ .Title }}</b>
-            {{ if .Params.discontinue_date }}
-              <br />
-              <small style="color: #666;">Discontinued: {{ dateFormat "January 2006" .Params.discontinue_date }}</small>
-            {{ end }}
-            <br />
-            {{ if .Params.featured_image }}
-              {{ $img := resources.Get .Params.featured_image }}
-              {{ if $img }}
-                {{ if eq $img.MediaType.SubType "svg" }}
-                  <img src="{{ $img.RelPermalink }}" alt="Image for {{ .Title }}" class="img_gadget project-list-image-svg" />
-                {{ else }}
-                  <img src="{{ ($img.Resize "x200 q100").RelPermalink }}" alt="Image for {{ .Title }}" class="img_gadget project-list-image-regular" />
-                {{ end }}
-              {{ else }}
-                {{ $placeholder := resources.Get "images/project-placeholder.svg" }}
-                {{ if $placeholder }}
-                  <img src="{{ $placeholder.RelPermalink }}" alt="Placeholder for {{ .Title }}" class="img_gadget project-list-image-svg" style="opacity: 0.7;" />
-                {{ else }}
-                  <p>No Image</p>
-                {{ end }}
-              {{ end }}
+<!-- Mosaic Gallery -->
+<div class="gallery-mosaic">
+  <!-- Featured projects first (large tiles) -->
+  {{ range $featuredProjects }}
+    <div class="gallery-item gallery-item-large">
+      <a href="{{ .RelPermalink }}" class="gallery-link">
+        {{ if .Params.featured_image }}
+          {{ $img := resources.Get .Params.featured_image }}
+          {{ if $img }}
+            {{ if eq $img.MediaType.SubType "svg" }}
+              <img src="{{ $img.RelPermalink }}" alt="{{ .Title }}" class="gallery-img" />
             {{ else }}
-              {{ $img_loc := printf "%s.*" ( replace .Path "projects" "images/projects" ) }}
-              {{ $img_found := resources.GetMatch $img_loc }}
-              {{ if $img_found }}
-                {{ if eq $img_found.MediaType.SubType "svg" }}
-                  <img src="{{ $img_found.RelPermalink }}" alt="Image for {{ $.Title }}" class="img_gadget project-list-image-square" />
-                {{ else }}
-                  <img src="{{ ($img_found.Resize "x180 q100").RelPermalink }}" alt="Image for {{ $.Title }}" class="img_gadget" />
-                {{ end }}
-              {{ else }}
-                {{ $placeholder := resources.Get "images/project-placeholder.svg" }}
-                {{ if $placeholder }}
-                  <img src="{{ $placeholder.RelPermalink }}" alt="Placeholder for {{ $.Title }}" class="img_gadget project-list-image-svg" style="opacity: 0.7;" />
-                {{ else }}
-                  {{ $.Title }}
-                {{ end }}
-              {{ end }}
-              <br />
+              <img src="{{ ($img.Resize "400x q85").RelPermalink }}" alt="{{ .Title }}" class="gallery-img" />
             {{ end }}
-            <br />
-          </a>
-        </center>
-        <div class="project-links">
-          {{ if .Params.website_url }}
-            <a href="{{ .Params.website_url }}" target="_blank" rel="noopener" title="Website">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.94-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
-              </svg>
-            </a>
+          {{ else }}
+            <div class="gallery-placeholder">
+              <span>{{ .Title }}</span>
+            </div>
           {{ end }}
-          {{ if .Params.github_url }}
-            <a href="{{ .Params.github_url }}" target="_blank" rel="noopener" title="GitHub">
-              {{ $githubIcon := resources.Get "images/github.svg" }}
-              {{ if $githubIcon }}
-                <img src="{{ $githubIcon.RelPermalink }}" alt="GitHub" style="width: 20px; height: 20px;" />
-              {{ end }}
-            </a>
+        {{ else }}
+          <div class="gallery-placeholder">
+            <span>{{ .Title }}</span>
+          </div>
+        {{ end }}
+        <div class="gallery-overlay">
+          <h3 class="gallery-title">{{ .Title }}</h3>
+          {{ if .Params.tldr_description }}
+            <p class="gallery-desc">{{ .Params.tldr_description | truncate 80 }}</p>
+          {{ end }}
+          {{ if .Params.focus_area }}
+            <span class="gallery-badge">{{ .Params.focus_area }}</span>
           {{ end }}
         </div>
-      </div>
+      </a>
+    </div>
+  {{ end }}
+  
+  <!-- Non-featured projects (regular tiles) -->
+  {{ $index := 0 }}
+  {{ range $nonFeaturedProjects }}
+    {{ $spanClass := "gallery-item" }}
+    {{ if eq (mod $index 7) 0 }}
+      {{ $spanClass = "gallery-item gallery-item-wide" }}
     {{ end }}
     
-    <!-- Display discontinued projects without dates after those with dates -->
-    {{ range $sortedDiscontinuedWithoutDates }}
-      <div id="featured_home" style="opacity: 0.7;">
-        <center>
-          <a href="{{ .RelPermalink }}">
-            <b>{{ .Title }}</b>
-            <br />
-            {{ if .Params.featured_image }}
-              {{ $img := resources.Get .Params.featured_image }}
-              {{ if $img }}
-                {{ if eq $img.MediaType.SubType "svg" }}
-                  <img src="{{ $img.RelPermalink }}" alt="Image for {{ .Title }}" class="img_gadget project-list-image-svg" />
-                {{ else }}
-                  <img src="{{ ($img.Resize "x200 q100").RelPermalink }}" alt="Image for {{ .Title }}" class="img_gadget project-list-image-regular" />
-                {{ end }}
-              {{ else }}
-                {{ $placeholder := resources.Get "images/project-placeholder.svg" }}
-                {{ if $placeholder }}
-                  <img src="{{ $placeholder.RelPermalink }}" alt="Placeholder for {{ .Title }}" class="img_gadget project-list-image-svg" style="opacity: 0.7;" />
-                {{ else }}
-                  <p>No Image</p>
-                {{ end }}
-              {{ end }}
+    <div class="{{ $spanClass }}">
+      <a href="{{ .RelPermalink }}" class="gallery-link">
+        {{ if .Params.featured_image }}
+          {{ $img := resources.Get .Params.featured_image }}
+          {{ if $img }}
+            {{ if eq $img.MediaType.SubType "svg" }}
+              <img src="{{ $img.RelPermalink }}" alt="{{ .Title }}" class="gallery-img" />
             {{ else }}
-              {{ $img_loc := printf "%s.*" ( replace .Path "projects" "images/projects" ) }}
-              {{ $img_found := resources.GetMatch $img_loc }}
-              {{ if $img_found }}
-                {{ if eq $img_found.MediaType.SubType "svg" }}
-                  <img src="{{ $img_found.RelPermalink }}" alt="Image for {{ $.Title }}" class="img_gadget project-list-image-square" />
-                {{ else }}
-                  <img src="{{ ($img_found.Resize "x180 q100").RelPermalink }}" alt="Image for {{ $.Title }}" class="img_gadget" />
-                {{ end }}
-              {{ else }}
-                {{ $placeholder := resources.Get "images/project-placeholder.svg" }}
-                {{ if $placeholder }}
-                  <img src="{{ $placeholder.RelPermalink }}" alt="Placeholder for {{ $.Title }}" class="img_gadget project-list-image-svg" style="opacity: 0.7;" />
-                {{ else }}
-                  {{ $.Title }}
-                {{ end }}
-              {{ end }}
-              <br />
+              <img src="{{ ($img.Resize "400x q85").RelPermalink }}" alt="{{ .Title }}" class="gallery-img" />
             {{ end }}
-            <br />
-          </a>
-        </center>
-        <div class="project-links">
-          {{ if .Params.website_url }}
-            <a href="{{ .Params.website_url }}" target="_blank" rel="noopener" title="Website">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.94-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
-              </svg>
-            </a>
+          {{ else }}
+            <div class="gallery-placeholder">
+              <span>{{ .Title }}</span>
+            </div>
           {{ end }}
-          {{ if .Params.github_url }}
-            <a href="{{ .Params.github_url }}" target="_blank" rel="noopener" title="GitHub">
-              {{ $githubIcon := resources.Get "images/github.svg" }}
-              {{ if $githubIcon }}
-                <img src="{{ $githubIcon.RelPermalink }}" alt="GitHub" style="width: 20px; height: 20px;" />
-              {{ end }}
-            </a>
+        {{ else }}
+          <div class="gallery-placeholder">
+            <span>{{ .Title }}</span>
+          </div>
+        {{ end }}
+        <div class="gallery-overlay">
+          <h3 class="gallery-title">{{ .Title }}</h3>
+          {{ if .Params.tldr_description }}
+            <p class="gallery-desc">{{ .Params.tldr_description | truncate 80 }}</p>
+          {{ end }}
+          {{ if .Params.focus_area }}
+            <span class="gallery-badge">{{ .Params.focus_area }}</span>
           {{ end }}
         </div>
-      </div>
-    {{ end }}
-    <div class="clear"></div>
-  </div>
-{{ end }}
-
-
-<div class="clear">
+      </a>
+    </div>
+    {{ $index = add $index 1 }}
+  {{ end }}
 </div>
 
-{{ $content := .Content | string }}
-{{ $supportIndex := findRE "## Support My Work" $content }}
-{{ if $supportIndex }}
-  {{ $afterSupport := split $content "## Support My Work" }}
-  {{ if gt (len $afterSupport) 1 }}
-    {{ $supportContent := index $afterSupport 1 }}
-    {{ if $supportContent }}
-      <div class="support-section">
-        {{ printf "## Support My Work%s" $supportContent | markdownify }}
-      </div>
+{{ if $discontinuedProjects }}
+<div class="discontinued-strip">
+  <h3 class="discontinued-title">Discontinued Projects</h3>
+  <div class="discontinued-scroll">
+    {{ range $discontinuedProjects }}
+      <a href="{{ .RelPermalink }}" class="discontinued-item" title="{{ .Title }}">
+        {{ if .Params.featured_image }}
+          {{ $img := resources.Get .Params.featured_image }}
+          {{ if $img }}
+            {{ if eq $img.MediaType.SubType "svg" }}
+              <img src="{{ $img.RelPermalink }}" alt="{{ .Title }}" />
+            {{ else }}
+              <img src="{{ ($img.Resize "100x q80").RelPermalink }}" alt="{{ .Title }}" />
+            {{ end }}
+          {{ else }}
+            <div class="disc-placeholder">{{ substr .Title 0 2 }}</div>
+          {{ end }}
+        {{ else }}
+          <div class="disc-placeholder">{{ substr .Title 0 2 }}</div>
+        {{ end }}
+      </a>
     {{ end }}
-  {{ end }}
+  </div>
+</div>
 {{ end }}
+
+<div class="clear"></div>
+
+<style>
+/* Support Buttons */
+.support-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin: 1.5rem 0 2rem 0;
+  flex-wrap: wrap;
+}
+
+.sponsor-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-full, 999px);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.sponsor-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.sponsor-github {
+  background: linear-gradient(135deg, #ea4aaa 0%, #db61a2 100%);
+  color: white;
+}
+
+.sponsor-github:hover {
+  background: linear-gradient(135deg, #f05bbb 0%, #ea4aaa 100%);
+  color: white;
+}
+
+.sponsor-coffee {
+  background: #ffdd00;
+  color: #000000;
+}
+
+.sponsor-coffee:hover {
+  background: #ffea4d;
+  color: #000000;
+}
+
+/* Mosaic Gallery Styles */
+.gallery-mosaic {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-auto-rows: 200px;
+  gap: 1rem;
+  margin: 2rem 0;
+}
+
+@media (min-width: 768px) {
+  .gallery-mosaic {
+    grid-template-columns: repeat(3, 1fr);
+    grid-auto-rows: 180px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .gallery-mosaic {
+    grid-template-columns: repeat(4, 1fr);
+    grid-auto-rows: 200px;
+  }
+}
+
+.gallery-item {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-lg, 12px);
+  background: var(--color-background-alt, #f5f5f5);
+}
+
+.gallery-item-large {
+  grid-column: span 2;
+  grid-row: span 2;
+}
+
+.gallery-item-wide {
+  grid-column: span 2;
+}
+
+@media (max-width: 600px) {
+  .gallery-item-large,
+  .gallery-item-wide {
+    grid-column: span 1;
+    grid-row: span 1;
+  }
+}
+
+.gallery-link {
+  display: block;
+  width: 100%;
+  height: 100%;
+  text-decoration: none;
+}
+
+.gallery-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.gallery-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--color-primary, #0066cc) 0%, var(--color-secondary, #004499) 100%);
+  color: white;
+  font-weight: 600;
+  padding: 1rem;
+  text-align: center;
+}
+
+.gallery-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 1rem;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.7) 60%, transparent 100%);
+  transform: translateY(100%);
+  transition: transform 0.3s ease;
+}
+
+.gallery-item:hover .gallery-overlay {
+  transform: translateY(0);
+}
+
+.gallery-item:hover .gallery-img {
+  transform: scale(1.05);
+}
+
+.gallery-title {
+  margin: 0 0 0.25rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #ffffff !important;
+}
+
+.gallery-desc {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.8rem;
+  opacity: 0.95;
+  line-height: 1.3;
+  color: #ffffff !important;
+}
+
+.gallery-badge {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: var(--radius-sm, 4px);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #ffffff !important;
+}
+
+/* Discontinued Strip */
+.discontinued-strip {
+  margin-top: 3rem;
+  padding: 1.5rem 0;
+  border-top: 1px solid var(--color-border, #e0e0e0);
+}
+
+.discontinued-title {
+  color: var(--color-text-secondary, #666);
+  font-size: 1rem;
+  margin-bottom: 1rem;
+  font-weight: 500;
+}
+
+.discontinued-scroll {
+  display: flex;
+  gap: 0.75rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+.discontinued-item {
+  flex-shrink: 0;
+  width: 60px;
+  height: 60px;
+  border-radius: var(--radius-md, 8px);
+  overflow: hidden;
+  opacity: 0.6;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  background: var(--color-background-alt, #f5f5f5);
+}
+
+.discontinued-item:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.discontinued-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.disc-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-background-alt, #f5f5f5);
+  color: var(--color-text-secondary, #666);
+  font-weight: 600;
+  font-size: 1.2rem;
+}
+</style>
 
 {{ partial "footer.html" . }}
