@@ -2290,6 +2290,9 @@ body:not([class*="home-layout-"]) {
   z-index: 100;
   box-shadow: var(--shadow-sm);
   pointer-events: none;
+  max-height: fit-content;
+  text-align: center;
+  max-width: 100%;
 }
 
 /* Smaller expired text for small badges */
