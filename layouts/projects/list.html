@@ -26,16 +26,14 @@
   </a>
 </div>
 
-{{ $pages := where .Pages "Section" "!=" "" }}
-{{ if .IsHome }}
-  {{ $pages = .Site.RegularPages }}
-{{ end }}
+<!-- Get all projects from the projects section -->
+{{ $allProjects := where site.RegularPages "Section" "projects" }}
 
 <!-- Separate active and discontinued projects -->
 {{ $activeProjects := slice }}
 {{ $discontinuedProjects := slice }}
 
-{{ range $pages }}
+{{ range $allProjects }}
   {{ $status := .Params.status | default "active" }}
   {{ if eq $status "discontinued" }}
     {{ $discontinuedProjects = $discontinuedProjects | append . }}
@@ -46,349 +44,129 @@
 
 <!-- Get featured projects from frontmatter -->
 {{ $featuredSlugs := .Params.featured_projects | default slice }}
-
-<!-- Separate featured and non-featured projects -->
 {{ $featuredProjects := slice }}
-{{ $nonFeaturedProjects := slice }}
+{{ $nonFeaturedActive := slice }}
 
 {{ range $activeProjects }}
-  {{ $slug := .File.BaseFileName }}
-  {{ if in $featuredSlugs $slug }}
+  {{ $slug := path.Base .File.Dir | default (replace .File.BaseFileName ".md" "") }}
+  {{ $fileName := .File.BaseFileName }}
+  {{ if or (in $featuredSlugs $slug) (in $featuredSlugs $fileName) }}
     {{ $featuredProjects = $featuredProjects | append . }}
   {{ else }}
-    {{ $nonFeaturedProjects = $nonFeaturedProjects | append . }}
+    {{ $nonFeaturedActive = $nonFeaturedActive | append . }}
   {{ end }}
 {{ end }}
 
-<!-- Mosaic Gallery -->
-<div class="gallery-mosaic">
-  <!-- Featured projects first (large tiles) -->
-  {{ range $featuredProjects }}
-    <div class="gallery-item gallery-item-large">
-      <a href="{{ .RelPermalink }}" class="gallery-link">
-        {{ if .Params.featured_image }}
-          {{ $img := resources.Get .Params.featured_image }}
-          {{ if $img }}
-            {{ if eq $img.MediaType.SubType "svg" }}
-              <img src="{{ $img.RelPermalink }}" alt="{{ .Title }}" class="gallery-img" />
-            {{ else }}
-              <img src="{{ ($img.Resize "400x q85").RelPermalink }}" alt="{{ .Title }}" class="gallery-img" />
-            {{ end }}
-          {{ else }}
-            <div class="gallery-placeholder">
-              <span>{{ .Title }}</span>
-            </div>
-          {{ end }}
-        {{ else }}
-          <div class="gallery-placeholder">
-            <span>{{ .Title }}</span>
-          </div>
-        {{ end }}
-        <div class="gallery-overlay">
-          <h3 class="gallery-title">{{ .Title }}</h3>
-          {{ if .Params.tldr_description }}
-            <p class="gallery-desc">{{ .Params.tldr_description | truncate 80 }}</p>
-          {{ end }}
-          {{ if .Params.focus_area }}
-            <span class="gallery-badge">{{ .Params.focus_area }}</span>
-          {{ end }}
-        </div>
-      </a>
-    </div>
-  {{ end }}
-  
-  <!-- Non-featured projects (regular tiles) -->
-  {{ $index := 0 }}
-  {{ range $nonFeaturedProjects }}
-    {{ $spanClass := "gallery-item" }}
-    {{ if eq (mod $index 7) 0 }}
-      {{ $spanClass = "gallery-item gallery-item-wide" }}
-    {{ end }}
-    
-    <div class="{{ $spanClass }}">
-      <a href="{{ .RelPermalink }}" class="gallery-link">
-        {{ if .Params.featured_image }}
-          {{ $img := resources.Get .Params.featured_image }}
-          {{ if $img }}
-            {{ if eq $img.MediaType.SubType "svg" }}
-              <img src="{{ $img.RelPermalink }}" alt="{{ .Title }}" class="gallery-img" />
-            {{ else }}
-              <img src="{{ ($img.Resize "400x q85").RelPermalink }}" alt="{{ .Title }}" class="gallery-img" />
-            {{ end }}
-          {{ else }}
-            <div class="gallery-placeholder">
-              <span>{{ .Title }}</span>
-            </div>
-          {{ end }}
-        {{ else }}
-          <div class="gallery-placeholder">
-            <span>{{ .Title }}</span>
-          </div>
-        {{ end }}
-        <div class="gallery-overlay">
-          <h3 class="gallery-title">{{ .Title }}</h3>
-          {{ if .Params.tldr_description }}
-            <p class="gallery-desc">{{ .Params.tldr_description | truncate 80 }}</p>
-          {{ end }}
-          {{ if .Params.focus_area }}
-            <span class="gallery-badge">{{ .Params.focus_area }}</span>
-          {{ end }}
-        </div>
-      </a>
-    </div>
-    {{ $index = add $index 1 }}
-  {{ end }}
-</div>
+<!-- Sort non-featured active projects by date (latest first) -->
+{{ $nonFeaturedActive = sort $nonFeaturedActive ".Date" "desc" }}
 
+<!-- Featured Projects Section -->
+{{ if $featuredProjects }}
+<section class="new-featured-section">
+  <h2 class="section-title">Featured Projects</h2>
+  <div class="new-featured-grid">
+    {{ range $featuredProjects }}
+      <div class="new-featured-card">
+        <a href="{{ .RelPermalink }}" class="new-featured-link">
+          <div class="new-featured-image">
+            {{ if .Params.featured_image }}
+              {{ $img := resources.Get .Params.featured_image }}
+              {{ if $img }}
+                {{ if eq $img.MediaType.SubType "svg" }}
+                  <img src="{{ $img.RelPermalink }}" alt="{{ .Title }}" />
+                {{ else }}
+                  <img src="{{ ($img.Resize "500x q90").RelPermalink }}" alt="{{ .Title }}" />
+                {{ end }}
+              {{ end }}
+            {{ end }}
+          </div>
+          <div class="new-featured-content">
+            <h3>{{ .Title }}</h3>
+            {{ if .Params.tldr_description }}
+              <p>{{ .Params.tldr_description }}</p>
+            {{ end }}
+            {{ if .Params.focus_area }}
+              <span class="focus-badge">{{ .Params.focus_area }}</span>
+            {{ end }}
+          </div>
+        </a>
+      </div>
+    {{ end }}
+  </div>
+</section>
+{{ end }}
+
+<!-- Active Projects Grid -->
+<section class="new-active-section">
+  <h2 class="section-title">Active Projects</h2>
+  <div class="new-active-grid">
+    {{ range $nonFeaturedActive }}
+      <div class="new-active-card">
+        <a href="{{ .RelPermalink }}" class="new-active-link">
+          <div class="new-active-image">
+            {{ if .Params.featured_image }}
+              {{ $img := resources.Get .Params.featured_image }}
+              {{ if $img }}
+                {{ if eq $img.MediaType.SubType "svg" }}
+                  <img src="{{ $img.RelPermalink }}" alt="{{ .Title }}" />
+                {{ else }}
+                  <img src="{{ ($img.Resize "300x q85").RelPermalink }}" alt="{{ .Title }}" />
+                {{ end }}
+              {{ else }}
+                <div class="new-active-placeholder">
+                  <span>{{ substr .Title 0 2 | upper }}</span>
+                </div>
+              {{ end }}
+            {{ else }}
+              <div class="new-active-placeholder">
+                <span>{{ substr .Title 0 2 | upper }}</span>
+              </div>
+            {{ end }}
+          </div>
+          <div class="new-card-overlay">
+            <h4 class="new-card-title">{{ .Title }}</h4>
+            {{ if .Params.focus_area }}
+              <div class="new-card-tags">
+                <span class="new-card-tag">{{ .Params.focus_area }}</span>
+              </div>
+            {{ end }}
+            {{ if .Params.tldr_description }}
+              <p class="new-card-desc">{{ .Params.tldr_description | truncate 80 }}</p>
+            {{ end }}
+          </div>
+        </a>
+      </div>
+    {{ end }}
+  </div>
+</section>
+
+<!-- Discontinued Projects Strip -->
 {{ if $discontinuedProjects }}
-<div class="discontinued-strip">
-  <h3 class="discontinued-title">Discontinued Projects</h3>
-  <div class="discontinued-scroll">
+<section class="new-discontinued-section">
+  <h2 class="section-title section-title-muted">Archived Projects</h2>
+  <div class="new-discontinued-compact">
     {{ range $discontinuedProjects }}
-      <a href="{{ .RelPermalink }}" class="discontinued-item" title="{{ .Title }}">
+      <a href="{{ .RelPermalink }}" class="new-discontinued-chip">
         {{ if .Params.featured_image }}
           {{ $img := resources.Get .Params.featured_image }}
           {{ if $img }}
             {{ if eq $img.MediaType.SubType "svg" }}
-              <img src="{{ $img.RelPermalink }}" alt="{{ .Title }}" />
+              <img src="{{ $img.RelPermalink }}" alt="{{ .Title }}" class="new-chip-img" />
             {{ else }}
-              <img src="{{ ($img.Resize "100x q80").RelPermalink }}" alt="{{ .Title }}" />
+              <img src="{{ ($img.Resize "60x q80").RelPermalink }}" alt="{{ .Title }}" class="new-chip-img" />
             {{ end }}
-          {{ else }}
-            <div class="disc-placeholder">{{ substr .Title 0 2 }}</div>
           {{ end }}
-        {{ else }}
-          <div class="disc-placeholder">{{ substr .Title 0 2 }}</div>
+        {{ end }}
+        <span class="new-chip-name">{{ .Title }}</span>
+        {{ if .Params.discontinue_date }}
+          <span class="new-chip-date">{{ dateFormat "2006" .Params.discontinue_date }}</span>
         {{ end }}
       </a>
     {{ end }}
   </div>
-</div>
+</section>
 {{ end }}
 
 <div class="clear"></div>
-
-<style>
-/* Support Buttons */
-.support-buttons {
-  display: flex;
-  justify-content: center;
-  gap: 1rem;
-  margin: 1.5rem 0 2rem 0;
-  flex-wrap: wrap;
-}
-
-.sponsor-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  border-radius: var(--radius-full, 999px);
-  text-decoration: none;
-  font-weight: 600;
-  font-size: 0.9rem;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.sponsor-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.sponsor-github {
-  background: linear-gradient(135deg, #ea4aaa 0%, #db61a2 100%);
-  color: white;
-}
-
-.sponsor-github:hover {
-  background: linear-gradient(135deg, #f05bbb 0%, #ea4aaa 100%);
-  color: white;
-}
-
-.sponsor-coffee {
-  background: #ffdd00;
-  color: #000000;
-}
-
-.sponsor-coffee:hover {
-  background: #ffea4d;
-  color: #000000;
-}
-
-/* Mosaic Gallery Styles */
-.gallery-mosaic {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  grid-auto-rows: 200px;
-  gap: 1rem;
-  margin: 2rem 0;
-}
-
-@media (min-width: 768px) {
-  .gallery-mosaic {
-    grid-template-columns: repeat(3, 1fr);
-    grid-auto-rows: 180px;
-  }
-}
-
-@media (min-width: 1200px) {
-  .gallery-mosaic {
-    grid-template-columns: repeat(4, 1fr);
-    grid-auto-rows: 200px;
-  }
-}
-
-.gallery-item {
-  position: relative;
-  overflow: hidden;
-  border-radius: var(--radius-lg, 12px);
-  background: var(--color-background-alt, #f5f5f5);
-}
-
-.gallery-item-large {
-  grid-column: span 2;
-  grid-row: span 2;
-}
-
-.gallery-item-wide {
-  grid-column: span 2;
-}
-
-@media (max-width: 600px) {
-  .gallery-item-large,
-  .gallery-item-wide {
-    grid-column: span 1;
-    grid-row: span 1;
-  }
-}
-
-.gallery-link {
-  display: block;
-  width: 100%;
-  height: 100%;
-  text-decoration: none;
-}
-
-.gallery-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.3s ease;
-}
-
-.gallery-placeholder {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, var(--color-primary, #0066cc) 0%, var(--color-secondary, #004499) 100%);
-  color: white;
-  font-weight: 600;
-  padding: 1rem;
-  text-align: center;
-}
-
-.gallery-overlay {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 1rem;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.7) 60%, transparent 100%);
-  transform: translateY(100%);
-  transition: transform 0.3s ease;
-}
-
-.gallery-item:hover .gallery-overlay {
-  transform: translateY(0);
-}
-
-.gallery-item:hover .gallery-img {
-  transform: scale(1.05);
-}
-
-.gallery-title {
-  margin: 0 0 0.25rem 0;
-  font-size: 1rem;
-  font-weight: 600;
-  color: #ffffff !important;
-}
-
-.gallery-desc {
-  margin: 0 0 0.5rem 0;
-  font-size: 0.8rem;
-  opacity: 0.95;
-  line-height: 1.3;
-  color: #ffffff !important;
-}
-
-.gallery-badge {
-  display: inline-block;
-  padding: 0.2rem 0.5rem;
-  background: rgba(255, 255, 255, 0.25);
-  border-radius: var(--radius-sm, 4px);
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #ffffff !important;
-}
-
-/* Discontinued Strip */
-.discontinued-strip {
-  margin-top: 3rem;
-  padding: 1.5rem 0;
-  border-top: 1px solid var(--color-border, #e0e0e0);
-}
-
-.discontinued-title {
-  color: var(--color-text-secondary, #666);
-  font-size: 1rem;
-  margin-bottom: 1rem;
-  font-weight: 500;
-}
-
-.discontinued-scroll {
-  display: flex;
-  gap: 0.75rem;
-  overflow-x: auto;
-  padding-bottom: 0.5rem;
-  -webkit-overflow-scrolling: touch;
-}
-
-.discontinued-item {
-  flex-shrink: 0;
-  width: 60px;
-  height: 60px;
-  border-radius: var(--radius-md, 8px);
-  overflow: hidden;
-  opacity: 0.6;
-  transition: opacity 0.2s ease, transform 0.2s ease;
-  background: var(--color-background-alt, #f5f5f5);
-}
-
-.discontinued-item:hover {
-  opacity: 1;
-  transform: scale(1.1);
-}
-
-.discontinued-item img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.disc-placeholder {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--color-background-alt, #f5f5f5);
-  color: var(--color-text-secondary, #666);
-  font-weight: 600;
-  font-size: 1.2rem;
-}
-</style>
 
 {{ partial "footer.html" . }}
