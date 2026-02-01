@@ -34,7 +34,7 @@
   <div class="timeline-header-content">
     <h1><span class="title">{{ .Title | markdownify }}</span></h1>
     {{ if .Params.event }}<h2 class="event-title">{{ .Params.event | markdownify }}</h2>{{ end }}
-    {{ if (gt .Params.date 0) }}<h2 class="date">{{ .Date.Format "2006/01/02" }}</h2>{{ end }}
+    {{ if (gt .Params.date 0) }}<h2 class="date">{{ .Date.Format "02 January 2006" }}</h2>{{ end }}
   </div>
 </div>
 
@@ -59,10 +59,36 @@
       {{ if $projectPage }}
         <div class="project-link-item">
           <a href="{{ $projectPage.RelPermalink }}" class="project-link">
-            <strong>{{ $projectPage.Title }}</strong>
-            {{ if $projectPage.Params.tldr_description }}
-              <span class="project-description">{{ $projectPage.Params.tldr_description }}</span>
-            {{ end }}
+            {{/* Project Logo */}}
+            <div class="project-link-image">
+              {{ if $projectPage.Params.featured_image }}
+                {{ $img := resources.Get $projectPage.Params.featured_image }}
+                {{ if $img }}
+                  {{ if eq $img.MediaType.SubType "svg" }}
+                    <img src="{{ $img.RelPermalink }}" alt="{{ $projectPage.Title }}" class="project-card-logo" />
+                  {{ else }}
+                    <img src="{{ ($img.Resize "x120 q90").RelPermalink }}" alt="{{ $projectPage.Title }}" class="project-card-logo" />
+                  {{ end }}
+                {{ else }}
+                  {{ $placeholder := resources.Get "images/project-placeholder.svg" }}
+                  {{ if $placeholder }}
+                    <img src="{{ $placeholder.RelPermalink }}" alt="{{ $projectPage.Title }}" class="project-card-logo placeholder" />
+                  {{ end }}
+                {{ end }}
+              {{ else }}
+                {{ $placeholder := resources.Get "images/project-placeholder.svg" }}
+                {{ if $placeholder }}
+                  <img src="{{ $placeholder.RelPermalink }}" alt="{{ $projectPage.Title }}" class="project-card-logo placeholder" />
+                {{ end }}
+              {{ end }}
+            </div>
+            {{/* Project Info */}}
+            <div class="project-link-info">
+              <strong>{{ $projectPage.Title }}</strong>
+              {{ if $projectPage.Params.tldr_description }}
+                <span class="project-description">{{ $projectPage.Params.tldr_description }}</span>
+              {{ end }}
+            </div>
           </a>
         </div>
       {{ end }}

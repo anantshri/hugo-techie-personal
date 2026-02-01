@@ -48,12 +48,11 @@
         </section>
       </header>
 
-      {{/* Banner section with conditional underline */}}
+      {{/* Banner section */}}
       {{ if and (.Site.Params.Banner) (ne .Site.Params.Banner "") }}
       <div class="banner">
         <div class="banner-content">
           {{.Site.Params.Banner | markdownify}}
         </div>
       </div>
-      <hr class="banner-divider" />
       {{ end }}
