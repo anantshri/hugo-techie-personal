@@ -1,0 +1,156 @@
+{{ partial "header.html" . }}
+
+{{ if not .IsHome }}
+<h1>{{ .Title | markdownify }}</h1>
+{{ end }}
+
+{{ $paramName := printf "description_%s" (.Title | lower) }}
+{{ with (index .Site.Params $paramName) }}
+  <p>{{ . | markdownify }}</p>
+{{ end }}
+
+{{ if .Content }}
+  {{ .Content }}
+  <hr />
+{{ end }}
+
+{{ $pages := .Pages }}
+
+<div class="center">
+<center>
+  |
+  {{ if and (eq .Kind "term") (eq .Type "focus") }}
+    {{/* For focus term pages, scope activities to current focus */}}
+    {{ $activityCounts := dict }}
+    {{ range .Pages }}
+      {{ with .Params.activity }}
+        {{ if reflect.IsSlice . }}
+          {{/* Handle array of activity terms */}}
+          {{ range . }}
+            {{ $count := index $activityCounts . | default 0 }}
+            {{ $activityCounts = merge $activityCounts (dict . (add $count 1)) }}
+          {{ end }}
+        {{ else }}
+          {{/* Handle single activity term */}}
+          {{ $count := index $activityCounts . | default 0 }}
+          {{ $activityCounts = merge $activityCounts (dict . (add $count 1)) }}
+        {{ end }}
+      {{ end }}
+    {{ end }}
+    {{ range $activity, $count := $activityCounts }}
+      <a href="/activity/{{ $activity | urlize }}">{{ $activity | humanize | title }} ({{ $count }})</a>&nbsp;|
+    {{ end }}
+  {{ else if and (eq .Kind "term") (eq .Type "activity") }}
+    {{/* For activity term pages, scope focus terms to current activity */}}
+    {{ $focusCounts := dict }}
+    {{ range .Pages }}
+      {{ with .Params.focus }}
+        {{ if reflect.IsSlice . }}
+          {{/* Handle array of focus terms */}}
+          {{ range . }}
+            {{ $count := index $focusCounts . | default 0 }}
+            {{ $focusCounts = merge $focusCounts (dict . (add $count 1)) }}
+          {{ end }}
+        {{ else }}
+          {{/* Handle single focus term */}}
+          {{ $count := index $focusCounts . | default 0 }}
+          {{ $focusCounts = merge $focusCounts (dict . (add $count 1)) }}
+        {{ end }}
+      {{ end }}
+    {{ end }}
+    {{ range $focus, $count := $focusCounts }}
+      <a href="/focus/{{ $focus | urlize }}">{{ $focus | humanize | title }} ({{ $count }})</a>&nbsp;|
+    {{ end }}
+  {{ else }}
+    {{/* For other term pages, show all activities */}}
+    {{ range $name, $taxonomy := $.Site.Taxonomies.activity.ByCount }}
+    <a href="/activity/{{ $taxonomy.Name | urlize }}">{{ $taxonomy.Name | humanize | title }} ({{ len $taxonomy.Pages
+      }})</a>&nbsp;|
+    {{- end }}
+  {{ end }}
+</center>
+</div>
+<hr />
+
+<div class="mytimeline">
+  {{ range $index, $entry := $pages }}
+    <div class="timelinecontainer {{ if modBool $index 2 }}timelineleft{{ else }}timelineright{{ end }}">
+      {{ with .Params.activity }}
+        {{ $showActivityIcons := $.Site.Params.timeline.show_activity_icons | default true }}
+        {{ if $showActivityIcons }}
+          {{ $primaryActivity := . }}
+          {{ if reflect.IsSlice . }}
+            {{ $primaryActivity = index . 0 }}
+          {{ end }}
+          {{ $iconPath := printf "images/%s.svg" $primaryActivity }}
+          {{ $activityIcon := resources.Get $iconPath }}
+          {{ if not $activityIcon }}
+            {{/* Try theme assets if not found in site assets */}}
+            {{ $activityIcon = resources.GetMatch (printf "images/%s.svg" $primaryActivity) }}
+          {{ end }}
+          {{ if $activityIcon }}
+            <a href="/activity/{{ $primaryActivity }}/"><img src="{{ $activityIcon.RelPermalink }}" alt="Icon for {{ $primaryActivity }}" class="{{ if modBool $index 2 }}icoleft{{ else }}icoright{{ end }}" /></a>
+          {{ else }}
+            {{/* Fallback: Show activity name as text badge */}}
+            <a href="/activity/{{ $primaryActivity }}/" class="activity-text-badge {{ if modBool $index 2 }}activity-badge-left{{ else }}activity-badge-right{{ end }}">{{ $primaryActivity | humanize | title }}</a>
+          {{ end }}
+        {{ end }}
+      {{ end }}
+
+      {{ $red_url := default .RelPermalink .Params.redirect_url }}
+      <a href="{{ $red_url }}"{{ if .Params.redirect_url }} target="_blank" rel="noreferrer noopener nofollow"{{ end }}>
+        {{ $isNotistContent := false }}
+        {{ if $.Site.Params.notist_custom_domains }}
+          {{ $currentExcerpt := .Params.excerpt }}
+          {{ range $.Site.Params.notist_custom_domains }}
+            {{ if in $currentExcerpt . }}
+              {{ $isNotistContent = true }}
+            {{ end }}
+          {{ end }}
+        {{ end }}
+        <div class="{{ if $isNotistContent }}notist_list {{ end }}timelinecontent">
+          <span class="timelinecontenttitle">{{ .Title | markdownify }}</span>
+          <br /><span class="timelinecontentdate">({{ .Date.Format "02 Jan 2006" }})</span>
+          <p>
+            <span>
+              {{ if in .Params.excerpt "https://" }}
+                {{ partial "oembed.html" (dict "url" .Params.excerpt "page" .) }}
+                {{ with .Params.event }}
+                  <span>{{ . | markdownify }}</span>
+                {{ end }}
+              {{ else if .Params.featured_image }}
+                {{ $img_loc := replace .Params.featured_image "/uploads" "images" }}
+                {{ with resources.Get $img_loc }}
+                  <img src='{{ (.Resize "x250 q85").RelPermalink }}' alt='{{ $entry.Title }}' maxwidth='450px' maxheight='250px' loading="lazy" /> 
+                  <br />            
+                  {{ $entry.Params.event | markdownify }}
+                  {{ $entry.Params.excerpt | markdownify }}
+                {{ else }}
+                  {{ $placeholder := resources.Get "images/timeline-placeholder.svg" }}
+                  {{ if $placeholder }}
+                    <img src="{{ $placeholder.RelPermalink }}" alt="Placeholder for {{ $entry.Title }}" style="opacity: 0.7; max-width: 250px;" />
+                    <br />
+                    {{ $entry.Params.event | markdownify }}
+                    {{ $entry.Params.excerpt | markdownify }}
+                  {{ else }}
+                    {{ $entry.Params.event | markdownify }}
+                    {{ $entry.Params.excerpt | markdownify }}
+                  {{ end }}
+                {{ end }}
+              {{ else }}
+                {{ $placeholder := resources.Get "images/timeline-placeholder.svg" }}
+                {{ if $placeholder }}
+                  <img src="{{ $placeholder.RelPermalink }}" alt="Placeholder for {{ $entry.Title }}" style="opacity: 0.7; max-width: 250px;" />
+                  <br />
+                {{ end }}
+                {{ .Params.excerpt | markdownify }}
+              {{ end }}
+            </span>
+          </p>
+        </div>
+      </a>
+    </div>
+  {{ end }}
+</div>
+
+{{ partial "footer.html" . }}

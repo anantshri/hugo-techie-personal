@@ -26,14 +26,16 @@
   </a>
 </div>
 
-<!-- Get all projects from the projects section -->
-{{ $allProjects := where site.RegularPages "Section" "projects" }}
+{{ $pages := where .Pages "Section" "!=" "" }}
+{{ if .IsHome }}
+  {{ $pages = .Site.RegularPages }}
+{{ end }}
 
 <!-- Separate active and discontinued projects -->
 {{ $activeProjects := slice }}
 {{ $discontinuedProjects := slice }}
 
-{{ range $allProjects }}
+{{ range $pages }}
   {{ $status := .Params.status | default "active" }}
   {{ if eq $status "discontinued" }}
     {{ $discontinuedProjects = $discontinuedProjects | append . }}
@@ -44,127 +46,124 @@
 
 <!-- Get featured projects from frontmatter -->
 {{ $featuredSlugs := .Params.featured_projects | default slice }}
+
+<!-- Separate featured and non-featured projects -->
 {{ $featuredProjects := slice }}
-{{ $nonFeaturedActive := slice }}
+{{ $nonFeaturedProjects := slice }}
 
 {{ range $activeProjects }}
-  {{ $slug := path.Base .File.Dir | default (replace .File.BaseFileName ".md" "") }}
-  {{ $fileName := .File.BaseFileName }}
-  {{ if or (in $featuredSlugs $slug) (in $featuredSlugs $fileName) }}
+  {{ $slug := .File.BaseFileName }}
+  {{ if in $featuredSlugs $slug }}
     {{ $featuredProjects = $featuredProjects | append . }}
   {{ else }}
-    {{ $nonFeaturedActive = $nonFeaturedActive | append . }}
+    {{ $nonFeaturedProjects = $nonFeaturedProjects | append . }}
   {{ end }}
 {{ end }}
 
-<!-- Sort non-featured active projects by date (latest first) -->
-{{ $nonFeaturedActive = sort $nonFeaturedActive ".Date" "desc" }}
-
-<!-- Featured Projects Section -->
-{{ if $featuredProjects }}
-<section class="new-featured-section">
-  <h2 class="section-title">Featured Projects</h2>
-  <div class="new-featured-grid">
-    {{ range $featuredProjects }}
-      <div class="new-featured-card">
-        <a href="{{ .RelPermalink }}" class="new-featured-link">
-          <div class="new-featured-image">
-            {{ if .Params.featured_image }}
-              {{ $img := resources.Get .Params.featured_image }}
-              {{ if $img }}
-                {{ if eq $img.MediaType.SubType "svg" }}
-                  <img src="{{ $img.RelPermalink }}" alt="{{ .Title }}" />
-                {{ else }}
-                  <img src="{{ ($img.Resize "500x q90").RelPermalink }}" alt="{{ .Title }}" />
-                {{ end }}
-              {{ end }}
-            {{ end }}
-          </div>
-          <div class="new-featured-content">
-            <h3>{{ .Title }}</h3>
-            {{ if .Params.tldr_description }}
-              <p>{{ .Params.tldr_description }}</p>
-            {{ end }}
-            {{ if .Params.focus_area }}
-              <span class="focus-badge">{{ .Params.focus_area }}</span>
-            {{ end }}
-          </div>
-        </a>
-      </div>
-    {{ end }}
-  </div>
-</section>
-{{ end }}
-
-<!-- Active Projects Grid -->
-<section class="new-active-section">
-  <h2 class="section-title">Active Projects</h2>
-  <div class="new-active-grid">
-    {{ range $nonFeaturedActive }}
-      <div class="new-active-card">
-        <a href="{{ .RelPermalink }}" class="new-active-link">
-          <div class="new-active-image">
-            {{ if .Params.featured_image }}
-              {{ $img := resources.Get .Params.featured_image }}
-              {{ if $img }}
-                {{ if eq $img.MediaType.SubType "svg" }}
-                  <img src="{{ $img.RelPermalink }}" alt="{{ .Title }}" />
-                {{ else }}
-                  <img src="{{ ($img.Resize "300x q85").RelPermalink }}" alt="{{ .Title }}" />
-                {{ end }}
-              {{ else }}
-                <div class="new-active-placeholder">
-                  <span>{{ substr .Title 0 2 | upper }}</span>
-                </div>
-              {{ end }}
-            {{ else }}
-              <div class="new-active-placeholder">
-                <span>{{ substr .Title 0 2 | upper }}</span>
-              </div>
-            {{ end }}
-          </div>
-          <div class="new-card-overlay">
-            <h4 class="new-card-title">{{ .Title }}</h4>
-            {{ if .Params.focus_area }}
-              <div class="new-card-tags">
-                <span class="new-card-tag">{{ .Params.focus_area }}</span>
-              </div>
-            {{ end }}
-            {{ if .Params.tldr_description }}
-              <p class="new-card-desc">{{ .Params.tldr_description | truncate 80 }}</p>
-            {{ end }}
-          </div>
-        </a>
-      </div>
-    {{ end }}
-  </div>
-</section>
-
-<!-- Discontinued Projects Strip -->
-{{ if $discontinuedProjects }}
-<section class="new-discontinued-section">
-  <h2 class="section-title section-title-muted">Archived Projects</h2>
-  <div class="new-discontinued-compact">
-    {{ range $discontinuedProjects }}
-      <a href="{{ .RelPermalink }}" class="new-discontinued-chip">
+<!-- Mosaic Gallery -->
+<div class="gallery-mosaic">
+  <!-- Featured projects first (large tiles) -->
+  {{ range $featuredProjects }}
+    <div class="gallery-item gallery-item-large">
+      <a href="{{ .RelPermalink }}" class="gallery-link">
         {{ if .Params.featured_image }}
           {{ $img := resources.Get .Params.featured_image }}
           {{ if $img }}
             {{ if eq $img.MediaType.SubType "svg" }}
-              <img src="{{ $img.RelPermalink }}" alt="{{ .Title }}" class="new-chip-img" />
+              <img src="{{ $img.RelPermalink }}" alt="{{ .Title }}" class="gallery-img" />
             {{ else }}
-              <img src="{{ ($img.Resize "60x q80").RelPermalink }}" alt="{{ .Title }}" class="new-chip-img" />
+              <img src="{{ ($img.Resize "400x q85").RelPermalink }}" alt="{{ .Title }}" class="gallery-img" />
             {{ end }}
+          {{ else }}
+            <div class="gallery-placeholder">
+              <span>{{ .Title }}</span>
+            </div>
           {{ end }}
+        {{ else }}
+          <div class="gallery-placeholder">
+            <span>{{ .Title }}</span>
+          </div>
         {{ end }}
-        <span class="new-chip-name">{{ .Title }}</span>
-        {{ if .Params.discontinue_date }}
-          <span class="new-chip-date">{{ dateFormat "2006" .Params.discontinue_date }}</span>
+        <div class="gallery-overlay">
+          <h3 class="gallery-title">{{ .Title }}</h3>
+          {{ if .Params.tldr_description }}
+            <p class="gallery-desc">{{ .Params.tldr_description | truncate 80 }}</p>
+          {{ end }}
+          {{ if .Params.focus_area }}
+            <span class="gallery-badge">{{ .Params.focus_area }}</span>
+          {{ end }}
+        </div>
+      </a>
+    </div>
+  {{ end }}
+  
+  <!-- Non-featured projects (regular tiles) -->
+  {{ $index := 0 }}
+  {{ range $nonFeaturedProjects }}
+    {{ $spanClass := "gallery-item" }}
+    {{ if eq (mod $index 7) 0 }}
+      {{ $spanClass = "gallery-item gallery-item-wide" }}
+    {{ end }}
+    
+    <div class="{{ $spanClass }}">
+      <a href="{{ .RelPermalink }}" class="gallery-link">
+        {{ if .Params.featured_image }}
+          {{ $img := resources.Get .Params.featured_image }}
+          {{ if $img }}
+            {{ if eq $img.MediaType.SubType "svg" }}
+              <img src="{{ $img.RelPermalink }}" alt="{{ .Title }}" class="gallery-img" />
+            {{ else }}
+              <img src="{{ ($img.Resize "400x q85").RelPermalink }}" alt="{{ .Title }}" class="gallery-img" />
+            {{ end }}
+          {{ else }}
+            <div class="gallery-placeholder">
+              <span>{{ .Title }}</span>
+            </div>
+          {{ end }}
+        {{ else }}
+          <div class="gallery-placeholder">
+            <span>{{ .Title }}</span>
+          </div>
+        {{ end }}
+        <div class="gallery-overlay">
+          <h3 class="gallery-title">{{ .Title }}</h3>
+          {{ if .Params.tldr_description }}
+            <p class="gallery-desc">{{ .Params.tldr_description | truncate 80 }}</p>
+          {{ end }}
+          {{ if .Params.focus_area }}
+            <span class="gallery-badge">{{ .Params.focus_area }}</span>
+          {{ end }}
+        </div>
+      </a>
+    </div>
+    {{ $index = add $index 1 }}
+  {{ end }}
+</div>
+
+{{ if $discontinuedProjects }}
+<div class="discontinued-strip">
+  <h3 class="discontinued-title">Discontinued Projects</h3>
+  <div class="discontinued-scroll">
+    {{ range $discontinuedProjects }}
+      <a href="{{ .RelPermalink }}" class="discontinued-item" title="{{ .Title }}">
+        {{ if .Params.featured_image }}
+          {{ $img := resources.Get .Params.featured_image }}
+          {{ if $img }}
+            {{ if eq $img.MediaType.SubType "svg" }}
+              <img src="{{ $img.RelPermalink }}" alt="{{ .Title }}" />
+            {{ else }}
+              <img src="{{ ($img.Resize "100x q80").RelPermalink }}" alt="{{ .Title }}" />
+            {{ end }}
+          {{ else }}
+            <div class="disc-placeholder">{{ substr .Title 0 2 }}</div>
+          {{ end }}
+        {{ else }}
+          <div class="disc-placeholder">{{ substr .Title 0 2 }}</div>
         {{ end }}
       </a>
     {{ end }}
   </div>
-</section>
+</div>
 {{ end }}
 
 <div class="clear"></div>
