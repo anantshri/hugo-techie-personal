@@ -1,0 +1,4 @@
+{{/* talks-map shortcode: embed the talks location map */}}
+{{- $height := .Get "height" | default "400px" -}}
+{{- $zoom := .Get "zoom" | default "2" -}}
+{{ partial "talks-map.html" (dict "height" $height "zoom" $zoom "id" "talks-map-embed") }}

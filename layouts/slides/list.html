@@ -1,0 +1,116 @@
+{{ partial "header.html" . }}
+
+{{ partial "breadcrumbs.html" . }}
+
+{{/* ===== Slides CSS ===== */}}
+{{ $slidesCSS := resources.Get "css/slides.css" | fingerprint }}
+<link rel="stylesheet" href="{{ $slidesCSS.RelPermalink }}" />
+
+<div class="slides-listing">
+
+  <h1>{{ .Title | markdownify }}</h1>
+
+  {{/* Section description from config */}}
+  {{ with site.Params.description_talk }}
+    <p class="slides-listing__desc">{{ . | markdownify }}</p>
+  {{ end }}
+
+  {{ if .Content }}
+    <div class="slides-listing__content">
+      {{ .Content }}
+    </div>
+  {{ end }}
+
+  {{/* ===== Map ===== */}}
+  {{ $mapConf := site.Params.slides.map | default dict }}
+  {{ if and ($mapConf.enabled | default false) ($mapConf.show_on_listing | default true) }}
+    {{ $mapHeight := .Params.map.height | default "400px" }}
+    {{ $mapZoom := .Params.map.default_zoom | default ($mapConf.default_zoom | default 2) }}
+    {{ partial "talks-map.html" (dict "height" $mapHeight "zoom" $mapZoom "id" "talks-map") }}
+  {{ end }}
+
+  {{/* ===== Filter / Sort Bar ===== */}}
+  {{ $presentations := .Pages.ByDate.Reverse }}
+  {{ if $presentations }}
+
+    {{/* Collect unique years and conferences for filter */}}
+    {{ $years := slice }}
+    {{ $conferences := slice }}
+    {{ range $presentations }}
+      {{ $year := .Date.Format "2006" }}
+      {{ if not (in $years $year) }}
+        {{ $years = $years | append $year }}
+      {{ end }}
+      {{ with .Params.conference }}
+        {{ if not (in $conferences .) }}
+          {{ $conferences = $conferences | append . }}
+        {{ end }}
+      {{ end }}
+    {{ end }}
+
+    <div class="slides-filters" id="slides-filters">
+      <div class="slides-filters__group">
+        <label for="filter-year" class="slides-filters__label">Year:</label>
+        <select id="filter-year" class="slides-filters__select" onchange="filterSlides()">
+          <option value="">All years</option>
+          {{ range $years }}
+            <option value="{{ . }}">{{ . }}</option>
+          {{ end }}
+        </select>
+      </div>
+      {{ if gt (len $conferences) 1 }}
+        <div class="slides-filters__group">
+          <label for="filter-conference" class="slides-filters__label">Conference:</label>
+          <select id="filter-conference" class="slides-filters__select" onchange="filterSlides()">
+            <option value="">All conferences</option>
+            {{ range sort $conferences }}
+              <option value="{{ . }}">{{ . }}</option>
+            {{ end }}
+          </select>
+        </div>
+      {{ end }}
+      <span class="slides-filters__count" id="slides-count">
+        {{ len $presentations }} presentation{{ if gt (len $presentations) 1 }}s{{ end }}
+      </span>
+    </div>
+
+    {{/* ===== Presentation Grid ===== */}}
+    <div class="slides-grid" id="slides-grid">
+      {{ range $presentations }}
+        <div class="slides-grid__item"
+             data-year="{{ .Date.Format "2006" }}"
+             data-conference="{{ .Params.conference }}">
+          {{ partial "slide-card.html" . }}
+        </div>
+      {{ end }}
+    </div>
+
+    {{/* Inline filter script — vanilla JS, no dependencies */}}
+    <script>
+    function filterSlides() {
+      var year = document.getElementById('filter-year').value;
+      var confEl = document.getElementById('filter-conference');
+      var conf = confEl ? confEl.value : '';
+      var items = document.querySelectorAll('.slides-grid__item');
+      var visible = 0;
+      items.forEach(function(item) {
+        var show = true;
+        if (year && item.dataset.year !== year) show = false;
+        if (conf && item.dataset.conference !== conf) show = false;
+        item.style.display = show ? '' : 'none';
+        if (show) visible++;
+      });
+      var countEl = document.getElementById('slides-count');
+      if (countEl) {
+        countEl.textContent = visible + ' presentation' + (visible !== 1 ? 's' : '');
+      }
+    }
+    </script>
+
+  {{ else }}
+    <p>No presentations yet.</p>
+  {{ end }}
+
+</div>
+
+{{ partial "footer.html" . }}

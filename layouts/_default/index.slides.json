@@ -1,0 +1,20 @@
+{{- $slides := where site.RegularPages "Section" "slides" -}}
+{{- $entries := slice -}}
+{{- range $slides -}}
+  {{- $loc := .Params.location -}}
+  {{- if and $loc (ne ($loc.latitude | default 0.0) 0.0) (ne ($loc.longitude | default 0.0) 0.0) -}}
+    {{- $entry := dict
+      "title" .Title
+      "url" .RelPermalink
+      "conference" (.Params.conference | default "")
+      "date" (.Date.Format "2006-01-02")
+      "lat" $loc.latitude
+      "lng" $loc.longitude
+      "city" (printf "%s%s" $loc.city (cond (ne ($loc.country | default "") "") (printf ", %s" $loc.country) ""))
+      "thumbnail" (printf "%sslides/slide-001-thumb.jpg" .RelPermalink)
+      "tags" (.Params.tags | default slice)
+    -}}
+    {{- $entries = $entries | append $entry -}}
+  {{- end -}}
+{{- end -}}
+{{- $entries | jsonify (dict "indent" "  ") -}}

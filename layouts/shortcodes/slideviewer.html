@@ -1,0 +1,20 @@
+{{/* slideviewer shortcode: embed slide viewer from a slides page. compact=true for card mode */}}
+{{- $src := .Get "src" -}}
+{{- $compact := eq (.Get "compact") "true" -}}
+{{- $slidePage := site.GetPage $src -}}
+
+{{- if $slidePage -}}
+  {{- if $compact -}}
+    {{/* Compact mode: render as a linked card */}}
+    {{ partial "slide-card.html" $slidePage }}
+  {{- else -}}
+    {{/* Full viewer mode */}}
+    {{- $slidesCSS := resources.Get "css/slides.css" | fingerprint -}}
+    <link rel="stylesheet" href="{{ $slidesCSS.RelPermalink }}" />
+    {{ partial "slideviewer.html" (dict "page" $slidePage "id" (printf "sv-%s" ($slidePage.File.ContentBaseName | urlize))) }}
+    {{- $viewerJS := resources.Get "js/slideviewer.js" | fingerprint -}}
+    <script src="{{ $viewerJS.RelPermalink }}" defer></script>
+  {{- end -}}
+{{- else -}}
+  <p><em>Presentation not found: {{ $src }}</em></p>
+{{- end -}}

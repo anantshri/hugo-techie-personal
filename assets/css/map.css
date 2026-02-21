@@ -1,0 +1,67 @@
+/* ===============================================
+   TALKS MAP — Leaflet Map Styles
+   =============================================== */
+
+.talks-map {
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  overflow: hidden;
+  margin-bottom: var(--space-6);
+  z-index: 0;
+}
+
+.talks-map noscript p {
+  padding: var(--space-8);
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+/* Popup */
+.map-popup {
+  font-family: var(--font-family-mono);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.map-popup__thumb {
+  width: 100%;
+  max-height: 120px;
+  object-fit: cover;
+  display: block;
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-2);
+}
+
+.map-popup__title {
+  font-weight: 600;
+  color: var(--color-primary);
+  text-decoration: none;
+  display: block;
+  margin-bottom: var(--space-1);
+}
+
+.map-popup__title:hover {
+  text-decoration: underline;
+}
+
+.map-popup__conf {
+  color: var(--color-text-secondary);
+  font-size: 0.75rem;
+}
+
+.map-popup__meta {
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  margin-top: var(--space-1);
+}
+
+/* Fix Leaflet z-index conflicts */
+.leaflet-pane { z-index: 1; }
+.leaflet-control { z-index: 2; }
+
+@media (max-width: 640px) {
+  .talks-map {
+    height: 300px !important;
+    border-radius: var(--radius-md);
+  }
+}

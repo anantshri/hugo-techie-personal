@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="{{ .Site.LanguageCode }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ .Title }}</title>
+  {{ $slidesCSS := resources.Get "css/slides.css" | fingerprint }}
+  <link rel="stylesheet" href="{{ $slidesCSS.RelPermalink }}" />
+  <style>
+    body { margin: 0; padding: 0; background: #0f0f0f; overflow: hidden; }
+    .embed-wrap { width: 100vw; height: 100vh; display: flex; flex-direction: column; }
+    .embed-wrap .slide-viewer { border-radius: 0; flex: 1; display: flex; flex-direction: column; margin-bottom: 0; }
+    .embed-wrap .slide-viewer__stage { flex: 1; }
+    .embed-wrap .slide-viewer__img { max-height: calc(100vh - 48px); }
+    .embed-footer { background: #1a1a1a; padding: 4px 12px; text-align: right; font-size: 0.75rem; }
+    .embed-footer a { color: #94a3b8; text-decoration: none; }
+    .embed-footer a:hover { color: #e2e8f0; }
+  </style>
+</head>
+<body>
+  <div class="embed-wrap">
+    {{ partial "slideviewer.html" (dict "page" . "id" "embed-viewer") }}
+    <div class="embed-footer">
+      <a href="{{ .Permalink }}" target="_blank" rel="noopener">{{ .Title }} &mdash; view full presentation</a>
+    </div>
+  </div>
+  {{ $viewerJS := resources.Get "js/slideviewer.js" | fingerprint }}
+  <script src="{{ $viewerJS.RelPermalink }}" defer></script>
+</body>
+</html>

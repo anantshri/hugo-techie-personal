@@ -49,5 +49,11 @@
 		"endpoint": "https://podcasts.apple.com/api/oembed?url=",
 		"pattern": "podcasts.apple.com",
 		"remove":"<script(.*)</script>"
+	},
+	{
+		"endpoint": "https://embed.bsky.app/oembed",
+		"pattern": "bsky.app",
+		"nowrapper": true,
+		"lazy_loading": true
 	}
 ]
