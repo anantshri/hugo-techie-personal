@@ -124,6 +124,37 @@ enableRobotsTXT = true
   [params.timeline]
     show_activity_icons = true
 
+  # Slides / Presentations module
+  [params.slides]
+    enabled = true
+    default_author = "Demo Author"
+    default_author_url = "https://example.com"
+    pdf_download = true
+    social_chatter_privacy = true
+
+    [params.slides.viewer]
+      theme = "dark"
+      show_grid_button = true
+      show_fullscreen = true
+      show_counter = true
+      show_download = true
+      keyboard_nav = true
+      swipe_nav = true
+      preload_adjacent = 2
+
+    [params.slides.map]
+      enabled = true
+      tile_provider = "openstreetmap"
+      default_zoom = 2
+      cluster_markers = true
+      show_on_listing = true
+      show_on_home = false
+
+    [params.slides.oembed]
+      enabled = true
+      embed_width = 640
+      embed_height = 480
+
 [markup]
   [markup.goldmark]
     [markup.goldmark.extensions]
@@ -146,6 +177,31 @@ enableRobotsTXT = true
 [mediaTypes]
   [mediaTypes."text/plain"]
     suffixes = ["txt"]
+  [mediaTypes."application/json+oembed"]
+    suffixes = ["json"]
+
+# Custom output formats for slides OEmbed and Embed
+[outputFormats.OEmbed]
+  mediaType = "application/json+oembed"
+  baseName = "oembed"
+  isPlainText = true
+  notAlternative = true
+
+[outputFormats.Embed]
+  mediaType = "text/html"
+  baseName = "embed"
+  isPlainText = false
+  notAlternative = true
+
+[outputFormats.SlidesJSON]
+  mediaType = "application/json"
+  baseName = "slides"
+  isPlainText = true
+  notAlternative = true
+
+# Output format assignments
+[outputs]
+  home = ["HTML", "RSS", "SlidesJSON"]
 
 # Main menu
 [[menu.main]]
@@ -154,21 +210,26 @@ enableRobotsTXT = true
   weight = 2
 
 [[menu.main]]
+  name = "Presentations"
+  url = "/slides/"
+  weight = 3
+
+[[menu.main]]
   name = "Projects"
   url = "/projects/"
-  weight = 3
+  weight = 4
 
 [[menu.main]]
   name = "Gadgets"
   url = "/gadget/"
-  weight = 4
+  weight = 5
 
 [[menu.main]]
   name = "Badges"
   url = "/badges/"
-  weight = 5
+  weight = 6
 
 [[menu.main]]
   name = "About"
   url = "/about/"
-  weight = 6
+  weight = 7

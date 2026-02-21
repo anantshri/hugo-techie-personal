@@ -1,0 +1,43 @@
+{{/* slide-card.html — Presentation card for listings
+     Usage: {{ partial "slide-card.html" $page }}
+*/}}
+<article class="slide-card">
+  <a href="{{ .RelPermalink }}" class="slide-card__link">
+    <div class="slide-card__thumb-wrap">
+      {{- $thumbWebp := printf "%sslides/slide-001-thumb.webp" .RelPermalink -}}
+      {{- $thumbJpg := printf "%sslides/slide-001-thumb.jpg" .RelPermalink -}}
+      {{- $mediumWebp := printf "%sslides/slide-001-medium.webp" .RelPermalink -}}
+      <picture>
+        <source srcset="{{ $mediumWebp }}" media="(min-width: 768px)" type="image/webp">
+        <source srcset="{{ $thumbWebp }}" type="image/webp">
+        <img src="{{ $thumbJpg }}"
+             alt="{{ .Title }}"
+             loading="lazy"
+             class="slide-card__thumb">
+      </picture>
+      {{- with .Params.slides -}}
+        {{- if gt (.page_count | default 0) 0 -}}
+          <span class="slide-card__count">{{ .page_count }} slides</span>
+        {{- end -}}
+      {{- end -}}
+    </div>
+    <div class="slide-card__body">
+      <h3 class="slide-card__title">{{ .Title }}</h3>
+      {{- with .Params.conference -}}
+        <span class="slide-card__conference">{{ . }}</span>
+      {{- end -}}
+      <div class="slide-card__meta">
+        <time class="slide-card__date" datetime="{{ .Date.Format "2006-01-02" }}">
+          {{- .Date.Format "Jan 2006" -}}
+        </time>
+        {{- with .Params.location -}}
+          {{- if .city -}}
+            <span class="slide-card__location">
+              {{- .city }}{{ with .country }}, {{ . }}{{ end -}}
+            </span>
+          {{- end -}}
+        {{- end -}}
+      </div>
+    </div>
+  </a>
+</article>

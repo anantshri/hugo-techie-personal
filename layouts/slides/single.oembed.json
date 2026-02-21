@@ -1,0 +1,22 @@
+{{- $embedWidth := site.Params.slides.oembed.embed_width | default 640 -}}
+{{- $embedHeight := site.Params.slides.oembed.embed_height | default 480 -}}
+{{- $authorName := .Params.oembed.author_name | default (site.Params.slides.default_author | default site.Params.author | default "") -}}
+{{- $authorUrl := .Params.oembed.author_url | default (site.Params.slides.default_author_url | default (site.BaseURL | default "")) -}}
+{{- $providerName := .Params.oembed.provider_name | default (site.Title | default "") -}}
+{{- $providerUrl := .Params.oembed.provider_url | default (site.BaseURL | default "") -}}
+{{- $thumbUrl := printf "%sslides/slide-001-medium.jpg" .Permalink -}}
+{
+  "version": "1.0",
+  "type": "rich",
+  "title": {{ .Title | jsonify }},
+  "author_name": {{ $authorName | jsonify }},
+  "author_url": {{ $authorUrl | jsonify }},
+  "provider_name": {{ $providerName | jsonify }},
+  "provider_url": {{ $providerUrl | jsonify }},
+  "thumbnail_url": {{ $thumbUrl | jsonify }},
+  "thumbnail_width": 1024,
+  "thumbnail_height": 768,
+  "html": {{ printf "<iframe src=\"%sembed.html\" width=\"%d\" height=\"%d\" frameborder=\"0\" allowfullscreen></iframe>" .Permalink $embedWidth $embedHeight | jsonify }},
+  "width": {{ $embedWidth }},
+  "height": {{ $embedHeight }}
+}

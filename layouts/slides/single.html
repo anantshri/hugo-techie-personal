@@ -1,0 +1,185 @@
+{{ partial "header.html" . }}
+
+{{ partial "breadcrumbs.html" . }}
+
+{{/* ===== Slides CSS ===== */}}
+{{ $slidesCSS := resources.Get "css/slides.css" | fingerprint }}
+<link rel="stylesheet" href="{{ $slidesCSS.RelPermalink }}" />
+
+<article class="slides-single">
+
+  {{/* ===== 1. Header ===== */}}
+  <header class="slides-single__header">
+    <h1 class="slides-single__title">{{ .Title | markdownify }}</h1>
+    <div class="slides-single__meta">
+      {{ with .Params.conference }}
+        <span class="slides-single__conference">
+          {{ if $.Params.conference_url }}
+            <a href="{{ $.Params.conference_url }}" target="_blank" rel="noopener">{{ . }}</a>
+          {{ else }}
+            {{ . }}
+          {{ end }}
+        </span>
+      {{ end }}
+      {{ if (gt .Params.date 0) }}
+        <time class="slides-single__date" datetime="{{ .Date.Format "2006-01-02" }}">
+          {{ .Date.Format "02 January 2006" }}
+        </time>
+      {{ end }}
+      {{ with .Params.location }}
+        {{ if .city }}
+          <span class="slides-single__location">
+            {{ .city }}{{ with .state }}, {{ . }}{{ end }}{{ with .country }}, {{ . }}{{ end }}
+          </span>
+        {{ end }}
+      {{ end }}
+    </div>
+  </header>
+
+  {{/* ===== 2. Slide Viewer ===== */}}
+  {{ with .Params.slides }}
+    {{ if gt (.page_count | default 0) 0 }}
+      <section class="slides-single__viewer">
+        {{ partial "slideviewer.html" (dict "page" $ "id" "slide-viewer") }}
+      </section>
+    {{ end }}
+  {{ end }}
+
+  {{/* ===== External slides link ===== */}}
+  {{ with .Params.slides }}
+    {{ with .external_url }}
+      <div class="slides-single__external">
+        <a href="{{ . }}" target="_blank" rel="noopener">View slides on external platform</a>
+      </div>
+    {{ end }}
+  {{ end }}
+
+  {{/* ===== 3. Abstract ===== */}}
+  {{ if .Content }}
+    <section class="slides-single__abstract">
+      <h2>Abstract</h2>
+      <div class="slides-single__abstract-body">
+        {{ .Content }}
+      </div>
+    </section>
+  {{ end }}
+
+  {{/* ===== 4. Video Section ===== */}}
+  {{ with .Params.videos }}
+    <section class="slides-single__videos">
+      <h2>Video{{ if gt (len .) 1 }}s{{ end }}</h2>
+      {{ range . }}
+        <div class="slides-single__video-item">
+          {{ with .label }}<h3>{{ . }}</h3>{{ end }}
+          {{ partial "oembed.html" (dict "url" .url "page" $) }}
+        </div>
+      {{ end }}
+    </section>
+  {{ end }}
+
+  {{/* ===== 5. Resources ===== */}}
+  {{ with .Params.resources }}
+    <section class="slides-single__resources">
+      <h2>Resources</h2>
+      <ul class="slides-single__resources-list">
+        {{ range . }}
+          <li>
+            <a href="{{ .url }}" target="_blank" rel="noopener">{{ .title }}</a>
+          </li>
+        {{ end }}
+      </ul>
+    </section>
+  {{ end }}
+
+  {{/* ===== 6. Whitepaper ===== */}}
+  {{ with .Params.whitepaper }}
+    {{ if .pdf }}
+      <section class="slides-single__whitepaper">
+        <h2>Whitepaper</h2>
+        {{ partial "whitepaper-card.html" $ }}
+      </section>
+    {{ end }}
+  {{ end }}
+
+  {{/* ===== 7. Social Chatter ===== */}}
+  {{ partial "social-chatter.html" . }}
+
+  {{/* ===== 8. Embed Code ===== */}}
+  {{ if site.Params.slides.oembed.enabled | default true }}
+    {{ $embedWidth := site.Params.slides.oembed.embed_width | default 640 }}
+    {{ $embedHeight := site.Params.slides.oembed.embed_height | default 480 }}
+    <section class="slides-single__embed-code">
+      <h2>Embed This Presentation</h2>
+      <div class="embed-snippets">
+        <div class="embed-snippet">
+          <label class="embed-snippet__label">OEmbed URL</label>
+          <div class="embed-snippet__row">
+            <input type="text" readonly class="embed-snippet__input"
+                   value="{{ .Permalink }}oembed.json"
+                   onclick="this.select()">
+          </div>
+        </div>
+        <div class="embed-snippet">
+          <label class="embed-snippet__label">HTML Embed</label>
+          <div class="embed-snippet__row">
+            <input type="text" readonly class="embed-snippet__input"
+                   value='&lt;iframe src=&quot;{{ .Permalink }}embed.html&quot; width=&quot;{{ $embedWidth }}&quot; height=&quot;{{ $embedHeight }}&quot; frameborder=&quot;0&quot; allowfullscreen&gt;&lt;/iframe&gt;'
+                   onclick="this.select()">
+          </div>
+        </div>
+      </div>
+    </section>
+  {{ end }}
+
+  {{/* ===== 9. Related Presentations ===== */}}
+  {{ with .Params.related_presentations }}
+    <section class="slides-single__related">
+      <h2>Related Presentations</h2>
+      <div class="slides-grid slides-grid--compact">
+        {{ range . }}
+          {{ $relPage := site.GetPage . }}
+          {{ with $relPage }}
+            {{ partial "slide-card.html" . }}
+          {{ end }}
+        {{ end }}
+      </div>
+    </section>
+  {{ end }}
+
+  {{/* ===== 10. Cross-references ===== */}}
+  {{ if or .Params.timeline_entry .Params.hacking_archives }}
+    <section class="slides-single__crossrefs">
+      <h2>See Also</h2>
+      <ul>
+        {{ with .Params.timeline_entry }}
+          {{ $tlPage := site.GetPage . }}
+          {{ if $tlPage }}
+            <li><a href="{{ $tlPage.RelPermalink }}">Timeline entry: {{ $tlPage.Title }}</a></li>
+          {{ else }}
+            <li><a href="{{ . }}">Timeline entry</a></li>
+          {{ end }}
+        {{ end }}
+        {{ with .Params.hacking_archives }}
+          <li><a href="{{ . }}" target="_blank" rel="noopener">Hacking Archives of India</a></li>
+        {{ end }}
+      </ul>
+    </section>
+  {{ end }}
+
+  {{/* ===== 11. Tags ===== */}}
+  {{ with .Params.tags }}
+    <div class="slides-single__tags">
+      {{ range . }}
+        <a href="{{ "tags" | absURL }}/{{ . | urlize }}/" class="slides-single__tag">{{ . }}</a>
+      {{ end }}
+    </div>
+  {{ end }}
+
+</article>
+
+{{ partial "prev_next_nav.html" . }}
+
+{{ $viewerJS := resources.Get "js/slideviewer.js" | fingerprint }}
+<script src="{{ $viewerJS.RelPermalink }}" defer></script>
+
+{{ partial "footer.html" . }}
