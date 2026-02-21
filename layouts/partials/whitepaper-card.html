@@ -1,0 +1,20 @@
+{{/* whitepaper-card.html — Whitepaper download card
+     Usage: {{ partial "whitepaper-card.html" . }}
+     Expects page context with .Params.whitepaper
+*/}}
+{{- with .Params.whitepaper -}}
+  {{- if .pdf -}}
+<div class="whitepaper-card">
+  <div class="whitepaper-card__info">
+    <h3>{{ .title | default "Whitepaper" }}</h3>
+    {{- with .abstract -}}<p>{{ . }}</p>{{- end -}}
+    {{- with .co_authors -}}
+      <span class="whitepaper-card__authors">Co-authors: {{ delimit . ", " }}</span>
+    {{- end -}}
+    <a href="{{ $.RelPermalink }}{{ .pdf }}" class="whitepaper-card__download" download>
+      Download PDF
+    </a>
+  </div>
+</div>
+  {{- end -}}
+{{- end -}}

@@ -1,0 +1,35 @@
+{{/* talks-map.html — Leaflet map showing talk locations
+     Usage: {{ partial "talks-map.html" (dict "height" "400px" "zoom" 2 "id" "talks-map") }}
+*/}}
+{{- $height := .height | default "400px" -}}
+{{- $zoom := .zoom | default 2 -}}
+{{- $id := .id | default "talks-map" -}}
+{{- $mapConf := site.Params.slides.map | default dict -}}
+{{- $cluster := $mapConf.cluster_markers | default true -}}
+
+{{/* Leaflet CSS */}}
+<link rel="stylesheet" href="{{ "lib/leaflet/leaflet.min.css" | relURL }}" />
+<link rel="stylesheet" href="{{ "lib/leaflet/markercluster.min.css" | relURL }}" />
+<link rel="stylesheet" href="{{ "lib/leaflet/markercluster.default.min.css" | relURL }}" />
+
+{{/* Map CSS */}}
+{{ $mapCSS := resources.Get "css/map.css" | fingerprint }}
+<link rel="stylesheet" href="{{ $mapCSS.RelPermalink }}" />
+
+<div class="talks-map" id="{{ $id }}" style="height: {{ $height }}"
+     data-zoom="{{ $zoom }}"
+     data-cluster="{{ $cluster }}"
+     data-url="{{ "slides.json" | relURL }}"
+     aria-label="Map of talk locations">
+  <noscript>
+    <p>Enable JavaScript to view the interactive map of talk locations.</p>
+  </noscript>
+</div>
+
+{{/* Leaflet JS */}}
+<script src="{{ "lib/leaflet/leaflet.min.js" | relURL }}"></script>
+<script src="{{ "lib/leaflet/markercluster.min.js" | relURL }}"></script>
+
+{{/* Map init */}}
+{{ $mapJS := resources.Get "js/map.js" | fingerprint }}
+<script src="{{ $mapJS.RelPermalink }}"></script>

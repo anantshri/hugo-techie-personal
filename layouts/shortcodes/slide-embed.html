@@ -1,0 +1,11 @@
+{{/* slide-embed shortcode: embed a slides page as a rich card in timeline entries */}}
+{{- $src := .Get "src" -}}
+{{- $slidePage := site.GetPage $src -}}
+
+{{- if $slidePage -}}
+  {{- $slidesCSS := resources.Get "css/slides.css" | fingerprint -}}
+  <link rel="stylesheet" href="{{ $slidesCSS.RelPermalink }}" />
+  {{ partial "slide-card.html" $slidePage }}
+{{- else -}}
+  <p><em>Presentation not found: {{ $src }}</em></p>
+{{- end -}}

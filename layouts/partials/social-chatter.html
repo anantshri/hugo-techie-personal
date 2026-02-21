@@ -1,0 +1,78 @@
+{{/* social-chatter.html — Privacy-first social media embed section
+     Usage: {{ partial "social-chatter.html" . }}
+     Expects .Params.social_chatter array with {url, platform} items
+*/}}
+{{- with .Params.social_chatter -}}
+<section class="social-chatter">
+  <h2>Buzz and Feedback</h2>
+  <div class="social-chatter__list">
+    {{- range . -}}
+      {{- $platform := .platform | default "link" -}}
+      {{- $url := .url -}}
+      {{- $handle := "" -}}
+      {{- $urlParts := urls.Parse $url -}}
+      {{/* Extract handle from URL path */}}
+      {{- $pathParts := split (strings.TrimPrefix "/" $urlParts.Path) "/" -}}
+      {{- if gt (len $pathParts) 0 -}}
+        {{- $handle = printf "@%s" (index $pathParts 0) -}}
+      {{- end -}}
+
+      <div class="social-chatter__item" data-platform="{{ $platform }}" data-url="{{ $url }}">
+        <div class="social-chatter__placeholder">
+          <div class="social-chatter__info">
+            <span class="social-chatter__platform">{{ $platform | title }}</span>
+            {{- if $handle -}}
+              <span class="social-chatter__handle">{{ $handle }}</span>
+            {{- end -}}
+          </div>
+          <div class="social-chatter__actions">
+            {{- if or (eq $platform "twitter") (eq $platform "x") (eq $platform "mastodon") (eq $platform "bluesky") -}}
+              <button class="social-chatter__load" aria-label="Load {{ $platform }} embed"
+                      onclick="loadSocialEmbed(this)">
+                Load embed
+              </button>
+            {{- end -}}
+            <a href="{{ $url }}" target="_blank" rel="noopener nofollow"
+               class="social-chatter__link">View on {{ $platform | title }}</a>
+          </div>
+        </div>
+        <div class="social-chatter__embed" hidden></div>
+      </div>
+    {{- end -}}
+  </div>
+</section>
+
+<script>
+function loadSocialEmbed(btn) {
+  var item = btn.closest('.social-chatter__item');
+  var platform = item.dataset.platform;
+  var url = item.dataset.url;
+  var embedDiv = item.querySelector('.social-chatter__embed');
+  var placeholder = item.querySelector('.social-chatter__placeholder');
+
+  if (platform === 'twitter' || platform === 'x') {
+    embedDiv.innerHTML = '<blockquote class="twitter-tweet"><a href="' + url + '"></a></blockquote>';
+    embedDiv.hidden = false;
+    placeholder.hidden = true;
+    var s = document.createElement('script');
+    s.src = 'https://platform.twitter.com/widgets.js';
+    s.async = true;
+    embedDiv.appendChild(s);
+  } else if (platform === 'mastodon') {
+    var parts = url.replace(/\/$/, '').split('/');
+    var embedUrl = url + '/embed';
+    embedDiv.innerHTML = '<iframe src="' + embedUrl + '" class="social-chatter__iframe" allowfullscreen sandbox="allow-scripts allow-same-origin allow-popups"></iframe>';
+    embedDiv.hidden = false;
+    placeholder.hidden = true;
+  } else if (platform === 'bluesky') {
+    embedDiv.innerHTML = '<blockquote class="bluesky-embed" data-bluesky-uri="' + url + '"><a href="' + url + '"></a></blockquote>';
+    embedDiv.hidden = false;
+    placeholder.hidden = true;
+    var s = document.createElement('script');
+    s.src = 'https://embed.bsky.app/static/embed.js';
+    s.async = true;
+    embedDiv.appendChild(s);
+  }
+}
+</script>
+{{- end -}}
