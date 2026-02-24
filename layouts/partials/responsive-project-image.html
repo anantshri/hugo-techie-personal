@@ -1,0 +1,42 @@
+{{/*
+  Responsive project image with WebP, srcset, and lazy loading.
+
+  Parameters (via dict):
+    image   - Hugo image resource (required)
+    alt     - alt text (required)
+    sizes   - HTML sizes attribute (default: "100vw")
+    widths  - slice of pixel widths to generate (default: slice 300 500)
+    quality - image quality 1-100 (default: 85)
+    class   - optional CSS class on the <img>
+    loading - "lazy" or "eager" (default: "lazy")
+*/}}
+
+{{- $image   := .image -}}
+{{- $alt     := .alt | default "" -}}
+{{- $sizes   := .sizes | default "100vw" -}}
+{{- $widths  := .widths | default (slice 300 500) -}}
+{{- $quality := .quality | default 85 -}}
+{{- $class   := .class | default "" -}}
+{{- $loading := .loading | default "lazy" -}}
+
+{{- if eq $image.MediaType.SubType "svg" -}}
+  <img src="{{ $image.RelPermalink }}" alt="{{ $alt }}"{{ with $class }} class="{{ . }}"{{ end }} loading="{{ $loading }}" />
+{{- else -}}
+  {{- $pngSet  := slice -}}
+  {{- $webpSet := slice -}}
+  {{- $fallback := $image -}}
+
+  {{- range $widths -}}
+    {{- $w := . -}}
+    {{- $resized     := $image.Resize (printf "%dx q%d" $w $quality) -}}
+    {{- $resizedWebp := $image.Resize (printf "%dx webp q%d" $w $quality) -}}
+    {{- $pngSet  = $pngSet  | append (printf "%s %dw" $resized.RelPermalink $w) -}}
+    {{- $webpSet = $webpSet | append (printf "%s %dw" $resizedWebp.RelPermalink $w) -}}
+    {{- $fallback = $resized -}}
+  {{- end -}}
+
+  <picture>
+    <source type="image/webp" srcset="{{ delimit $webpSet ", " }}" sizes="{{ $sizes }}" />
+    <img src="{{ $fallback.RelPermalink }}" srcset="{{ delimit $pngSet ", " }}" sizes="{{ $sizes }}" alt="{{ $alt }}" width="{{ $fallback.Width }}" height="{{ $fallback.Height }}"{{ with $class }} class="{{ . }}"{{ end }} loading="{{ $loading }}" />
+  </picture>
+{{- end -}}

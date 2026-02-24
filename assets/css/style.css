@@ -3545,12 +3545,23 @@ html {
 }
 
 .new-featured-image {
-  height: 250px;
+  height: 200px;
   overflow: hidden;
   background: linear-gradient(135deg, var(--color-primary, #0066cc) 0%, var(--color-secondary, #004499) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+@media (min-width: 480px) {
+  .new-featured-image {
+    height: 250px;
+  }
+}
+
+.new-featured-image picture,
+.new-active-image picture {
+  display: contents;
 }
 
 .new-featured-image img {
@@ -3584,9 +3595,16 @@ html {
 /* Active Projects Grid - 4 Column Max */
 .new-active-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
   margin-bottom: 2rem;
+}
+
+@media (min-width: 480px) {
+  .new-active-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+  }
 }
 
 @media (min-width: 768px) {

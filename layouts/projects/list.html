@@ -72,11 +72,14 @@
             {{ if .Params.featured_image }}
               {{ $img := resources.Get .Params.featured_image }}
               {{ if $img }}
-                {{ if eq $img.MediaType.SubType "svg" }}
-                  <img src="{{ $img.RelPermalink }}" alt="{{ .Title }}" />
-                {{ else }}
-                  <img src="{{ ($img.Resize "500x q90").RelPermalink }}" alt="{{ .Title }}" />
-                {{ end }}
+                {{ partial "responsive-project-image.html" (dict
+                  "image" $img
+                  "alt" .Title
+                  "widths" (slice 300 400 500)
+                  "quality" 90
+                  "sizes" "(max-width: 649px) calc(100vw - 6rem), (max-width: 979px) calc(50vw - 4rem), calc(33.3vw - 4rem)"
+                  "loading" "lazy"
+                ) }}
               {{ end }}
             {{ end }}
           </div>
@@ -107,11 +110,14 @@
             {{ if .Params.featured_image }}
               {{ $img := resources.Get .Params.featured_image }}
               {{ if $img }}
-                {{ if eq $img.MediaType.SubType "svg" }}
-                  <img src="{{ $img.RelPermalink }}" alt="{{ .Title }}" />
-                {{ else }}
-                  <img src="{{ ($img.Resize "300x q85").RelPermalink }}" alt="{{ .Title }}" />
-                {{ end }}
+                {{ partial "responsive-project-image.html" (dict
+                  "image" $img
+                  "alt" .Title
+                  "widths" (slice 200 300)
+                  "quality" 85
+                  "sizes" "(max-width: 479px) calc(50vw - 1rem), (max-width: 767px) calc(50vw - 2rem), (max-width: 1023px) calc(33vw - 2rem), calc(25vw - 2rem)"
+                  "loading" "lazy"
+                ) }}
               {{ else }}
                 <div class="new-active-placeholder">
                   <span>{{ substr .Title 0 2 | upper }}</span>
@@ -150,11 +156,15 @@
         {{ if .Params.featured_image }}
           {{ $img := resources.Get .Params.featured_image }}
           {{ if $img }}
-            {{ if eq $img.MediaType.SubType "svg" }}
-              <img src="{{ $img.RelPermalink }}" alt="{{ .Title }}" class="new-chip-img" />
-            {{ else }}
-              <img src="{{ ($img.Resize "60x q80").RelPermalink }}" alt="{{ .Title }}" class="new-chip-img" />
-            {{ end }}
+            {{ partial "responsive-project-image.html" (dict
+              "image" $img
+              "alt" .Title
+              "widths" (slice 60)
+              "quality" 80
+              "sizes" "28px"
+              "class" "new-chip-img"
+              "loading" "lazy"
+            ) }}
           {{ end }}
         {{ end }}
         <span class="new-chip-name">{{ .Title }}</span>
