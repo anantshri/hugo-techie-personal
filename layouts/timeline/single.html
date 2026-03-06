@@ -47,19 +47,19 @@
 </div>
 {{ end }}
 
-{{/* Related Projects Section */}}
-{{ if .Params.project_links }}
+{{/* Related Entities - unified block for project_links and related_links */}}
+{{ if or .Params.project_links .Params.related_links }}
 <hr />
 <div class="related-projects">
-  <h3>🔗 Related Projects</h3>
+  <h3>🔗 Related Entities</h3>
   <div class="project-links-list">
+    {{/* Internal project links */}}
     {{ range .Params.project_links }}
       {{ $projectSlug := . }}
       {{ $projectPage := $.Site.GetPage (printf "/projects/%s" $projectSlug) }}
       {{ if $projectPage }}
         <div class="project-link-item">
           <a href="{{ $projectPage.RelPermalink }}" class="project-link">
-            {{/* Project Logo */}}
             <div class="project-link-image">
               {{ if $projectPage.Params.featured_image }}
                 {{ $img := resources.Get $projectPage.Params.featured_image }}
@@ -82,7 +82,6 @@
                 {{ end }}
               {{ end }}
             </div>
-            {{/* Project Info */}}
             <div class="project-link-info">
               <strong>{{ $projectPage.Title }}</strong>
               {{ if $projectPage.Params.tldr_description }}
@@ -92,6 +91,10 @@
           </a>
         </div>
       {{ end }}
+    {{ end }}
+    {{/* External related links (OG metadata) */}}
+    {{ range .Params.related_links }}
+      {{ partial "related-link-card.html" . }}
     {{ end }}
   </div>
 </div>

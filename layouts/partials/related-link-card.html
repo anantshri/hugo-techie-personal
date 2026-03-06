@@ -1,0 +1,101 @@
+{{/*
+  related-link-card.html
+  Renders a card for an external related link with automatic OG metadata fetching.
+  Input: dict with url (required), title (optional), image (optional), description (optional)
+  Reuses project-link-item styling for visual consistency with Related Projects.
+*/}}
+{{ $url := .url }}
+{{ $title := .title | default "" }}
+{{ $image := .image | default "" }}
+{{ $description := .description | default "" }}
+
+{{/* Fetch remote page and parse Open Graph meta tags when title or image are missing */}}
+{{ if or (not $title) (not $image) }}
+  {{ with try (resources.GetRemote $url) }}
+    {{ with .Err }}
+      {{ warnf "related-link-card: failed to fetch %s: %s" $url . }}
+    {{ else }}
+      {{ $body := .Value.Content }}
+
+      {{ if not $title }}
+        {{ $m := findRE `<meta[^>]*property="og:title"[^>]*>` $body 1 }}
+        {{ with $m }}
+          {{ $tag := index . 0 }}
+          {{ $extracted := replaceRE `(?s).*content="([^"]*)".*` "$1" $tag }}
+          {{ if ne $extracted $tag }}
+            {{ $title = $extracted }}
+          {{ end }}
+        {{ end }}
+        {{ if not $title }}
+          {{ $m := findRE `<title[^>]*>[^<]+</title>` $body 1 }}
+          {{ with $m }}
+            {{ $extracted := replaceRE `<title[^>]*>([^<]+)</title>` "$1" (index . 0) }}
+            {{ if ne $extracted (index . 0) }}
+              {{ $title = $extracted | strings.TrimSpace }}
+            {{ end }}
+          {{ end }}
+        {{ end }}
+      {{ end }}
+
+      {{ if not $image }}
+        {{ $m := findRE `<meta[^>]*property="og:image"[^>]*>` $body 1 }}
+        {{ with $m }}
+          {{ $tag := index . 0 }}
+          {{ $extracted := replaceRE `(?s).*content="([^"]*)".*` "$1" $tag }}
+          {{ if ne $extracted $tag }}
+            {{ $image = $extracted }}
+          {{ end }}
+        {{ end }}
+      {{ end }}
+
+      {{ if not $description }}
+        {{ $m := findRE `<meta[^>]*property="og:description"[^>]*>` $body 1 }}
+        {{ with $m }}
+          {{ $tag := index . 0 }}
+          {{ $extracted := replaceRE `(?s).*content="([^"]*)".*` "$1" $tag }}
+          {{ if ne $extracted $tag }}
+            {{ $description = $extracted }}
+          {{ end }}
+        {{ end }}
+        {{ if not $description }}
+          {{ $m := findRE `<meta[^>]*name="description"[^>]*>` $body 1 }}
+          {{ with $m }}
+            {{ $tag := index . 0 }}
+            {{ $extracted := replaceRE `(?s).*content="([^"]*)".*` "$1" $tag }}
+            {{ if ne $extracted $tag }}
+              {{ $description = $extracted }}
+            {{ end }}
+          {{ end }}
+        {{ end }}
+      {{ end }}
+
+    {{ end }}
+  {{ end }}
+{{ end }}
+
+{{/* Final fallback: derive title from hostname */}}
+{{ if not $title }}
+  {{ $title = (urls.Parse $url).Host }}
+{{ end }}
+
+<div class="project-link-item related-link-external">
+  <a href="{{ $url }}" class="project-link" target="_blank" rel="noopener">
+    <div class="project-link-image">
+      {{ if $image }}
+        <img src="{{ $image }}" alt="{{ $title | plainify }}" class="project-card-logo" loading="lazy" referrerpolicy="no-referrer" />
+      {{ else }}
+        {{ $placeholder := resources.Get "images/project-placeholder.svg" }}
+        {{ if $placeholder }}
+          <img src="{{ $placeholder.RelPermalink }}" alt="{{ $title | plainify }}" class="project-card-logo placeholder" />
+        {{ end }}
+      {{ end }}
+    </div>
+    <div class="project-link-info">
+      <strong>{{ $title | safeHTML }}</strong>
+      {{ if $description }}
+        <span class="project-description">{{ $description | safeHTML | truncate 150 }}</span>
+      {{ end }}
+      <span class="related-link-domain">{{ (urls.Parse $url).Host }} ↗</span>
+    </div>
+  </a>
+</div>

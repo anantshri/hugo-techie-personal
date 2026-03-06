@@ -1551,6 +1551,23 @@ body:not([class*="home-layout-"]) {
   max-width: 600px;
 }
 
+/* External related link cards - OG images are typically landscape */
+.related-link-external .project-link-image {
+  width: 120px;
+  height: 80px;
+  border-radius: var(--radius-md);
+}
+
+.related-link-external .project-card-logo {
+  object-fit: cover;
+}
+
+.related-link-domain {
+  font-size: 0.8rem;
+  color: var(--color-text-muted, #888);
+  margin-top: auto;
+}
+
 /* Responsive - stack vertically on small screens */
 @media (max-width: 480px) {
   .project-link {
@@ -1560,6 +1577,11 @@ body:not([class*="home-layout-"]) {
   
   .project-link-image {
     width: 60px;
+    height: 60px;
+  }
+
+  .related-link-external .project-link-image {
+    width: 90px;
     height: 60px;
   }
 }
