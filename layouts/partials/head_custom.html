@@ -38,13 +38,10 @@
     {{ else if eq .provider "plausible_cloud" }}
       <script defer data-domain="{{ .domain }}" src="https://plausible.io/js/script.js"></script>
     {{ else if and (eq .provider "google") .tracking_id }}
+      <meta name="ga-tracking-id" content="{{ .tracking_id }}">
       <script async src="https://www.googletagmanager.com/gtag/js?id={{ .tracking_id }}"></script>
-      <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
-        gtag('config', '{{ .tracking_id }}');
-      </script>
+      {{ $gaJS := resources.Get "js/analytics-google.js" | fingerprint }}
+      <script src="{{ $gaJS.RelPermalink }}"></script>
     {{ else if and (eq .provider "custom") .custom_code }}
       {{ .custom_code | safeHTML }}
     {{ end }}
