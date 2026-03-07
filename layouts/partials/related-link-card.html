@@ -2,12 +2,19 @@
   related-link-card.html
   Renders a card for an external related link with automatic OG metadata fetching.
   Input: dict with url (required), title (optional), image (optional), description (optional)
-  Reuses project-link-item styling for visual consistency with Related Projects.
+
+  Image resolution order:
+    1. Local asset in assets/images/related-links/{slug}.* (run scripts/fetch-related-images.sh to populate)
+    2. Remote fetch via resources.GetRemote as fallback
 */}}
 {{ $url := .url }}
 {{ $title := .title | default "" }}
 {{ $image := .image | default "" }}
 {{ $description := .description | default "" }}
+
+{{/* Deterministic slug from the page URL for local image lookup */}}
+{{ $parsed := urls.Parse $url }}
+{{ $slug := printf "%s%s" $parsed.Host $parsed.Path | replaceRE `[^a-zA-Z0-9]+` "-" | strings.TrimRight "-" | strings.TrimLeft "-" }}
 
 {{/* Fetch remote page and parse Open Graph meta tags when title or image are missing */}}
 {{ if or (not $title) (not $image) }}
@@ -75,14 +82,50 @@
 
 {{/* Final fallback: derive title from hostname */}}
 {{ if not $title }}
-  {{ $title = (urls.Parse $url).Host }}
+  {{ $title = $parsed.Host }}
+{{ end }}
+
+{{/* Resolve image: check local assets first, then fetch remotely */}}
+{{ $localImg := false }}
+
+{{/* 1. Check assets/images/related-links/{slug}.* */}}
+{{ $localPattern := printf "images/related-links/%s.*" $slug }}
+{{ $localMatches := resources.Match $localPattern }}
+{{ if $localMatches }}
+  {{ $res := index $localMatches 0 }}
+  {{ if eq $res.MediaType.SubType "svg" }}
+    {{ $localImg = $res }}
+  {{ else }}
+    {{ $localImg = $res.Resize "x120 q90" }}
+  {{ end }}
+{{ else if $image }}
+  {{/* 2. Fallback: fetch remote image */}}
+  {{ $image = replace $image "&amp;" "&" }}
+  {{ $image = replaceRE `&#0*38;` "&" $image }}
+  {{ with try (resources.GetRemote $image) }}
+    {{ with .Err }}
+      {{ warnf "related-link-card: failed to fetch image %s: %s" $image . }}
+    {{ else }}
+      {{ $res := .Value }}
+      {{ if strings.HasPrefix $res.MediaType.Type "image/" }}
+        {{ if eq $res.MediaType.SubType "svg" }}
+          {{ $localImg = $res }}
+        {{ else }}
+          {{ $localImg = $res.Resize "x120 q90" }}
+        {{ end }}
+      {{ end }}
+    {{ end }}
+  {{ end }}
+  {{ if not $localImg }}
+    {{ warnf "related-link-card: image not cached locally. Run: scripts/fetch-related-images.sh" }}
+  {{ end }}
 {{ end }}
 
 <div class="project-link-item related-link-external">
   <a href="{{ $url }}" class="project-link" target="_blank" rel="noopener">
     <div class="project-link-image">
-      {{ if $image }}
-        <img src="{{ $image }}" alt="{{ $title | plainify }}" class="project-card-logo" loading="lazy" referrerpolicy="no-referrer" />
+      {{ if $localImg }}
+        <img src="{{ $localImg.RelPermalink }}" alt="{{ $title | plainify }}" class="project-card-logo" loading="lazy" />
       {{ else }}
         {{ $placeholder := resources.Get "images/project-placeholder.svg" }}
         {{ if $placeholder }}
@@ -95,7 +138,7 @@
       {{ if $description }}
         <span class="project-description">{{ $description | safeHTML | truncate 150 }}</span>
       {{ end }}
-      <span class="related-link-domain">{{ (urls.Parse $url).Host }} ↗</span>
+      <span class="related-link-domain">{{ $parsed.Host }} ↗</span>
     </div>
   </a>
 </div>
