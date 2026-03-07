@@ -1,22 +1,23 @@
 #!/bin/bash
-# process-slides.sh — Convert slide PDFs to multi-resolution images
+# process-slides.sh — Convert slide PDFs to single high-res WebP per slide
+#
+# Outputs one WebP per slide to assets/slides/<slug>/ so the repo keeps a single
+# copy per slide. Hugo's image processing (resources.Get + Resize) generates
+# thumb/medium/full at build time with quality 100.
 #
 # Dependencies: poppler-utils (pdftoppm), libwebp (cwebp), imagemagick (magick/convert)
 # Usage: ./scripts/process-slides.sh [content_dir]
 #
 # Scans for slides.pdf in page bundles under content/slides/
-# Generates three resolution tiers in WebP + JPEG fallback
-# Creates metadata.json with slide count and dimensions
+# Writes assets/slides/<slug>/slide-NNN.webp (one file per slide, highest resolution)
+# Writes metadata.json in bundle's slides/ for hash check and page_count
 # Skips already-processed PDFs (checks source hash)
 
 set -euo pipefail
 
 # ---- Configuration ----
-THUMB_WIDTH=400
-MEDIUM_WIDTH=1024
 FULL_WIDTH=1920
-WEBP_QUALITY=85
-JPEG_QUALITY=90
+WEBP_QUALITY=100
 DPI=300
 
 # ---- Color helpers ----
@@ -65,12 +66,24 @@ file_hash() {
   shasum -a 256 "$1" | cut -d' ' -f1
 }
 
+# ---- Resolve site root (parent of directory containing content_dir) ----
+site_root() {
+  local content_dir="$1"
+  local content_parent
+  content_parent="$(cd "$(dirname "$content_dir")" && pwd)"
+  (cd "$content_parent/.." && pwd)
+}
+
 # ---- Process a single PDF ----
 process_pdf() {
   local bundle_dir="$1"
+  local assets_slides_root="$2"
   local pdf_path="$bundle_dir/slides.pdf"
-  local out_dir="$bundle_dir/slides"
-  local metadata="$out_dir/metadata.json"
+  local metadata_dir="$bundle_dir/slides"
+  local metadata="$metadata_dir/metadata.json"
+  local slug
+  slug="$(basename "$bundle_dir")"
+  local out_dir="$assets_slides_root/$slug"
 
   if [ ! -f "$pdf_path" ]; then
     return
@@ -84,14 +97,24 @@ process_pdf() {
 
   if [ -f "$metadata" ]; then
     local stored_hash
-    stored_hash="$(grep -o '"source_hash"[[:space:]]*:[[:space:]]*"sha256:[^"]*"' "$metadata" | sed 's/.*sha256://' | tr -d '"')"
+    stored_hash="$(grep -o '"source_hash"[[:space:]]*:[[:space:]]*"sha256:[^"]*"' "$metadata" 2>/dev/null | sed 's/.*sha256://' | tr -d '"')"
     if [ "$stored_hash" = "$current_hash" ]; then
-      log "  Skipping (unchanged, hash matches)"
-      return
+      # Skip only if assets already exist with expected count
+      local stored_count
+      stored_count="$(grep -o '"page_count"[[:space:]]*:[[:space:]]*[0-9]*' "$metadata" 2>/dev/null | grep -o '[0-9]*$' | tr -d ' ')"
+      local existing_slides=0
+      [ -d "$out_dir" ] && existing_slides="$(find "$out_dir" -maxdepth 1 -name 'slide-*.webp' 2>/dev/null | wc -l | tr -d ' ')"
+      if [ -n "$stored_count" ] && [ "$stored_count" -gt 0 ] && [ "$existing_slides" -eq "$stored_count" ] 2>/dev/null; then
+        log "  Skipping (unchanged, hash matches, assets present)"
+        return
+      fi
+      log "  Hash matches but assets missing or incomplete, regenerating..."
+    else
+      log "  PDF changed, regenerating..."
     fi
-    log "  PDF changed, regenerating..."
   fi
 
+  mkdir -p "$metadata_dir"
   mkdir -p "$out_dir"
 
   # Step 1: Extract pages as high-res JPEG using pdftoppm
@@ -111,7 +134,7 @@ process_pdf() {
     return
   fi
 
-  log "  Processing $page_count slides..."
+  log "  Processing $page_count slides (single WebP per slide → $out_dir)..."
 
   # Get dimensions from first page
   local dimensions
@@ -120,52 +143,42 @@ process_pdf() {
   orig_w=$(echo "$dimensions" | cut -dx -f1)
   orig_h=$(echo "$dimensions" | cut -dx -f2)
 
-  # Step 2: Generate three tiers for each page
+  # Step 2: One high-res WebP per page (cap width at FULL_WIDTH)
   local i=0
   for page_file in "${page_files[@]}"; do
     i=$((i + 1))
     local num
     num=$(printf "%03d" "$i")
 
-    # Full resolution (cap at FULL_WIDTH)
     if [ "$orig_w" -gt "$FULL_WIDTH" ]; then
-      $CONVERT "$page_file" -resize "${FULL_WIDTH}x" -quality "$JPEG_QUALITY" "$out_dir/slide-${num}-full.jpg"
+      $CONVERT "$page_file" -resize "${FULL_WIDTH}x" -quality 95 "$tmp_dir/slide.jpg"
     else
-      $CONVERT "$page_file" -quality "$JPEG_QUALITY" "$out_dir/slide-${num}-full.jpg"
+      cp "$page_file" "$tmp_dir/slide.jpg"
     fi
+    cwebp -q "$WEBP_QUALITY" -quiet "$tmp_dir/slide.jpg" -o "$out_dir/slide-${num}.webp"
 
-    # Medium
-    $CONVERT "$page_file" -resize "${MEDIUM_WIDTH}x" -quality "$JPEG_QUALITY" "$out_dir/slide-${num}-medium.jpg"
-
-    # Thumbnail
-    $CONVERT "$page_file" -resize "${THUMB_WIDTH}x" -quality "$JPEG_QUALITY" "$out_dir/slide-${num}-thumb.jpg"
-
-    # WebP versions
-    cwebp -q "$WEBP_QUALITY" -quiet "$out_dir/slide-${num}-full.jpg" -o "$out_dir/slide-${num}-full.webp"
-    cwebp -q "$WEBP_QUALITY" -quiet "$out_dir/slide-${num}-medium.jpg" -o "$out_dir/slide-${num}-medium.webp"
-    cwebp -q "$WEBP_QUALITY" -quiet "$out_dir/slide-${num}-thumb.jpg" -o "$out_dir/slide-${num}-thumb.webp"
-
-    # Progress
     if [ $((i % 10)) -eq 0 ] || [ "$i" -eq "$page_count" ]; then
       log "  $i / $page_count"
     fi
   done
 
-  # Compute output dimensions (from the full-size first slide)
+  # Get output dimensions from first generated slide
+  local first_webp="$out_dir/slide-001.webp"
   local out_dimensions
-  out_dimensions=$($CONVERT "$out_dir/slide-001-full.jpg" -format "%wx%h" info:)
+  out_dimensions=$($CONVERT "$first_webp" -format "%wx%h" info: 2>/dev/null || echo "0x0")
   local out_w out_h
   out_w=$(echo "$out_dimensions" | cut -dx -f1)
   out_h=$(echo "$out_dimensions" | cut -dx -f2)
 
-  # Step 3: Write metadata.json
+  # Step 3: Write metadata.json (in bundle for hash check and page_count)
   cat > "$metadata" <<EOF
 {
   "page_count": $page_count,
   "generated_at": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
   "source_pdf": "slides.pdf",
   "source_hash": "sha256:$current_hash",
-  "dimensions": { "width": $out_w, "height": $out_h }
+  "dimensions": { "width": $out_w, "height": $out_h },
+  "assets_dir": "assets/slides/$slug"
 }
 EOF
 
@@ -179,10 +192,9 @@ EOF
     fi
   fi
 
-  # Cleanup
   rm -rf "$tmp_dir"
 
-  ok "  Done: $page_count slides (${out_w}x${out_h})"
+  ok "  Done: $page_count slides → assets/slides/$slug/ (${out_w}x${out_h})"
 }
 
 # ---- Main ----
@@ -197,6 +209,10 @@ main() {
     exit 2
   fi
 
+  local root
+  root="$(site_root "$content_dir")"
+  local assets_slides_root="$root/assets/slides"
+  log "Site root: $root → assets/slides: $assets_slides_root"
   log "Scanning $content_dir for slide PDFs..."
   echo ""
 
@@ -205,7 +221,7 @@ main() {
     [ -d "$bundle_dir" ] || continue
     if [ -f "$bundle_dir/slides.pdf" ]; then
       found=$((found + 1))
-      process_pdf "$bundle_dir"
+      process_pdf "$bundle_dir" "$assets_slides_root"
       echo ""
     fi
   done
@@ -213,7 +229,7 @@ main() {
   if [ "$found" -eq 0 ]; then
     warn "No slides.pdf files found in $content_dir/*/"
   else
-    ok "Processed $found presentation(s)"
+    ok "Processed $found presentation(s). Hugo will resize from assets/slides/<slug>/ at build."
   fi
 }
 

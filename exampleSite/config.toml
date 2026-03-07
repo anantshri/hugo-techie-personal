@@ -199,9 +199,15 @@ enableRobotsTXT = true
   isPlainText = true
   notAlternative = true
 
-# Output format assignments
+[outputFormats.LocationsJSON]
+  mediaType = "application/json"
+  baseName = "locations"
+  isPlainText = true
+  notAlternative = true
+
+# Output format assignments (SlidesJSON = slides map; LocationsJSON = global events map)
 [outputs]
-  home = ["HTML", "RSS", "SlidesJSON"]
+  home = ["HTML", "RSS", "SlidesJSON", "LocationsJSON"]
 
 # Main menu
 [[menu.main]]

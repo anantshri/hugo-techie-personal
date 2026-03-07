@@ -8,12 +8,13 @@ conference: ""
 conference_url: ""
 event_year: {{ now.Format "2006" }}
 
-# Location (for map)
+# Location (for map; set online: true for virtual events to exclude from map)
 location:
   city: ""
   country: ""
   latitude: 0
   longitude: 0
+online: false
 
 # Slides configuration
 slides:

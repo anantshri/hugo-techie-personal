@@ -49,10 +49,11 @@
           }
           popup += '<div class="map-popup__body">';
           popup += '<a href="' + talk.url + '" class="map-popup__title">' + talk.title + '</a>';
-          if (talk.conference) {
-            popup += '<div class="map-popup__conf">' + talk.conference + '</div>';
+          var eventLabel = talk.event || talk.conference;
+          if (eventLabel) {
+            popup += '<div class="map-popup__conf">' + eventLabel + '</div>';
           }
-          popup += '<div class="map-popup__meta">' + talk.city + ' &middot; ' + talk.date + '</div>';
+          popup += '<div class="map-popup__meta">' + (talk.city || '') + (talk.city && talk.date ? ' &middot; ' : '') + (talk.date || '') + '</div>';
           popup += '</div></div>';
 
           marker.bindPopup(popup, { maxWidth: 280, minWidth: 200 });

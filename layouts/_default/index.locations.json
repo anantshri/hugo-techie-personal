@@ -1,0 +1,47 @@
+{{- /* Combined locations from slides + timeline for global events map */ -}}
+{{- $entries := slice -}}
+
+{{- /* Slides with location (exclude online) */ -}}
+{{- range where site.RegularPages "Section" "slides" -}}
+  {{- $loc := .Params.location -}}
+  {{- if and $loc (ne ($loc.latitude | default 0.0) 0.0) (ne ($loc.longitude | default 0.0) 0.0) (not .Params.online) -}}
+    {{- $entries = $entries | append (dict
+      "title" .Title
+      "url" .RelPermalink
+      "event" (.Params.conference | default "")
+      "date" (.Date.Format "2006-01-02")
+      "lat" $loc.latitude
+      "lng" $loc.longitude
+      "city" (printf "%s%s" ($loc.city | default "") (cond (ne ($loc.country | default "") "") (printf ", %s" $loc.country) ""))
+      "thumbnail" (printf "%sslides/slide-001-thumb.jpg" .RelPermalink)
+      "source" "slides"
+      "activity" (.Params.activity | default "talk")
+    ) -}}
+  {{- end -}}
+{{- end -}}
+
+{{- /* Timeline with location (physical events only; exclude online) */ -}}
+{{- range where site.RegularPages "Section" "timeline" -}}
+  {{- $loc := .Params.location -}}
+  {{- if and $loc (reflect.IsMap $loc) (ne ($loc.latitude | default 0.0) 0.0) (ne ($loc.longitude | default 0.0) 0.0) (not .Params.online) -}}
+    {{- $cityStr := printf "%s%s" ($loc.city | default "") (cond (ne ($loc.country | default "") "") (printf ", %s" $loc.country) "") -}}
+    {{- $thumb := "" -}}
+    {{- with .Params.featured_image -}}{{- $thumb = . -}}{{- end -}}
+    {{- $entries = $entries | append (dict
+      "title" .Title
+      "url" .RelPermalink
+      "event" (.Params.event | default "")
+      "date" (.Date.Format "2006-01-02")
+      "lat" $loc.latitude
+      "lng" $loc.longitude
+      "city" $cityStr
+      "thumbnail" $thumb
+      "source" "timeline"
+      "activity" (.Params.activity | default "")
+    ) -}}
+  {{- end -}}
+{{- end -}}
+
+{{- /* Sort by date descending */ -}}
+{{- $entries = sort $entries "date" "desc" -}}
+{{- $entries | jsonify (dict "indent" "  ") -}}

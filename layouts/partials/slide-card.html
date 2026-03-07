@@ -1,20 +1,37 @@
 {{/* slide-card.html — Presentation card for listings
      Usage: {{ partial "slide-card.html" $page }}
+     Uses single high-res image from assets/slides/<slug>/ when present; Hugo resizes at build.
 */}}
 <article class="slide-card">
   <a href="{{ .RelPermalink }}" class="slide-card__link">
     <div class="slide-card__thumb-wrap">
-      {{- $thumbWebp := printf "%sslides/slide-001-thumb.webp" .RelPermalink -}}
-      {{- $thumbJpg := printf "%sslides/slide-001-thumb.jpg" .RelPermalink -}}
-      {{- $mediumWebp := printf "%sslides/slide-001-medium.webp" .RelPermalink -}}
-      <picture>
-        <source srcset="{{ $mediumWebp }}" media="(min-width: 768px)" type="image/webp">
-        <source srcset="{{ $thumbWebp }}" type="image/webp">
-        <img src="{{ $thumbJpg }}"
-             alt="{{ .Title }}"
-             loading="lazy"
-             class="slide-card__thumb">
-      </picture>
+      {{- $slug := .File.ContentBaseName -}}
+      {{- $imgPath := printf "slides/%s/slide-001.webp" $slug -}}
+      {{- $orig := resources.Get $imgPath -}}
+      {{- if $orig -}}
+        {{- $thumb := $orig.Resize "400x webp q100" -}}
+        {{- $medium := $orig.Resize "1024x webp q100" -}}
+        <picture>
+          <source srcset="{{ $medium.RelPermalink }}" media="(min-width: 768px)" type="image/webp">
+          <source srcset="{{ $thumb.RelPermalink }}" type="image/webp">
+          <img src="{{ $thumb.RelPermalink }}"
+               alt="{{ .Title }}"
+               loading="lazy"
+               class="slide-card__thumb">
+        </picture>
+      {{- else -}}
+        {{- $thumbWebp := printf "%sslides/slide-001-thumb.webp" .RelPermalink -}}
+        {{- $thumbJpg := printf "%sslides/slide-001-thumb.jpg" .RelPermalink -}}
+        {{- $mediumWebp := printf "%sslides/slide-001-medium.webp" .RelPermalink -}}
+        <picture>
+          <source srcset="{{ $mediumWebp }}" media="(min-width: 768px)" type="image/webp">
+          <source srcset="{{ $thumbWebp }}" type="image/webp">
+          <img src="{{ $thumbJpg }}"
+               alt="{{ .Title }}"
+               loading="lazy"
+               class="slide-card__thumb">
+        </picture>
+      {{- end -}}
       {{- with .Params.slides -}}
         {{- if gt (.page_count | default 0) 0 -}}
           <span class="slide-card__count">{{ .page_count }} slides</span>
