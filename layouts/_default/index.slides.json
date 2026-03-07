@@ -2,7 +2,7 @@
 {{- $entries := slice -}}
 {{- range $slides -}}
   {{- $loc := .Params.location -}}
-  {{- if and $loc (ne ($loc.latitude | default 0.0) 0.0) (ne ($loc.longitude | default 0.0) 0.0) -}}
+  {{- if and $loc (ne ($loc.latitude | default 0.0) 0.0) (ne ($loc.longitude | default 0.0) 0.0) (not .Params.online) -}}
     {{- $entry := dict
       "title" .Title
       "url" .RelPermalink

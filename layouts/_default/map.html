@@ -1,0 +1,23 @@
+{{ partial "header.html" . }}
+
+{{ partial "breadcrumbs.html" . }}
+
+<div class="events-map-page">
+  <h1>{{ .Title | markdownify }}</h1>
+  {{ if .Content }}
+    <div class="events-map-page__intro">
+      {{ .Content }}
+    </div>
+  {{ end }}
+
+  {{ $mapConf := site.Params.slides.map | default dict }}
+  {{ if $mapConf.enabled }}
+    {{ $mapHeight := .Params.map_height | default "60vh" }}
+    {{ $mapZoom := .Params.map_zoom | default ($mapConf.default_zoom | default 2) }}
+    {{ partial "talks-map.html" (dict "height" $mapHeight "zoom" $mapZoom "id" "events-map" "url" "locations.json") }}
+  {{ else }}
+    <p>Map is disabled in site configuration.</p>
+  {{ end }}
+</div>
+
+{{ partial "footer.html" . }}

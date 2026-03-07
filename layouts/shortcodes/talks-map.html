@@ -1,4 +1,5 @@
-{{/* talks-map shortcode: embed the talks location map */}}
+{{/* talks-map shortcode: embed the talks/events location map */}}
 {{- $height := .Get "height" | default "400px" -}}
 {{- $zoom := .Get "zoom" | default "2" -}}
-{{ partial "talks-map.html" (dict "height" $height "zoom" $zoom "id" "talks-map-embed") }}
+{{- $url := .Get "url" | default "slides.json" -}}
+{{ partial "talks-map.html" (dict "height" $height "zoom" $zoom "id" "talks-map-embed" "url" $url) }}

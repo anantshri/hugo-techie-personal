@@ -56,21 +56,40 @@
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
     </button>
     <div class="slide-viewer__slides">
+      {{- $slug := $page.File.ContentBaseName -}}
+      {{- $assetsBase := printf "slides/%s" $slug -}}
       {{- range $i, $_ := (seq $pageCount) -}}
         {{- $num := printf "%03d" (add $i 1) -}}
+        {{- $imgPath := printf "%s/slide-%s.webp" $assetsBase $num -}}
+        {{- $orig := resources.Get $imgPath -}}
         <div class="slide-viewer__slide{{ if eq $i 0 }} slide-viewer__slide--active{{ end }}" data-slide="{{ add $i 1 }}">
           <picture>
-            <source srcset="{{ $page.RelPermalink }}slides/slide-{{ $num }}-full.webp"
-                    media="(min-width: 1200px)" type="image/webp">
-            <source srcset="{{ $page.RelPermalink }}slides/slide-{{ $num }}-medium.webp"
-                    media="(min-width: 768px)" type="image/webp">
-            <source srcset="{{ $page.RelPermalink }}slides/slide-{{ $num }}-thumb.webp"
-                    type="image/webp">
-            <img src="{{ $page.RelPermalink }}slides/slide-{{ $num }}-medium.jpg"
-                 alt="Slide {{ add $i 1 }} of {{ $page.Title }}"
-                 class="slide-viewer__img"
-                 {{ if le $i 1 }}loading="eager"{{ else }}loading="lazy"{{ end }}
-                 decoding="async">
+            {{- if $orig -}}
+              {{- $thumb := $orig.Resize "400x webp q100" -}}
+              {{- $medium := $orig.Resize "1024x webp q100" -}}
+              {{- $full := $orig.Resize "1920x webp q100" -}}
+              <source srcset="{{ $full.RelPermalink }}" media="(min-width: 1200px)" type="image/webp">
+              <source srcset="{{ $medium.RelPermalink }}" media="(min-width: 768px)" type="image/webp">
+              <source srcset="{{ $thumb.RelPermalink }}" type="image/webp">
+              <img src="{{ $medium.RelPermalink }}"
+                   alt="Slide {{ add $i 1 }} of {{ $page.Title }}"
+                   class="slide-viewer__img"
+                   {{ if le $i 1 }}loading="eager"{{ else }}loading="lazy"{{ end }}
+                   decoding="async">
+            {{- else -}}
+              {{/* Fallback: legacy bundle images (slide-NNN-{thumb,medium,full}.webp in bundle) */}}
+              <source srcset="{{ $page.RelPermalink }}slides/slide-{{ $num }}-full.webp"
+                      media="(min-width: 1200px)" type="image/webp">
+              <source srcset="{{ $page.RelPermalink }}slides/slide-{{ $num }}-medium.webp"
+                      media="(min-width: 768px)" type="image/webp">
+              <source srcset="{{ $page.RelPermalink }}slides/slide-{{ $num }}-thumb.webp"
+                      type="image/webp">
+              <img src="{{ $page.RelPermalink }}slides/slide-{{ $num }}-medium.jpg"
+                   alt="Slide {{ add $i 1 }} of {{ $page.Title }}"
+                   class="slide-viewer__img"
+                   {{ if le $i 1 }}loading="eager"{{ else }}loading="lazy"{{ end }}
+                   decoding="async">
+            {{- end -}}
           </picture>
         </div>
       {{- end -}}
@@ -84,12 +103,22 @@
   {{- if $showGrid -}}
   <div class="slide-viewer__grid" hidden aria-label="Slide grid overview">
     <div class="slide-viewer__grid-inner">
+      {{- $slug := $page.File.ContentBaseName -}}
+      {{- $assetsBase := printf "slides/%s" $slug -}}
       {{- range $i, $_ := (seq $pageCount) -}}
         {{- $num := printf "%03d" (add $i 1) -}}
+        {{- $imgPath := printf "%s/slide-%s.webp" $assetsBase $num -}}
+        {{- $orig := resources.Get $imgPath -}}
         <button class="slide-viewer__grid-item" data-slide="{{ add $i 1 }}"
                 aria-label="Go to slide {{ add $i 1 }}">
-          <img src="{{ $page.RelPermalink }}slides/slide-{{ $num }}-thumb.webp"
-               alt="Slide {{ add $i 1 }}" loading="lazy" decoding="async">
+          {{- if $orig -}}
+            {{- $thumb := $orig.Resize "400x webp q100" -}}
+            <img src="{{ $thumb.RelPermalink }}"
+                 alt="Slide {{ add $i 1 }}" loading="lazy" decoding="async">
+          {{- else -}}
+            <img src="{{ $page.RelPermalink }}slides/slide-{{ $num }}-thumb.webp"
+                 alt="Slide {{ add $i 1 }}" loading="lazy" decoding="async">
+          {{- end -}}
           <span class="slide-viewer__grid-num">{{ add $i 1 }}</span>
         </button>
       {{- end -}}

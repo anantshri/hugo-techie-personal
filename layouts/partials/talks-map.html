@@ -1,9 +1,11 @@
-{{/* talks-map.html — Leaflet map showing talk locations
+{{/* talks-map.html — Leaflet map showing talk/event locations
      Usage: {{ partial "talks-map.html" (dict "height" "400px" "zoom" 2 "id" "talks-map") }}
+     Optional: pass "url" (e.g. "locations.json") to use a different data source; default is "slides.json"
 */}}
 {{- $height := .height | default "400px" -}}
 {{- $zoom := .zoom | default 2 -}}
 {{- $id := .id | default "talks-map" -}}
+{{- $dataUrl := .url | default "slides.json" -}}
 {{- $mapConf := site.Params.slides.map | default dict -}}
 {{- $cluster := $mapConf.cluster_markers | default true -}}
 
@@ -19,7 +21,7 @@
 <div class="talks-map" id="{{ $id }}" style="height: {{ $height }}"
      data-zoom="{{ $zoom }}"
      data-cluster="{{ $cluster }}"
-     data-url="{{ "slides.json" | relURL }}"
+     data-url="{{ $dataUrl | relURL }}"
      aria-label="Map of talk locations">
   <noscript>
     <p>Enable JavaScript to view the interactive map of talk locations.</p>
