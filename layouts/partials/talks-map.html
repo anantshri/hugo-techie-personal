@@ -28,7 +28,9 @@
   </noscript>
 </div>
 
-{{/* Leaflet JS */}}
+{{/* Leaflet JS — policy first so Trusted Types allow innerHTML */}}
+{{ $policyJS := resources.Get "js/trusted-types-policy.js" | fingerprint }}
+<script src="{{ $policyJS.RelPermalink }}"></script>
 <script src="{{ "lib/leaflet/leaflet.min.js" | relURL }}"></script>
 <script src="{{ "lib/leaflet/markercluster.min.js" | relURL }}"></script>
 
