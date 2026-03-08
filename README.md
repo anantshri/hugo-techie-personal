@@ -278,7 +278,7 @@ Each presentation is then available as:
 
 - `https://yoursite.com/slides/<slug>/` — full page with viewer
 - `https://yoursite.com/slides/<slug>/oembed.json` — OEmbed metadata for external embeds
-- `https://yoursite.com/slides/<slug>/embed.html` — embeddable iframe
+- `https://yoursite.com/slides/<slug>/embed.html` — embeddable iframe (self-contained with CSS custom properties for consistent toolbar styling)
 
 #### Viewer features
 
@@ -506,16 +506,22 @@ The theme includes `data/oembed.json` with additional provider configurations fo
 - Lazy loading iframes for performance
 - Responsive wrapper containers
 - Flexible configuration via JSON data file
-- Automatic fallback chain: hardcoded → data-driven → error message
+- **OEmbed discovery**: Automatically discovers OEmbed endpoints by fetching the target page and reading `<link>` discovery tags — any site with OEmbed support (including self-hosted slides) works without explicit configuration
+- Automatic fallback chain: data-driven → OEmbed discovery → Noti.st custom domains → error message
 
 **Usage:**
 ```hugo
 <!-- As shortcode -->
-{{< oembed url="https://www.youtube.com/watch?v=example" >}}
+{{% oembed url="https://www.youtube.com/watch?v=example" %}}
+
+<!-- Self-hosted slides (via OEmbed discovery) -->
+{{% oembed url="https://yoursite.com/slides/presentation-slug/" %}}
 
 <!-- As partial -->
 {{ partial "oembed.html" "https://www.youtube.com/watch?v=example" }}
 ```
+
+**Note on self-hosted slides**: The OEmbed shortcode can embed slides from your own site via OEmbed discovery (the slides section's OEmbed/Embed output formats are auto-discovered). For same-site slides, prefer the `slideviewer` shortcode which renders natively without an iframe. OEmbed with relative URLs or `localhost` will not work since Hugo's `resources.GetRemote` cannot fetch from itself during build.
 
 ### Professional Badge Integration
 
