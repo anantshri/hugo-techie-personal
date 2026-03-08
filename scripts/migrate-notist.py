@@ -59,12 +59,20 @@ def get_talk_urls(username: str) -> list[dict]:
     resp = fetch(profile_url)
     soup = BeautifulSoup(resp.text, "lxml")
 
+    # Noti.st talk URLs use short IDs: /<shortId>/<slug>
+    # e.g. /siPe3t/beyond-software-dependencies-...
+    # Exclude: /, /videos/*, external links, profile link itself
+    TALK_RE = re.compile(r"^/([A-Za-z0-9]{5,8})/([a-z0-9][\w-]+)$")
+
     talks = []
-    # Noti.st lists talks as links within the profile
     for link in soup.select("a[href]"):
         href = link.get("href", "")
-        # Noti.st talk URLs follow /<username>/<talk-id> or /<short-id>/<slug>
-        if href.startswith(f"/{username}/") and href.count("/") == 2:
+        if not href.startswith("/") or href.startswith("/videos"):
+            continue
+        if href == f"/{username}" or href == f"/{username}/":
+            continue
+        m = TALK_RE.match(href)
+        if m:
             full_url = urljoin(profile_url, href)
             title = link.get_text(strip=True) or ""
             talks.append({"url": full_url, "title": title, "path": href})
