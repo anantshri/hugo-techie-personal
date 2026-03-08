@@ -117,7 +117,13 @@
                     {{ $iframeStyle := "position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;" }}
                     {{ $frame := printf "iframe loading='lazy' allow='accelerometer; autoplay; clipboard-write; encrypted-media; fullscreen; gyroscope; picture-in-picture; web-share' style='%s'" $iframeStyle }}
                     {{ $html = replace $html "iframe " $frame }}
-                    {{ $out = printf "<div class='oembed-container-auto'>%s</div>" $html | safeHTML }}
+                    {{ $containerStyle := "" }}
+                    {{ with $oData.width }}
+                      {{ with $oData.height }}
+                        {{ $containerStyle = printf " style='padding-bottom: %.4f%%'" (div (mul $oData.height 100.0) $oData.width) }}
+                      {{ end }}
+                    {{ end }}
+                    {{ $out = printf "<div class='oembed-container-auto'%s>%s</div>" $containerStyle $html | safeHTML }}
                   {{ end }}
                 {{ end }}
               {{ end }}
