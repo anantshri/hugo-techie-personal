@@ -21,64 +21,42 @@
     </div>
   {{ end }}
 
-  {{/* ===== Filter / Sort Bar ===== */}}
+  {{/* ===== Year-grouped listing (no JS) ===== */}}
   {{ $presentations := .Pages.ByDate.Reverse }}
   {{ if $presentations }}
 
-    {{/* Collect unique years and conferences for filter */}}
+    {{/* Unique years, descending (order preserved from reverse iteration) */}}
     {{ $years := slice }}
-    {{ $conferences := slice }}
     {{ range $presentations }}
-      {{ $year := .Date.Format "2006" }}
-      {{ if not (in $years $year) }}
-        {{ $years = $years | append $year }}
-      {{ end }}
-      {{ with .Params.conference }}
-        {{ if not (in $conferences .) }}
-          {{ $conferences = $conferences | append . }}
-        {{ end }}
+      {{ $y := .Date.Format "2006" }}
+      {{ if not (in $years $y) }}
+        {{ $years = $years | append $y }}
       {{ end }}
     {{ end }}
 
-    <div class="slides-filters" id="slides-filters">
-      <div class="slides-filters__group">
-        <label for="filter-year" class="slides-filters__label">Year:</label>
-        <select id="filter-year" class="slides-filters__select" aria-label="Filter by year">
-          <option value="">All years</option>
-          {{ range $years }}
-            <option value="{{ . }}">{{ . }}</option>
-          {{ end }}
-        </select>
+    <p class="slides-listing__count">{{ len $presentations }} presentation{{ if gt (len $presentations) 1 }}s{{ end }}</p>
+
+    <nav class="slides-jump-to" aria-label="Jump to year">
+      Jump to:
+      {{ range $i, $year := $years }}
+        {{ if $i }} | {{ end }}
+        {{ $yearPres := where $presentations "Date.Year" (int $year) }}
+        <a href="#year-{{ $year }}">{{ $year }} ({{ len $yearPres }})</a>
+      {{ end }}
+    </nav>
+
+    {{ range $years }}
+      {{ $year := . }}
+      {{ $yearPres := where $presentations "Date.Year" (int $year) }}
+      <h2 class="slides-year-heading" id="year-{{ $year }}">{{ $year }}</h2>
+      <div class="slides-grid">
+        {{ range $yearPres }}
+          <div class="slides-grid__item">
+            {{ partial "slide-card.html" . }}
+          </div>
+        {{ end }}
       </div>
-      {{ if gt (len $conferences) 1 }}
-        <div class="slides-filters__group">
-          <label for="filter-conference" class="slides-filters__label">Conference:</label>
-          <select id="filter-conference" class="slides-filters__select" aria-label="Filter by conference">
-            <option value="">All conferences</option>
-            {{ range sort $conferences }}
-              <option value="{{ . }}">{{ . }}</option>
-            {{ end }}
-          </select>
-        </div>
-      {{ end }}
-      <span class="slides-filters__count" id="slides-count">
-        {{ len $presentations }} presentation{{ if gt (len $presentations) 1 }}s{{ end }}
-      </span>
-    </div>
-
-    {{/* ===== Presentation Grid ===== */}}
-    <div class="slides-grid" id="slides-grid">
-      {{ range $presentations }}
-        <div class="slides-grid__item"
-             data-year="{{ .Date.Format "2006" }}"
-             data-conference="{{ .Params.conference }}">
-          {{ partial "slide-card.html" . }}
-        </div>
-      {{ end }}
-    </div>
-
-    {{ $filtersJS := resources.Get "js/slides-filters.js" | fingerprint }}
-    <script src="{{ $filtersJS.RelPermalink }}" defer></script>
+    {{ end }}
 
   {{ else }}
     <p>No presentations yet.</p>

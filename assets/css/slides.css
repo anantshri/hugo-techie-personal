@@ -233,46 +233,41 @@
   margin-bottom: var(--space-8);
 }
 
-/* Filters */
-.slides-filters {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-4);
-  margin-bottom: var(--space-6);
-  padding: var(--space-4);
-  background: var(--color-background-alt);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-}
-
-.slides-filters__group {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.slides-filters__label {
-  font-size: 0.875rem;
+/* Count and jump-to nav */
+.slides-listing__count {
+  font-size: 0.9375rem;
   color: var(--color-text-secondary);
-  white-space: nowrap;
+  margin-bottom: var(--space-3);
 }
 
-.slides-filters__select {
-  font-family: var(--font-family-mono);
-  font-size: 0.875rem;
-  padding: var(--space-1) var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-background);
+.slides-jump-to {
+  font-size: 0.9375rem;
+  margin-bottom: var(--space-8);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.slides-jump-to a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.slides-jump-to a:hover {
+  text-decoration: underline;
+}
+
+.slides-year-heading {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: var(--space-8) 0 var(--space-4) 0;
+  padding-top: var(--space-2);
   color: var(--color-text-primary);
-  cursor: pointer;
+  scroll-margin-top: 1rem;
 }
 
-.slides-filters__count {
-  margin-left: auto;
-  font-size: 0.8125rem;
-  color: var(--color-text-muted);
+.slides-year-heading:first-of-type {
+  margin-top: 0;
+  padding-top: 0;
 }
 
 /* Card Grid */
@@ -282,7 +277,7 @@
   gap: var(--space-6);
 }
 
-/* Wrapper for filter script only — no border/shadow to avoid stacking with .slide-card */
+/* Wrapper for grid items — no border/shadow to avoid stacking with .slide-card */
 .slides-grid__item {
   border: none;
   box-shadow: none;
@@ -330,6 +325,7 @@
   height: 100%;
   object-fit: contain;
   display: block;
+  border-radius: 0;
 }
 
 .slide-card__count {
