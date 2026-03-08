@@ -98,7 +98,7 @@
   object-fit: contain;
 }
 
-/* Nav buttons */
+/* Nav buttons — large semi-transparent tap zones overlaying the slide */
 .slide-viewer__prev,
 .slide-viewer__next {
   position: absolute;
@@ -108,12 +108,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 48px;
+  width: 25%;
   background: transparent;
   border: none;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.5);
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition: background 0.2s ease, color 0.2s ease;
 }
 
 .slide-viewer__prev { left: 0; }
@@ -121,20 +121,20 @@
 
 .slide-viewer__prev:hover,
 .slide-viewer__next:hover {
-  background: rgba(0, 0, 0, 0.4);
-  color: #fff;
+  background: rgba(0, 0, 0, 0.15);
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .slide-viewer__prev:disabled,
 .slide-viewer__next:disabled {
-  opacity: 0.25;
+  opacity: 0.15;
   cursor: default;
 }
 
 .slide-viewer__prev:disabled:hover,
 .slide-viewer__next:disabled:hover {
   background: transparent;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.5);
 }
 
 /* Grid overlay */
@@ -207,11 +207,12 @@
   position: fixed;
 }
 
-/* Mobile: hide prev/next text, smaller buttons */
+/* Mobile: nav overlays */
 @media (max-width: 640px) {
-  .slide-viewer__prev,
-  .slide-viewer__next {
-    width: 36px;
+  .slide-viewer__prev svg,
+  .slide-viewer__next svg {
+    width: 18px;
+    height: 18px;
   }
 
   .slide-viewer__grid-inner {
