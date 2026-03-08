@@ -130,7 +130,6 @@ enableRobotsTXT = true
     default_author = "Demo Author"
     default_author_url = "https://example.com"
     pdf_download = true
-    social_chatter_privacy = true
 
     [params.slides.viewer]
       theme = "dark"

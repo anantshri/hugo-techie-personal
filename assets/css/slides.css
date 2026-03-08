@@ -624,98 +624,6 @@
   color: var(--color-primary);
 }
 
-/* Social Chatter */
-.social-chatter {
-  margin-bottom: var(--space-8);
-}
-
-.social-chatter h2 {
-  font-size: 1.25rem;
-  margin-bottom: var(--space-4);
-  padding-bottom: var(--space-2);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.social-chatter__list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-.social-chatter__item {
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-}
-
-.social-chatter__placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--space-4);
-  background: var(--color-background-alt);
-}
-
-.social-chatter__info {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.social-chatter__platform {
-  font-weight: 600;
-  font-size: 0.875rem;
-  color: var(--color-text-primary);
-}
-
-.social-chatter__handle {
-  font-size: 0.8125rem;
-  color: var(--color-text-muted);
-}
-
-.social-chatter__actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.social-chatter__load {
-  font-family: var(--font-family-mono);
-  font-size: 0.8125rem;
-  padding: var(--space-1) var(--space-3);
-  background: var(--color-primary);
-  color: var(--color-text-inverse);
-  border: none;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-
-.social-chatter__load:hover {
-  background: var(--color-primary-dark);
-}
-
-.social-chatter__link {
-  font-size: 0.8125rem;
-  color: var(--color-text-muted);
-  text-decoration: none;
-}
-
-.social-chatter__link:hover {
-  color: var(--color-primary);
-}
-
-.social-chatter__embed {
-  padding: var(--space-4);
-}
-
-.social-chatter__iframe {
-  width: 100%;
-  min-height: 300px;
-  border: none;
-  border-radius: var(--radius-md);
-}
-
 /* Embed code snippets */
 .embed-snippets {
   display: flex;
@@ -830,7 +738,6 @@
   .slide-viewer__next,
   .slide-viewer__grid,
   .slides-filters,
-  .social-chatter__load,
   .slides-single__embed-code,
   .talks-map {
     display: none !important;
@@ -869,8 +776,7 @@
 .slide-viewer__prev:focus-visible,
 .slide-viewer__next:focus-visible,
 .slide-viewer__grid-item:focus-visible,
-.slide-card__link:focus-visible,
-.social-chatter__load:focus-visible {
+.slide-card__link:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
