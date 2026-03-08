@@ -1,5 +1,7 @@
 {{- $embedWidth := site.Params.slides.oembed.embed_width | default 640 -}}
 {{- $embedHeight := site.Params.slides.oembed.embed_height | default 480 -}}
+{{- $chromeHeight := site.Params.slides.oembed.embed_chrome_height | default 70 -}}
+{{- $totalHeight := add $embedHeight $chromeHeight -}}
 {{- $authorName := .Params.oembed.author_name | default (site.Params.slides.default_author | default site.Params.author | default "") -}}
 {{- $authorUrl := .Params.oembed.author_url | default (site.Params.slides.default_author_url | default (site.BaseURL | default "")) -}}
 {{- $providerName := .Params.oembed.provider_name | default (site.Title | default "") -}}
@@ -16,7 +18,7 @@
   "thumbnail_url": {{ $thumbUrl | jsonify }},
   "thumbnail_width": 1024,
   "thumbnail_height": 768,
-  "html": {{ printf "<iframe src=\"%sembed.html\" width=\"%d\" height=\"%d\" frameborder=\"0\" allowfullscreen></iframe>" .Permalink $embedWidth $embedHeight | jsonify }},
+  "html": {{ printf "<iframe src=\"%sembed.html\" width=\"%d\" height=\"%d\" frameborder=\"0\" allowfullscreen></iframe>" .Permalink $embedWidth $totalHeight | jsonify }},
   "width": {{ $embedWidth }},
-  "height": {{ $embedHeight }}
+  "height": {{ $totalHeight }}
 }
