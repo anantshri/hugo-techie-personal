@@ -208,7 +208,6 @@ Add to your `config.toml`:
   default_author = "Your Name"
   default_author_url = "https://yoursite.com"
   pdf_download = true
-  social_chatter_privacy = true
 
   [params.slides.viewer]
     theme = "dark"           # Viewer theme
@@ -233,6 +232,19 @@ Add to your `config.toml`:
     embed_width = 640
     embed_height = 480
 ```
+
+#### Social chatter (timeline)
+
+Timeline entry pages can display a **Social chatter** section with embedded social media posts. In timeline frontmatter, add a list of URLs:
+
+```yaml
+social_chatter:
+  - "https://x.com/user/status/123456789"
+  - "https://www.linkedin.com/posts/username_activity-123456789"
+  - "https://infosec.exchange/@user/123456789"
+```
+
+Platform is detected from each URL. Twitter/X, Bluesky, and Mastodon use the site's oembed system (`data/oembed.json` and discovery); LinkedIn, Facebook, and Instagram use direct iframes. No JavaScript required. The section appears between the main content and Related Entities on the timeline single page.
 
 #### Output formats
 

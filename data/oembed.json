@@ -7,6 +7,13 @@
 		"lazy_loading": true
 	},
 	{
+		"endpoint": "https://publish.twitter.com/oembed",
+		"pattern": "x.com",
+		"remove": "<script(.*)</script>",
+		"nowrapper": true,
+		"lazy_loading": true
+	},
+	{
 		"endpoint" : "https://www.slideshare.net/api/oembed/2",
 		"pattern" : "slideshare.net",
 		"remove" : "<div(.*)</div>"

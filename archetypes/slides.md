@@ -36,9 +36,6 @@ whitepaper:
 # Resources / references
 resources: []
 
-# Social media buzz
-social_chatter: []
-
 # Cross-references
 timeline_entry: ""
 hacking_archives: ""

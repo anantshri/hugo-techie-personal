@@ -47,6 +47,8 @@
 </div>
 {{ end }}
 
+{{ partial "social-chatter.html" . }}
+
 {{/* Related Entities - unified block for project_links and related_links */}}
 {{ if or .Params.project_links .Params.related_links }}
 <hr />
