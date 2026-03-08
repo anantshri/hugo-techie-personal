@@ -107,7 +107,13 @@
   {{/* ===== 8. Embed Code ===== */}}
   {{ if site.Params.slides.oembed.enabled | default true }}
     {{ $embedWidth := site.Params.slides.oembed.embed_width | default 640 }}
+    {{ $chromeHeight := site.Params.slides.oembed.embed_chrome_height | default 70 }}
     {{ $embedHeight := site.Params.slides.oembed.embed_height | default 480 }}
+    {{ with resources.Get (printf "slides/%s/slide-001.webp" .File.ContentBaseName) }}
+      {{ $ratio := div (mul .Height 1.0) .Width }}
+      {{ $embedHeight = int (math.Round (mul $ratio $embedWidth)) }}
+    {{ end }}
+    {{ $embedHeight = add $embedHeight $chromeHeight }}
     <section class="slides-single__embed-code">
       <h2>Embed This Presentation</h2>
       <div class="embed-snippets">

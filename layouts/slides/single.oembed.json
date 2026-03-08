@@ -1,11 +1,26 @@
 {{- $embedWidth := site.Params.slides.oembed.embed_width | default 640 -}}
-{{- $embedHeight := site.Params.slides.oembed.embed_height | default 480 -}}
 {{- $chromeHeight := site.Params.slides.oembed.embed_chrome_height | default 70 -}}
+{{- $slideW := 0 -}}
+{{- $slideH := 0 -}}
+{{- with resources.Get (printf "slides/%s/slide-001.webp" .File.ContentBaseName) -}}
+  {{- $slideW = .Width -}}
+  {{- $slideH = .Height -}}
+{{- end -}}
+{{- $embedHeight := site.Params.slides.oembed.embed_height | default 480 -}}
+{{- if and (gt $slideW 0) (gt $slideH 0) -}}
+  {{- $ratio := div (mul $slideH 1.0) $slideW -}}
+  {{- $embedHeight = int (math.Round (mul $ratio $embedWidth)) -}}
+{{- end -}}
 {{- $totalHeight := add $embedHeight $chromeHeight -}}
 {{- $authorName := .Params.oembed.author_name | default (site.Params.slides.default_author | default site.Params.author | default "") -}}
 {{- $authorUrl := .Params.oembed.author_url | default (site.Params.slides.default_author_url | default (site.BaseURL | default "")) -}}
 {{- $providerName := .Params.oembed.provider_name | default (site.Title | default "") -}}
 {{- $providerUrl := .Params.oembed.provider_url | default (site.BaseURL | default "") -}}
+{{- $thumbWidth := 1024 -}}
+{{- $thumbHeight := 768 -}}
+{{- if and (gt $slideW 0) (gt $slideH 0) -}}
+  {{- $thumbHeight = int (math.Round (div (mul $slideH 1.0) $slideW | mul 1024.0)) -}}
+{{- end -}}
 {{- $thumbUrl := printf "%sslides/slide-001-medium.jpg" .Permalink -}}
 {
   "version": "1.0",
@@ -16,9 +31,12 @@
   "provider_name": {{ $providerName | jsonify }},
   "provider_url": {{ $providerUrl | jsonify }},
   "thumbnail_url": {{ $thumbUrl | jsonify }},
-  "thumbnail_width": 1024,
-  "thumbnail_height": 768,
+  "thumbnail_width": {{ $thumbWidth }},
+  "thumbnail_height": {{ $thumbHeight }},
   "html": {{ printf "<iframe src=\"%sembed.html\" width=\"%d\" height=\"%d\" frameborder=\"0\" allowfullscreen></iframe>" .Permalink $embedWidth $totalHeight | jsonify }},
   "width": {{ $embedWidth }},
-  "height": {{ $totalHeight }}
+  "height": {{ $totalHeight }},
+  "slide_width": {{ if gt $slideW 0 }}{{ $slideW }}{{ else }}{{ $embedWidth }}{{ end }},
+  "slide_height": {{ if gt $slideH 0 }}{{ $slideH }}{{ else }}{{ $embedHeight }}{{ end }},
+  "chrome_height": {{ $chromeHeight }}
 }
