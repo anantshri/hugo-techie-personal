@@ -40,7 +40,7 @@
   
   {{/* Fallback to Site.Data if available */}}
   {{ if not $badgesData }}
-    {{ $badgesData = $page.Site.Data.HackTheBoxBadges }}
+    {{ $badgesData = hugo.Data.HackTheBoxBadges }}
   {{ end }}
   
   {{/* Process HackTheBox badges - only show the latest badge (highest ID) */}}

@@ -55,7 +55,7 @@
     
     {{/* Fallback to Site.Data */}}
     {{ if not $badgesData }}
-      {{ $badgesData = $page.Site.Data.CredlyBadges }}
+      {{ $badgesData = hugo.Data.CredlyBadges }}
     {{ end }}
     
     {{ if $badgesData }}
@@ -147,7 +147,7 @@
     
     {{/* Fallback to Site.Data */}}
     {{ if not $badgesData }}
-      {{ $badgesData = $page.Site.Data.AccredibleBadges }}
+      {{ $badgesData = hugo.Data.AccredibleBadges }}
     {{ end }}
     
     {{ if $badgesData }}

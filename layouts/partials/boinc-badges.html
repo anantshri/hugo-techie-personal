@@ -38,7 +38,7 @@
 {{ end }}
 
 {{ if not $projectsData }}
-  {{ $projectsData = $page.Site.Data.BoincProjects }}
+  {{ $projectsData = hugo.Data.BoincProjects }}
 {{ end }}
 
 {{/* Create a map of project URLs for quick lookup */}}
@@ -81,7 +81,7 @@
   
   {{/* Fallback to Site.Data */}}
   {{ if not $userData }}
-    {{ $userData = $page.Site.Data.BoincStats }}
+    {{ $userData = hugo.Data.BoincStats }}
   {{ end }}
   
   {{ if $userData }}
