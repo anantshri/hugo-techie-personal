@@ -151,7 +151,7 @@ process_pdf() {
     num=$(printf "%03d" "$i")
 
     if [ "$orig_w" -gt "$FULL_WIDTH" ]; then
-      $CONVERT "$page_file" -resize "${FULL_WIDTH}x" -quality 95 "$tmp_dir/slide.jpg"
+      $CONVERT "$page_file" -resize "${FULL_WIDTH}x" -quality 100 "$tmp_dir/slide.jpg"
     else
       cp "$page_file" "$tmp_dir/slide.jpg"
     fi

@@ -78,6 +78,33 @@
   {{ end }}
 {{ end }}
 
+{{/* Same-site slides: if URL points to a local slides page, render embed directly
+     without remote fetching — faster, works during dev, avoids cache staleness */}}
+{{ if eq $matched 0 }}
+  {{ $parsedPath := strings.TrimRight "/" $videoUrl.Path }}
+  {{ with site.GetPage $parsedPath }}
+    {{ if eq .Section "slides" }}
+      {{ $matched = 1 }}
+      {{ $slug := .File.ContentBaseName }}
+      {{ $slideW := 0 }}
+      {{ $slideH := 0 }}
+      {{ with resources.Get (printf "slides/%s/slide-001.webp" $slug) }}
+        {{ $slideW = .Width }}
+        {{ $slideH = .Height }}
+      {{ end }}
+      {{ $chromeH := site.Params.slides.oembed.embed_chrome_height | default 70 }}
+      {{ $iframeStyle := "position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;" }}
+      {{ $iframe := printf "<iframe src='%sembed.html' loading='lazy' style='%s' allowfullscreen title='%s'></iframe>" .RelPermalink $iframeStyle (.Title | htmlEscape) }}
+      {{ $containerStyle := "" }}
+      {{ if and (gt $slideW 0) (gt $slideH 0) }}
+        {{ $slidePct := div (mul $slideH 100.0) $slideW }}
+        {{ $containerStyle = printf " style='padding-bottom: calc(%.4f%% + %dpx)'" $slidePct $chromeH }}
+      {{ end }}
+      {{ $out = printf "<div class='oembed-container-auto'%s>%s</div>" $containerStyle $iframe | safeHTML }}
+    {{ end }}
+  {{ end }}
+{{ end }}
+
 {{/* OEmbed discovery: fetch page and look for <link> oembed discovery tag */}}
 {{ if eq $matched 0 }}
   {{ with try (resources.GetRemote $url) }}
@@ -109,9 +136,20 @@
                     {{ $frame := printf "iframe loading='lazy' style='%s'" $iframeStyle }}
                     {{ $html = replace $html "iframe " $frame }}
                     {{ $containerStyle := "" }}
-                    {{ with $oData.width }}
-                      {{ with $oData.height }}
-                        {{ $containerStyle = printf " style='padding-bottom: %.4f%%'" (div (mul $oData.height 100.0) $oData.width) }}
+                    {{ $sw := 0 }}
+                    {{ $sh := 0 }}
+                    {{ $ch := 0 }}
+                    {{ with $oData.slide_width }}{{ $sw = . }}{{ end }}
+                    {{ with $oData.slide_height }}{{ $sh = . }}{{ end }}
+                    {{ with $oData.chrome_height }}{{ $ch = . }}{{ end }}
+                    {{ if and (gt $sw 0) (gt $sh 0) (gt $ch 0) }}
+                      {{ $slidePct := div (mul $sh 100.0) $sw }}
+                      {{ $containerStyle = printf " style='padding-bottom: calc(%.4f%% + %dpx)'" $slidePct (int $ch) }}
+                    {{ else }}
+                      {{ with $oData.width }}
+                        {{ with $oData.height }}
+                          {{ $containerStyle = printf " style='padding-bottom: %.4f%%'" (div (mul $oData.height 100.0) $oData.width) }}
+                        {{ end }}
                       {{ end }}
                     {{ end }}
                     {{ $out = printf "<div class='oembed-container-auto'%s>%s</div>" $containerStyle $html | safeHTML }}
