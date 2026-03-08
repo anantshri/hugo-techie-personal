@@ -106,13 +106,13 @@
   
   {{/* Fallback to Site.Data if available */}}
   {{ if not $badgesData }}
-    {{ $badgesData = $page.Site.Data.BugcrowdBadges }}
+    {{ $badgesData = hugo.Data.BugcrowdBadges }}
   {{ end }}
   {{ if not $statsData }}
-    {{ $statsData = $page.Site.Data.BugcrowdStats }}
+    {{ $statsData = hugo.Data.BugcrowdStats }}
   {{ end }}
   {{ if not $hallOfFameData }}
-    {{ $hallOfFameData = $page.Site.Data.BugcrowdHallOfFame }}
+    {{ $hallOfFameData = hugo.Data.BugcrowdHallOfFame }}
   {{ end }}
   
   {{/* Process badge attainments - only show awarded badges by default */}}
@@ -178,7 +178,7 @@
         
         {{/* Try to get SVG path from mapping file */}}
         {{ if and (not $badgeImageUrl) $badgeKey }}
-          {{ $mappingsData := $page.Site.Data.BugcrowdBadgeMappings }}
+          {{ $mappingsData := hugo.Data.BugcrowdBadgeMappings }}
           {{ if $mappingsData }}
             {{ $mapping := index $mappingsData $badgeKey }}
             {{ if $mapping }}

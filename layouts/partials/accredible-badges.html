@@ -76,7 +76,7 @@
   
   {{/* Fallback to Site.Data if available (for initial setup) */}}
   {{ if not $badgesData }}
-    {{ $siteData := $page.Site.Data.AccredibleBadges }}
+    {{ $siteData := hugo.Data.AccredibleBadges }}
     {{ if $siteData }}
       {{ warnf "Using Accredible badges data from Site.Data (initial setup)" }}
       {{ $badgesData = $siteData }}

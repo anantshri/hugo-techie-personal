@@ -49,7 +49,7 @@
   
   {{/* Fallback to Site.Data */}}
   {{ if not $badgesData }}
-    {{ $badgesData = $page.Site.Data.BadgrBadges }}
+    {{ $badgesData = hugo.Data.BadgrBadges }}
   {{ end }}
   
   {{ if $badgesData }}

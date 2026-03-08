@@ -69,7 +69,7 @@
   
   {{/* Fallback to Site.Data if available (for initial setup) */}}
   {{ if not $badgesData }}
-    {{ $siteData := $page.Site.Data.CredlyBadges }}
+    {{ $siteData := hugo.Data.CredlyBadges }}
     {{ if $siteData }}
       {{ warnf "Using Credly badges data from Site.Data (initial setup)" }}
       {{ $badgesData = $siteData }}

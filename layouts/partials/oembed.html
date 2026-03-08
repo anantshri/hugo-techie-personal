@@ -14,7 +14,7 @@
 
 {{/* Try data-driven approach first */}}
 {{ $data := dict }}
-{{- range $page.Site.Data.oembed }}
+{{- range hugo.Data.oembed }}
   {{- if le 1 ( findRE .pattern $videoUrl.Host | len ) }}
     {{ $matched = 1 }}
     {{ $nowrapper := .nowrapper | default false }}

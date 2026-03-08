@@ -5,7 +5,7 @@
 {{ $hideExpired := eq ($params.hide_expired | default "false") "true" }}
 
 {{/* Fetch manual badges from Site.Data */}}
-{{ $badgesData := $page.Site.Data.ManualBadges }}
+{{ $badgesData := hugo.Data.ManualBadges }}
 {{ $allBadges := slice }}
 
 {{ if $badgesData }}

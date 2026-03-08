@@ -45,7 +45,7 @@
   
   {{/* Fallback to Site.Data if available */}}
   {{ if not $badgesData }}
-    {{ $badgesData = $page.Site.Data.HackerOneBadges }}
+    {{ $badgesData = hugo.Data.HackerOneBadges }}
   {{ end }}
   
   {{/* Process HackerOne badges */}}
