@@ -78,6 +78,48 @@
   {{ end }}
 {{ end }}
 
+{{/* OEmbed discovery: fetch page and look for <link> oembed discovery tag */}}
+{{ if eq $matched 0 }}
+  {{ with try (resources.GetRemote $url) }}
+    {{ with .Err }}
+      {{ warnf "OEmbed discovery: error fetching %q: %s" $url . }}
+    {{ else }}
+      {{ $pageHTML := .Value.Content }}
+      {{ $linkTags := findRE "<link[^>]+json.oembed[^>]+>" $pageHTML 1 }}
+      {{ if $linkTags }}
+        {{ $linkTag := index $linkTags 0 }}
+        {{ $urlMatches := findRE "https?://[^ <>]+" $linkTag 1 }}
+        {{ if $urlMatches }}
+          {{ $oembedJsonUrl := index $urlMatches 0 }}
+          {{ $oembedJsonUrl = replaceRE "[^a-zA-Z0-9/]$" "" $oembedJsonUrl }}
+          {{ $oembedJsonUrl = replace $oembedJsonUrl "&amp;" "&" }}
+          {{ with try (resources.GetRemote $oembedJsonUrl) }}
+            {{ with .Err }}
+              {{ warnf "OEmbed discovery: error fetching oembed JSON %q: %s" $oembedJsonUrl . }}
+            {{ else }}
+              {{ with try (.Value | transform.Unmarshal) }}
+                {{ with .Err }}
+                  {{ warnf "OEmbed discovery: JSON parse error: %s" . }}
+                {{ else }}
+                  {{ $oData := .Value }}
+                  {{ with $oData.html }}
+                    {{ $matched = 1 }}
+                    {{ $html := . }}
+                    {{ $iframeStyle := "position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;" }}
+                    {{ $frame := printf "iframe loading='lazy' style='%s'" $iframeStyle }}
+                    {{ $html = replace $html "iframe " $frame }}
+                    {{ $out = printf "<div class='oembed-container-auto'>%s</div>" $html | safeHTML }}
+                  {{ end }}
+                {{ end }}
+              {{ end }}
+            {{ end }}
+          {{ end }}
+        {{ end }}
+      {{ end }}
+    {{ end }}
+  {{ end }}
+{{ end }}
+
 {{/* Fallback to Noti.st if configured and no match found */}}
 {{ if and (eq $matched 0) $.Site.Params.notist_custom_domains }}
   {{ $isNotistDomain := false }}
