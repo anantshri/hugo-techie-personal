@@ -45,6 +45,25 @@ for pdf_path in "$INBOX"/*.pdf; do
 
   filename="$(basename "$pdf_path")"
   slug="${filename%.pdf}"
+
+  # Sanitize slug: lowercase and replace spaces/underscores with hyphens
+  clean_slug="$(echo "$slug" | tr '[:upper:]' '[:lower:]' | tr ' _' '--' | tr -s '-')"
+  if [ "$clean_slug" != "$slug" ]; then
+    new_pdf="$INBOX/$clean_slug.pdf"
+    # On case-insensitive filesystems, check inode to allow case-only renames
+    if [ -f "$new_pdf" ]; then
+      src_inode="$(stat -f '%i' "$pdf_path" 2>/dev/null || stat -c '%i' "$pdf_path" 2>/dev/null)"
+      dst_inode="$(stat -f '%i' "$new_pdf" 2>/dev/null || stat -c '%i' "$new_pdf" 2>/dev/null)"
+      if [ "$src_inode" != "$dst_inode" ]; then
+        err "  Cannot rename '$filename' → '$clean_slug.pdf': target already exists — skipping"
+        continue
+      fi
+    fi
+    mv "$pdf_path" "$new_pdf"
+    warn "  Renamed PDF: $filename → $clean_slug.pdf"
+    slug="$clean_slug"
+  fi
+
   index_md="$CONTENT_DIR/$slug/index.md"
 
   if [ -f "$index_md" ]; then
