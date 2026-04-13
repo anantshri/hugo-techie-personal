@@ -4,6 +4,7 @@
 */}}
 {{- $page := .page -}}
 {{- $id := .id | default "slide-viewer" -}}
+{{- $sizes := .sizes | default "(min-width: 1200px) 900px, (min-width: 768px) 80vw, 95vw" -}}
 {{- $pageCount := $page.Params.slides.page_count | default 0 -}}
 {{- $viewerConf := site.Params.slides.viewer | default dict -}}
 {{- $showGrid := $viewerConf.show_grid_button | default true -}}
@@ -69,7 +70,7 @@
             {{- $w1200 := $orig.Resize "1200x webp q100" -}}
             {{- $w1920 := $orig.Resize "1920x webp q100" -}}
             <img srcset="{{ $w480.RelPermalink }} 480w, {{ $w800.RelPermalink }} 800w, {{ $w1200.RelPermalink }} 1200w, {{ $w1920.RelPermalink }} 1920w"
-                 sizes="(min-width: 1200px) 900px, (min-width: 768px) 80vw, 95vw"
+                 sizes="{{ $sizes }}"
                  src="{{ $w1200.RelPermalink }}"
                  alt="Slide {{ add $i 1 }} of {{ $page.Title }}"
                  class="slide-viewer__img"
