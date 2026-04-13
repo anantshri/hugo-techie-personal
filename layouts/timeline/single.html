@@ -47,6 +47,9 @@
 </div>
 {{ end }}
 
+{{/* AI Generated Summary — pulled from ai_summary/unified/ at build time */}}
+{{ partial "ai-summary.html" (dict "dir" "unified" "slug" .File.ContentBaseName "page" .) }}
+
 {{ partial "social-chatter.html" . }}
 
 {{/* Related Entities - unified block for project_links and related_links */}}
