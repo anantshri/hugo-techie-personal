@@ -20,9 +20,9 @@
   {{ end }}
 {{ end }}
 
-{{ $pages := where .Pages "Section" "!=" "" }}
+{{ $pages := where (where .Pages "Section" "!=" "") "Section" "!=" "slides" }}
 {{ if .IsHome }}
-  {{ $pages = .Site.RegularPages }}
+  {{ $pages = where .Site.RegularPages "Section" "!=" "slides" }}
 {{ end }}
 
 <div class="center">
@@ -31,7 +31,7 @@
   {{ if and (eq .Kind "term") (eq .Type "focus") }}
     {{/* For focus term pages, scope activities to current focus */}}
     {{ $activityCounts := dict }}
-    {{ range .Pages }}
+    {{ range $pages }}
       {{ with .Params.activity }}
         {{ if reflect.IsSlice . }}
           {{/* Handle array of activity terms */}}
@@ -52,7 +52,7 @@
   {{ else if and (eq .Kind "term") (eq .Type "activity") }}
     {{/* For activity term pages, scope focus terms to current activity */}}
     {{ $focusCounts := dict }}
-    {{ range .Pages }}
+    {{ range $pages }}
       {{ with .Params.focus }}
         {{ if reflect.IsSlice . }}
           {{/* Handle array of focus terms */}}

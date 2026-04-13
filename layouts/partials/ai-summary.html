@@ -1,0 +1,32 @@
+{{/*
+  AI Summary Partial — includes an AI-generated summary from ai_summary/ at build time.
+
+  Usage:
+    {{ partial "ai-summary.html" (dict "dir" "unified" "slug" .File.ContentBaseName "page" .) }}
+    {{ partial "ai-summary.html" (dict "dir" "slides" "slug" .File.ContentBaseName "page" .) }}
+
+  Parameters:
+    dir  — subfolder under ai_summary/ (video, slides, unified)
+    slug — filename without .md (defaults to page slug via ContentBaseName)
+    page — the current Page context (for ai_summary_slug frontmatter override)
+*/}}
+
+{{- $dir := .dir -}}
+{{- $page := .page -}}
+{{- $slug := .slug -}}
+
+{{/* Allow frontmatter override: ai_summary_slug */}}
+{{- with $page.Params.ai_summary_slug -}}
+  {{- $slug = . -}}
+{{- end -}}
+
+{{- $path := printf "ai_summary/%s/%s.md" $dir $slug -}}
+{{- if (fileExists $path) -}}
+<div class="ai-summary-section">
+  <h2>AI Generated Summary</h2>
+  {{ partial "ai-summary-disclaimer-inline.html" . }}
+  <div class="ai-summary-body">
+    {{ readFile $path | markdownify }}
+  </div>
+</div>
+{{- end -}}

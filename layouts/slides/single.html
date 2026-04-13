@@ -64,6 +64,9 @@
     </section>
   {{ end }}
 
+  {{/* ===== 3b. AI Summary — pulled from ai_summary/slides/ at build time ===== */}}
+  {{ partial "ai-summary.html" (dict "dir" "slides" "slug" .File.ContentBaseName "page" .) }}
+
   {{/* ===== 4. Video Section ===== */}}
   {{ with .Params.videos }}
     <section class="slides-single__videos">
