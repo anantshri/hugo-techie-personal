@@ -4,7 +4,7 @@
 */}}
 {{- $page := .page -}}
 {{- $id := .id | default "slide-viewer" -}}
-{{- $sizes := .sizes | default "(min-width: 1200px) 900px, (min-width: 768px) 80vw, 95vw" -}}
+{{- $sizes := .sizes | default "(min-width: 768px) 80vw, 95vw" -}}
 {{- $pageCount := $page.Params.slides.page_count | default 0 -}}
 {{- $viewerConf := site.Params.slides.viewer | default dict -}}
 {{- $showGrid := $viewerConf.show_grid_button | default true -}}
