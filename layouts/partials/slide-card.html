@@ -9,16 +9,15 @@
       {{- $imgPath := printf "slides/%s/slide-001.webp" $slug -}}
       {{- $orig := resources.Get $imgPath -}}
       {{- if $orig -}}
-        {{- $thumb := $orig.Resize "400x webp q100" -}}
-        {{- $medium := $orig.Resize "1024x webp q100" -}}
-        <picture>
-          <source srcset="{{ $medium.RelPermalink }}" media="(min-width: 768px)" type="image/webp">
-          <source srcset="{{ $thumb.RelPermalink }}" type="image/webp">
-          <img src="{{ $thumb.RelPermalink }}"
-               alt="{{ .Title }}"
-               loading="lazy"
-               class="slide-card__thumb">
-        </picture>
+        {{- $w480  := $orig.Resize "480x webp q100" -}}
+        {{- $w800  := $orig.Resize "800x webp q100" -}}
+        <img srcset="{{ $w480.RelPermalink }} 480w, {{ $w800.RelPermalink }} 800w"
+             sizes="(min-width: 640px) 280px, 95vw"
+             src="{{ $w480.RelPermalink }}"
+             alt="{{ .Title }}"
+             loading="lazy"
+             width="{{ $w480.Width }}" height="{{ $w480.Height }}"
+             class="slide-card__thumb">
       {{- else -}}
         {{- $thumbWebp := printf "%sslides/slide-001-thumb.webp" .RelPermalink -}}
         {{- $thumbJpg := printf "%sslides/slide-001-thumb.jpg" .RelPermalink -}}

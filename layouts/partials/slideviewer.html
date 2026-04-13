@@ -63,21 +63,22 @@
         {{- $imgPath := printf "%s/slide-%s.webp" $assetsBase $num -}}
         {{- $orig := resources.Get $imgPath -}}
         <div class="slide-viewer__slide{{ if eq $i 0 }} slide-viewer__slide--active{{ end }}" data-slide="{{ add $i 1 }}">
-          <picture>
-            {{- if $orig -}}
-              {{- $thumb := $orig.Resize "400x webp q100" -}}
-              {{- $medium := $orig.Resize "1024x webp q100" -}}
-              {{- $full := $orig.Resize "1920x webp q100" -}}
-              <source srcset="{{ $full.RelPermalink }}" media="(min-width: 1200px)" type="image/webp">
-              <source srcset="{{ $medium.RelPermalink }}" media="(min-width: 768px)" type="image/webp">
-              <source srcset="{{ $thumb.RelPermalink }}" type="image/webp">
-              <img src="{{ $medium.RelPermalink }}"
-                   alt="Slide {{ add $i 1 }} of {{ $page.Title }}"
-                   class="slide-viewer__img"
-                   {{ if le $i 1 }}loading="eager"{{ else }}loading="lazy"{{ end }}
-                   decoding="async">
-            {{- else -}}
-              {{/* Fallback: legacy bundle images (slide-NNN-{thumb,medium,full}.webp in bundle) */}}
+          {{- if $orig -}}
+            {{- $w480  := $orig.Resize "480x webp q100" -}}
+            {{- $w800  := $orig.Resize "800x webp q100" -}}
+            {{- $w1200 := $orig.Resize "1200x webp q100" -}}
+            {{- $w1920 := $orig.Resize "1920x webp q100" -}}
+            <img srcset="{{ $w480.RelPermalink }} 480w, {{ $w800.RelPermalink }} 800w, {{ $w1200.RelPermalink }} 1200w, {{ $w1920.RelPermalink }} 1920w"
+                 sizes="(min-width: 1200px) 900px, (min-width: 768px) 80vw, 95vw"
+                 src="{{ $w1200.RelPermalink }}"
+                 alt="Slide {{ add $i 1 }} of {{ $page.Title }}"
+                 class="slide-viewer__img"
+                 width="{{ $orig.Width }}" height="{{ $orig.Height }}"
+                 {{ if le $i 1 }}loading="eager"{{ else }}loading="lazy"{{ end }}
+                 decoding="async">
+          {{- else -}}
+            {{/* Fallback: legacy bundle images — no srcset available */}}
+            <picture>
               <source srcset="{{ $page.RelPermalink }}slides/slide-{{ $num }}-full.webp"
                       media="(min-width: 1200px)" type="image/webp">
               <source srcset="{{ $page.RelPermalink }}slides/slide-{{ $num }}-medium.webp"
@@ -89,8 +90,8 @@
                    class="slide-viewer__img"
                    {{ if le $i 1 }}loading="eager"{{ else }}loading="lazy"{{ end }}
                    decoding="async">
-            {{- end -}}
-          </picture>
+            </picture>
+          {{- end -}}
         </div>
       {{- end -}}
     </div>
@@ -112,9 +113,10 @@
         <button class="slide-viewer__grid-item" data-slide="{{ add $i 1 }}"
                 aria-label="Go to slide {{ add $i 1 }}">
           {{- if $orig -}}
-            {{- $thumb := $orig.Resize "400x webp q100" -}}
+            {{- $thumb := $orig.Resize "480x webp q100" -}}
             <img src="{{ $thumb.RelPermalink }}"
-                 alt="Slide {{ add $i 1 }}" loading="lazy" decoding="async">
+                 alt="Slide {{ add $i 1 }}" loading="lazy" decoding="async"
+                 width="{{ $thumb.Width }}" height="{{ $thumb.Height }}">
           {{- else -}}
             <img src="{{ $page.RelPermalink }}slides/slide-{{ $num }}-thumb.webp"
                  alt="Slide {{ add $i 1 }}" loading="lazy" decoding="async">
