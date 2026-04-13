@@ -92,6 +92,7 @@
 .slide-viewer__img {
   max-width: 100%;
   max-height: 75vh;
+  width: auto;
   height: auto;
   display: block;
   margin: 0 auto;
@@ -201,10 +202,34 @@
 
 .slide-viewer:fullscreen .slide-viewer__img {
   max-height: calc(100vh - 48px);
+  max-height: calc(100dvh - 48px);
 }
 
 .slide-viewer:fullscreen .slide-viewer__grid {
   position: fixed;
+}
+
+/* Tablet: relax height constraint so width-limited slides aren't over-compressed */
+@media (max-width: 1024px) {
+  .slide-viewer__img {
+    max-height: 65vh;
+  }
+}
+
+/* Small tablets / large phones */
+@media (max-width: 768px) {
+  .slide-viewer {
+    border-radius: var(--radius-md);
+  }
+
+  .slide-viewer__img {
+    max-height: none;
+  }
+
+  .slide-viewer__prev,
+  .slide-viewer__next {
+    width: 20%;
+  }
 }
 
 /* Mobile: nav overlays */
@@ -213,6 +238,11 @@
   .slide-viewer__next svg {
     width: 18px;
     height: 18px;
+  }
+
+  .slide-viewer__prev,
+  .slide-viewer__next {
+    width: 15%;
   }
 
   .slide-viewer__grid-inner {
