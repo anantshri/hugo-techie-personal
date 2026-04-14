@@ -74,8 +74,8 @@ for pdf_path in "$INBOX"/*.pdf; do
 
   mkdir -p "$CONTENT_DIR/$slug"
 
-  # Extract a human-readable title from the slug
-  title="$(echo "$slug" | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) substr($i,2)}1')"
+  # Extract a human-readable title from the slug, stripping the leading year prefix
+  title="$(echo "$slug" | sed 's/^[0-9]\{4\}-//' | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) substr($i,2)}1')"
 
   cat > "$index_md" <<FRONTMATTER
 ---
