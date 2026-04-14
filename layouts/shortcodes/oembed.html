@@ -111,48 +111,50 @@
     {{ with .Err }}
       {{ warnf "OEmbed discovery: error fetching %q: %s" $url . }}
     {{ else }}
-      {{ $pageHTML := .Value.Content }}
-      {{ $linkTags := findRE "<link[^>]+json.oembed[^>]+>" $pageHTML 1 }}
-      {{ if $linkTags }}
-        {{ $linkTag := index $linkTags 0 }}
-        {{ $urlMatches := findRE "https?://[^ <>]+" $linkTag 1 }}
-        {{ if $urlMatches }}
-          {{ $oembedJsonUrl := index $urlMatches 0 }}
-          {{ $oembedJsonUrl = replaceRE "[^a-zA-Z0-9/]$" "" $oembedJsonUrl }}
-          {{ $oembedJsonUrl = replace $oembedJsonUrl "&amp;" "&" }}
-          {{ with try (resources.GetRemote $oembedJsonUrl) }}
-            {{ with .Err }}
-              {{ warnf "OEmbed discovery: error fetching oembed JSON %q: %s" $oembedJsonUrl . }}
-            {{ else }}
-              {{ with try (.Value | transform.Unmarshal) }}
-                {{ with .Err }}
-                  {{ warnf "OEmbed discovery: JSON parse error: %s" . }}
-                {{ else }}
-                  {{ $oData := .Value }}
-                  {{ with $oData.html }}
-                    {{ $matched = 1 }}
-                    {{ $html := . }}
-                    {{ $iframeStyle := "position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;" }}
-                    {{ $frame := printf "iframe loading='lazy' style='%s'" $iframeStyle }}
-                    {{ $html = replace $html "iframe " $frame }}
-                    {{ $containerStyle := "" }}
-                    {{ $sw := 0 }}
-                    {{ $sh := 0 }}
-                    {{ $ch := 0 }}
-                    {{ with $oData.slide_width }}{{ $sw = . }}{{ end }}
-                    {{ with $oData.slide_height }}{{ $sh = . }}{{ end }}
-                    {{ with $oData.chrome_height }}{{ $ch = . }}{{ end }}
-                    {{ if and (gt $sw 0) (gt $sh 0) (gt $ch 0) }}
-                      {{ $slidePct := div (mul $sh 100.0) $sw }}
-                      {{ $containerStyle = printf " style='padding-bottom: calc(%.4f%% + %dpx)'" $slidePct (int $ch) }}
-                    {{ else }}
-                      {{ with $oData.width }}
-                        {{ with $oData.height }}
-                          {{ $containerStyle = printf " style='padding-bottom: %.4f%%'" (div (mul $oData.height 100.0) $oData.width) }}
+      {{ with .Value }}
+        {{ $pageHTML := .Content }}
+        {{ $linkTags := findRE "<link[^>]+json.oembed[^>]+>" $pageHTML 1 }}
+        {{ if $linkTags }}
+          {{ $linkTag := index $linkTags 0 }}
+          {{ $urlMatches := findRE "https?://[^ <>]+" $linkTag 1 }}
+          {{ if $urlMatches }}
+            {{ $oembedJsonUrl := index $urlMatches 0 }}
+            {{ $oembedJsonUrl = replaceRE "[^a-zA-Z0-9/]$" "" $oembedJsonUrl }}
+            {{ $oembedJsonUrl = replace $oembedJsonUrl "&amp;" "&" }}
+            {{ with try (resources.GetRemote $oembedJsonUrl) }}
+              {{ with .Err }}
+                {{ warnf "OEmbed discovery: error fetching oembed JSON %q: %s" $oembedJsonUrl . }}
+              {{ else }}
+                {{ with try (.Value | transform.Unmarshal) }}
+                  {{ with .Err }}
+                    {{ warnf "OEmbed discovery: JSON parse error: %s" . }}
+                  {{ else }}
+                    {{ $oData := .Value }}
+                    {{ with $oData.html }}
+                      {{ $matched = 1 }}
+                      {{ $html := . }}
+                      {{ $iframeStyle := "position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;" }}
+                      {{ $frame := printf "iframe loading='lazy' style='%s'" $iframeStyle }}
+                      {{ $html = replace $html "iframe " $frame }}
+                      {{ $containerStyle := "" }}
+                      {{ $sw := 0 }}
+                      {{ $sh := 0 }}
+                      {{ $ch := 0 }}
+                      {{ with $oData.slide_width }}{{ $sw = . }}{{ end }}
+                      {{ with $oData.slide_height }}{{ $sh = . }}{{ end }}
+                      {{ with $oData.chrome_height }}{{ $ch = . }}{{ end }}
+                      {{ if and (gt $sw 0) (gt $sh 0) (gt $ch 0) }}
+                        {{ $slidePct := div (mul $sh 100.0) $sw }}
+                        {{ $containerStyle = printf " style='padding-bottom: calc(%.4f%% + %dpx)'" $slidePct (int $ch) }}
+                      {{ else }}
+                        {{ with $oData.width }}
+                          {{ with $oData.height }}
+                            {{ $containerStyle = printf " style='padding-bottom: %.4f%%'" (div (mul $oData.height 100.0) $oData.width) }}
+                          {{ end }}
                         {{ end }}
                       {{ end }}
+                      {{ $out = printf "<div class='oembed-container-auto'%s>%s</div>" $containerStyle $html | safeHTML }}
                     {{ end }}
-                    {{ $out = printf "<div class='oembed-container-auto'%s>%s</div>" $containerStyle $html | safeHTML }}
                   {{ end }}
                 {{ end }}
               {{ end }}
