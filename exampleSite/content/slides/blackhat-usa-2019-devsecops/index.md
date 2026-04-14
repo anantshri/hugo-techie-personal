@@ -34,12 +34,10 @@ resources:
   - title: "OWASP DevSecOps Guideline"
     url: "https://owasp.org/www-project-devsecops-guideline/"
 
-# Social media buzz
+# Social media buzz (platform auto-detected from URL)
 social_chatter:
-  - url: "https://twitter.com/InfosecVandana/status/1159529386397200384"
-    platform: twitter
-  - url: "https://twitter.com/notsosecure/status/1159525342001807361"
-    platform: twitter
+  - "https://twitter.com/InfosecVandana/status/1159529386397200384"
+  - "https://twitter.com/notsosecure/status/1159525342001807361"
 
 # Cross-references
 timeline_entry: "/timeline/blackhat-usa-2019/"

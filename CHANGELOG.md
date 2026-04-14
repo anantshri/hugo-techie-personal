@@ -7,8 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Slides / Presentations system** — Self-hosted PDF presentation viewer with interactive navigation
+  - PDF-to-WebP slide processing pipeline (`process-slides.sh`, `scaffold-slides.sh`)
+  - Full interactive viewer with keyboard/touch navigation, grid overview, fullscreen, PDF download
+  - OEmbed discovery support — slides are embeddable on any site via standard OEmbed protocol
+  - Iframe-embeddable viewer output (`embed.html`) per presentation
+  - `slideviewer` shortcode for native same-site slide embedding (no iframe)
+  - `slide-embed` shortcode for card-style links to presentations
+  - Slides archetype (`archetypes/slides.md`) for quick scaffolding via `hugo new`
+  - Hugo image processing: single high-res WebP per slide in `assets/`, resized to thumb/medium/full at build time
+  - Configurable viewer: theme, toolbar buttons, preloading, keyboard/swipe toggle
+  - Slides listing page with year-based grouping
+- **Events map** — Leaflet-based map showing physical event locations
+  - Combines locations from both slides and timeline entries
+  - Marker clustering for dense areas
+  - `LocationsJSON` and `SlidesJSON` output formats feed the map data
+  - `online: true` frontmatter flag to exclude virtual events from the map
+  - Standalone map page support (`layout: map`)
+- **Social chatter** — Embedded social media posts on timeline entry pages
+  - Supports Twitter/X, Bluesky, Mastodon, LinkedIn, Facebook, Instagram
+  - Platform auto-detected from URL; no JavaScript required
+  - Uses OEmbed system for Twitter/X, Bluesky, Mastodon; direct iframes for others
+- **Related links** — Card-style blocks on timeline entries linking to blogs, research pages, etc.
+  - Auto-fetches Open Graph metadata (title, image, description) when omitted
+- **Noti.st migration script** (`scripts/migrate-notist.py`) — Import existing Noti.st presentations
+- **Slides migration script** (`scripts/migrate-slides.sh`) — Move legacy bundle PDFs to new inbox workflow
+
 ### Changed
 - **BREAKING**: Minimum Hugo version requirement updated from 0.18 to 0.141.0
+- **BREAKING**: Slide PDFs now live in `assets/slides/pdf_files/` inbox instead of content bundles; `process-slides.sh` copies them to `static/slides/<slug>/slides.pdf` for download
 - **CI Improvement**: Workflow now dynamically extracts minimum Hugo version from `theme.toml`
 - **Security**: Implemented job-level permissions instead of workflow-level write access
 - **Security**: Reduced `build-and-prepare` job permissions (removed unnecessary `pages:write`)
