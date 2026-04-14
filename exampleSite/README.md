@@ -16,10 +16,15 @@ This is a complete example site demonstrating the Hugo Techie Personal theme fea
 
 ### Content Examples
 - **Timeline entries** with different activity types (talks, tools, articles, awards)
+- **Slide presentations** with interactive viewer, OEmbed support, and embeddable iframes
 - **Project pages** showing active, completed, and discontinued projects
 - **Gadget reviews** with various device statuses and categories
 
 ### Theme Features Demonstrated
+- **Self-hosted slides/presentations** - Interactive PDF slide viewer with keyboard/touch navigation, grid overview, fullscreen, and PDF download
+- **OEmbed & embeddable slides** - Each presentation has OEmbed discovery and an iframe-embeddable viewer
+- **Events map** - Leaflet-based map showing physical event locations from slides and timeline entries
+- **Social chatter** - Embedded social media posts on timeline entry pages
 - **Professional badge integration** - Credly and Accredible badge display with API integration
 - **Responsive design** with mobile-first approach
 - **Activity-based filtering** for timeline content
@@ -34,6 +39,8 @@ This is a complete example site demonstrating the Hugo Techie Personal theme fea
 ### Configuration Examples
 The `config.toml` file demonstrates:
 - **Complete theme configuration** with all available options
+- **Slides/presentations module** with viewer, map, and OEmbed settings
+- **Output formats** for OEmbed, Embed, SlidesJSON, and LocationsJSON
 - **Social media integration** with verification links
 - **Analytics setup** for privacy-focused tracking
 - **Navigation customization** and internationalization
@@ -122,6 +129,7 @@ hugo --minify
 
 ### Content Creation
 - **Timeline entries**: Use `hugo new timeline/YYYY-MM-DD-title.md`
+- **Presentations**: Drop PDF in `assets/slides/pdf_files/`, run `scaffold-slides.sh`, then `process-slides.sh`
 - **Projects**: Use `hugo new projects/project-name.md`
 - **Gadgets**: Use `hugo new gadget/device-name.md`
 

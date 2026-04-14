@@ -74,6 +74,11 @@ Thank you for your interest in contributing to Hugo Techie Personal! This docume
 - [ ] Activity icons display correctly with fallbacks
 - [ ] Navigation system works properly
 - [ ] OEmbed embeds work for supported platforms
+- [ ] Slide viewer renders correctly with keyboard and touch navigation
+- [ ] Slide OEmbed and Embed output formats generate valid JSON/HTML
+- [ ] Events map displays locations from slides and timeline entries
+- [ ] Social chatter embeds render on timeline single pages
+- [ ] `process-slides.sh` and `scaffold-slides.sh` run without errors
 
 ### Browser Testing
 - Test on modern browsers (Chrome, Firefox, Safari, Edge)

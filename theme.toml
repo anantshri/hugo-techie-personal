@@ -3,8 +3,8 @@ license = "MIT"
 #licenselink = "https://github.com/yihui/hugo-xmin/blob/master/LICENSE.md"
 description = "A timeline-based personal site theme for tech professionals who love to share their work, projects, and journey with the community. Features activity-based timelines, project showcases, gadget reviews, and comprehensive configuration options."
 homepage = "https://anantshri.info"
-tags = ["minimal", "blog", "personal", "clean", "simple", "starter", "minimalist", "timeline", "portfolio", "tech", "developer", "projects"]
-features = ["blog", "portfolio", "timeline", "responsive"]
+tags = ["minimal", "blog", "personal", "clean", "simple", "starter", "minimalist", "timeline", "portfolio", "tech", "developer", "projects", "slides", "presentations", "maps"]
+features = ["blog", "portfolio", "timeline", "responsive", "slides", "presentations", "oembed", "maps", "badges"]
 min_version = "0.141.0"
 
 [author]

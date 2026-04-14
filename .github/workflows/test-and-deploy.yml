@@ -87,7 +87,7 @@ jobs:
           fi
           
           # Verify critical pages exist
-          CRITICAL_PAGES=("index.html" "timeline/index.html" "projects/index.html" "gadget/index.html" "about/index.html")
+          CRITICAL_PAGES=("index.html" "timeline/index.html" "projects/index.html" "gadget/index.html" "slides/index.html" "about/index.html")
           for page in "${CRITICAL_PAGES[@]}"; do
             if [ ! -f "public/$page" ]; then
               echo "Critical page missing: $page"
