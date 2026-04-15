@@ -213,14 +213,18 @@
   position: fixed;
 }
 
-/* Wide screens: cap height so slides don't dominate the viewport vertically.
-   Switch to auto-width + contain so both axes constrain correctly. */
+/* Wide screens: constrain the viewer width so slides don't dominate the
+   viewport, but keep images filling 100% width (no pillarboxing). */
 @media (min-width: 1200px) {
+  .slide-viewer {
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
   .slide-viewer__img {
-    width: auto;
-    max-width: 100%;
-    max-height: 75vh;
-    object-fit: contain;
+    width: 100%;
+    height: auto;
   }
 }
 
@@ -421,6 +425,28 @@
 
 .slides-single__header {
   margin-bottom: var(--space-8);
+}
+
+.slides-single__timeline-link {
+  margin-top: var(--space-3);
+}
+
+.slides-single__timeline-link a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.875rem;
+  color: var(--color-primary);
+  text-decoration: none;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-2xl);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.slides-single__timeline-link a:hover {
+  border-color: var(--color-primary);
+  background: var(--color-background-alt);
 }
 
 .slides-single__title {
@@ -633,12 +659,12 @@
   text-decoration: underline;
 }
 
-/* Tags */
+/* Focus area tags (in header) */
 .slides-single__tags {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
-  margin-bottom: var(--space-8);
+  margin-top: var(--space-3);
 }
 
 .slides-single__tag {

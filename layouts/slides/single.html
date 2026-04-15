@@ -34,6 +34,35 @@
         {{ end }}
       {{ end }}
     </div>
+
+    {{/* Focus areas */}}
+    {{ with .Params.focus }}
+      <div class="slides-single__tags">
+        {{ range . }}
+          <a href="/focus/{{ . | urlize }}/" class="slides-single__tag">{{ . }}</a>
+        {{ end }}
+      </div>
+    {{ end }}
+
+    {{/* Quick-link to the related timeline entry */}}
+    {{ with .Params.timeline_entry }}
+      {{ $tlPage := site.GetPage . }}
+      {{ if $tlPage }}
+        <div class="slides-single__timeline-link">
+          <a href="{{ $tlPage.RelPermalink }}">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            View timeline entry: {{ $tlPage.Title }}
+          </a>
+        </div>
+      {{ else }}
+        <div class="slides-single__timeline-link">
+          <a href="{{ . }}">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            View timeline entry
+          </a>
+        </div>
+      {{ end }}
+    {{ end }}
   </header>
 
   {{/* ===== 2. Slide Viewer ===== */}}
@@ -173,15 +202,6 @@
         {{ end }}
       </ul>
     </section>
-  {{ end }}
-
-  {{/* ===== 11. Tags ===== */}}
-  {{ with .Params.tags }}
-    <div class="slides-single__tags">
-      {{ range . }}
-        <a href="{{ "tags" | absURL }}/{{ . | urlize }}/" class="slides-single__tag">{{ . }}</a>
-      {{ end }}
-    </div>
   {{ end }}
 
 </article>
