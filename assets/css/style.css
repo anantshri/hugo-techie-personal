@@ -2206,6 +2206,36 @@ body:not([class*="home-layout-"]) {
   font-weight: 500;
 }
 
+/* YouTube Playlist Layouts */
+.oembed-playlist {
+  margin: var(--space-6) 0;
+}
+
+.oembed-playlist-full .oembed-container {
+  /* Full-width: each video stacked vertically (default oembed-container behavior) */
+}
+
+.oembed-playlist-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 400px), 1fr));
+  gap: var(--space-4);
+}
+
+.oembed-playlist-grid .oembed-container {
+  margin: 0;
+}
+
+@media (max-width: 768px) {
+  .oembed-playlist-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+  }
+
+  .oembed-playlist {
+    margin: var(--space-4) 0;
+  }
+}
+
 /* Mobile Responsive OEmbed */
 @media (max-width: 768px) {
   .oembed-container {

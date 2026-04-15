@@ -129,7 +129,7 @@
       {{ if $localImg }}
         <img src="{{ $localImg.RelPermalink }}" alt="{{ $title | plainify }}" class="project-card-logo" loading="lazy" />
       {{ else }}
-        {{ $placeholder := resources.Get "images/project-placeholder.svg" }}
+        {{ $placeholder := resources.Get (site.Params.placeholders.project | default "images/project-placeholder.svg") }}
         {{ if $placeholder }}
           <img src="{{ $placeholder.RelPermalink }}" alt="{{ $title | plainify }}" class="project-card-logo placeholder" />
         {{ end }}

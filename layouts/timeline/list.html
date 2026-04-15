@@ -91,7 +91,7 @@
                   {{ $entry.Params.event | markdownify }}
                   {{ $entry.Params.excerpt | markdownify }}
                 {{ else }}
-                  {{ $placeholder := resources.Get "images/timeline-placeholder.svg" }}
+                  {{ $placeholder := resources.Get (site.Params.placeholders.timeline | default "images/timeline-placeholder.svg") }}
                   {{ if $placeholder }}
                     <img src="{{ $placeholder.RelPermalink }}" alt="Placeholder for {{ $entry.Title }}" style="opacity: 0.7; max-width: 250px;" />
                     <br />
@@ -103,7 +103,7 @@
                   {{ end }}
                 {{ end }}
               {{ else }}
-                {{ $placeholder := resources.Get "images/timeline-placeholder.svg" }}
+                {{ $placeholder := resources.Get (site.Params.placeholders.timeline | default "images/timeline-placeholder.svg") }}
                 {{ if $placeholder }}
                   <img src="{{ $placeholder.RelPermalink }}" alt="Placeholder for {{ $entry.Title }}" style="opacity: 0.7; max-width: 250px;" />
                   <br />

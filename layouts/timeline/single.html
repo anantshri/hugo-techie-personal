@@ -14,13 +14,13 @@
       {{ if $image }}
         <img src='{{ ($image.Resize "x400 q100").RelPermalink }}' alt='{{.Title}}' maxwidth='650px' maxheight='360px' loading="lazy" /> 
       {{ else if $shouldShowPlaceholder }}
-        {{ $placeholder := resources.Get "images/timeline-placeholder.svg" }}
+        {{ $placeholder := resources.Get (site.Params.placeholders.timeline | default "images/timeline-placeholder.svg") }}
         {{ if $placeholder }}
           <img src="{{ $placeholder.RelPermalink }}" alt="Placeholder for {{ .Title }}" style="opacity: 0.7; max-width: 400px;" />
         {{ end }}
       {{ end }}
     {{ else if $shouldShowPlaceholder }}
-      {{ $placeholder := resources.Get "images/timeline-placeholder.svg" }}
+      {{ $placeholder := resources.Get (site.Params.placeholders.timeline | default "images/timeline-placeholder.svg") }}
       {{ if $placeholder }}
         <img src="{{ $placeholder.RelPermalink }}" alt="Placeholder for {{ .Title }}" style="opacity: 0.7; max-width: 400px;" />
       {{ end }}
@@ -75,13 +75,13 @@
                     <img src="{{ ($img.Resize "x120 q90").RelPermalink }}" alt="{{ $projectPage.Title }}" class="project-card-logo" />
                   {{ end }}
                 {{ else }}
-                  {{ $placeholder := resources.Get "images/project-placeholder.svg" }}
+                  {{ $placeholder := resources.Get (site.Params.placeholders.project | default "images/project-placeholder.svg") }}
                   {{ if $placeholder }}
                     <img src="{{ $placeholder.RelPermalink }}" alt="{{ $projectPage.Title }}" class="project-card-logo placeholder" />
                   {{ end }}
                 {{ end }}
               {{ else }}
-                {{ $placeholder := resources.Get "images/project-placeholder.svg" }}
+                {{ $placeholder := resources.Get (site.Params.placeholders.project | default "images/project-placeholder.svg") }}
                 {{ if $placeholder }}
                   <img src="{{ $placeholder.RelPermalink }}" alt="{{ $projectPage.Title }}" class="project-card-logo placeholder" />
                 {{ end }}

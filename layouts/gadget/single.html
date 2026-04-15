@@ -22,7 +22,7 @@
 	{{ $img_loc := printf "%s.*" .Path | printf "%s%s" "/images" }}
 	{{ with try ( resources.GetMatch $img_loc ) }}
 		{{ with .Err }}
-			{{ $placeholder := resources.Get "images/gadget-placeholder.svg" }}
+			{{ $placeholder := resources.Get (site.Params.placeholders.gadget | default "images/gadget-placeholder.svg") }}
 			{{ if $placeholder }}
 				<img src="{{ $placeholder.RelPermalink }}" alt="Placeholder for {{ $.Title }}" style="opacity: 0.7; max-width: 300px;" />
 			{{ else }}

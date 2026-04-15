@@ -1,10 +1,12 @@
 {{ $url := "" }}
 {{ $page := "" }}
 {{ $variant := "list" }}
+{{ $layoutParam := "" }}
 {{ if reflect.IsMap . }}
   {{ $url = .url }}
   {{ $page = .page }}
   {{ with .variant }}{{ $variant = . }}{{ end }}
+  {{ with .layout }}{{ $layoutParam = . }}{{ end }}
 {{ else }}
   {{ $url = . }}
   {{ $page = . }}
@@ -14,6 +16,97 @@
 {{ $videoUrl := urls.Parse $url }}
 {{ $matched := 0 }}
 {{ $isTwitter := false }}
+
+{{/* YouTube playlist detection — runs before the generic data-driven loop.
+     Playlist URLs are identified by having a list= query param without a
+     specific video (v=) or using the /playlist path. */}}
+{{ $playlistVideoIds := slice }}
+{{ $playlistLayout := "full" }}
+{{ $playlistId := "" }}
+{{ if findRE "(youtu)" $videoUrl.Host }}
+  {{ $qs := $videoUrl.Query }}
+  {{ with $qs.Get "list" }}
+    {{ $playlistId = . }}
+    {{ if or (eq $videoUrl.Path "/playlist") (not ($qs.Get "v")) }}
+      {{/* Resolve layout cascade: shortcode param > page frontmatter > site config > default */}}
+      {{ with site.Params.youtube.default_playlist_layout }}{{ $playlistLayout = . }}{{ end }}
+      {{ with $page.Params.playlist_layout }}{{ $playlistLayout = . }}{{ end }}
+      {{ if $layoutParam }}{{ $playlistLayout = $layoutParam }}{{ end }}
+
+      {{/* Strategy 1: YouTube Data API v3 (if api_key configured) */}}
+      {{ $apiKey := site.Params.youtube.api_key | default "" }}
+      {{ if $apiKey }}
+        {{ $nextPageToken := "" }}
+        {{ $hasMore := true }}
+        {{ range seq 10 }}
+          {{ if $hasMore }}
+            {{ $apiUrl := printf "https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=%s&key=%s" $playlistId $apiKey }}
+            {{ if $nextPageToken }}
+              {{ $apiUrl = printf "%s&pageToken=%s" $apiUrl $nextPageToken }}
+            {{ end }}
+            {{ with try (resources.GetRemote $apiUrl) }}
+              {{ with .Err }}
+                {{ warnf "YouTube API error for playlist %q: %s" $playlistId . }}
+                {{ $hasMore = false }}
+              {{ else }}
+                {{ with try (.Value | transform.Unmarshal) }}
+                  {{ with .Err }}
+                    {{ warnf "YouTube API JSON parse error: %s" . }}
+                    {{ $hasMore = false }}
+                  {{ else }}
+                    {{ $resp := .Value }}
+                    {{ range $resp.items }}
+                      {{ with .snippet.resourceId.videoId }}
+                        {{ $playlistVideoIds = $playlistVideoIds | append . }}
+                      {{ end }}
+                    {{ end }}
+                    {{ with $resp.nextPageToken }}
+                      {{ $nextPageToken = . }}
+                    {{ else }}
+                      {{ $hasMore = false }}
+                    {{ end }}
+                  {{ end }}
+                {{ end }}
+              {{ end }}
+            {{ end }}
+          {{ end }}
+        {{ end }}
+      {{ end }}
+
+      {{/* Strategy 2: RSS feed fallback (max 15 videos, no API key needed) */}}
+      {{ if not $playlistVideoIds }}
+        {{ $rssUrl := printf "https://www.youtube.com/feeds/videos.xml?playlist_id=%s" $playlistId }}
+        {{ with try (resources.GetRemote $rssUrl) }}
+          {{ with .Err }}
+            {{ warnf "YouTube RSS error for playlist %q: %s" $playlistId . }}
+          {{ else }}
+            {{ with .Value }}
+              {{ $rssContent := .Content }}
+              {{ range findRE "<yt:videoId>([^<]+)</yt:videoId>" $rssContent }}
+                {{ $playlistVideoIds = $playlistVideoIds | append (replaceRE "<yt:videoId>([^<]+)</yt:videoId>" "$1" .) }}
+              {{ end }}
+            {{ end }}
+          {{ end }}
+        {{ end }}
+      {{ end }}
+
+      {{ if $playlistVideoIds }}
+        {{ $matched = 1 }}
+      {{ end }}
+    {{ end }}
+  {{ end }}
+{{ end }}
+
+{{/* Playlist output — recursive partial calls produce full oembed-container
+     markup per video, so we output the playlist wrapper directly instead of
+     going through $out to avoid double-wrapping. */}}
+{{ if $playlistVideoIds }}
+<div class="oembed-playlist oembed-playlist-{{ $playlistLayout }}">
+  {{ range $playlistVideoIds }}
+    {{- partial "oembed.html" (dict "url" (printf "https://www.youtube.com/watch?v=%s" .) "page" $page "variant" $variant) -}}
+  {{ end }}
+</div>
+{{ end }}
 
 {{/* Try data-driven approach first */}}
 {{ $data := dict }}
