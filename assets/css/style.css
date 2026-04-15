@@ -885,67 +885,48 @@ body:not([class*="home-layout-"]) {
   margin-bottom: var(--space-4);
 }
 
-/* Activity Icons */
-.icoleft, .icoright {
-  position: absolute; 
-  top: var(--space-3);
-  width: 28px;
-  height: 28px;
+/* Activity Icons on Timeline Spine */
+.timeline-activity-icon {
+  position: absolute;
+  top: 16px;
+  width: 36px;
+  height: 36px;
   z-index: 20;
   background-color: var(--color-background);
-  border-radius: var(--radius-lg);
-  padding: var(--space-1);
+  border-radius: 50%;
+  padding: 5px;
+  border: 2px solid var(--color-primary);
   box-shadow: var(--shadow-sm);
   transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.icoleft {
-  left: var(--space-3);
+.timeline-activity-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
 }
 
-.icoright {
-  right: var(--space-3);
+.timelineleft .timeline-activity-icon {
+  right: -18px;
 }
 
-.icoleft:hover, .icoright:hover {
-  transform: scale(1.1);
+.timelineright .timeline-activity-icon {
+  left: -18px;
+}
+
+.timeline-activity-icon:hover {
+  transform: scale(1.15);
   box-shadow: var(--shadow-md);
 }
 
-/* Activity Text Badges */
-.activity-text-badge {
-  position: absolute; 
-  top: var(--space-3);
-  padding: var(--space-1) var(--space-3);
-  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
-  color: var(--color-text-inverse);
-  border-radius: var(--radius-lg);
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-decoration: none;
-  z-index: 20;
-  max-width: 100px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  box-shadow: var(--shadow-sm);
-  transition: all 0.15s ease;
+.timelinecontainer:has(.timeline-activity-icon)::after {
+  display: none;
 }
 
-.activity-badge-left {
-  left: var(--space-3);
-}
-
-.activity-badge-right {
-  right: var(--space-3);
-}
-
-.activity-text-badge:hover {
-  background: linear-gradient(135deg, var(--color-primary-dark), var(--color-primary));
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
-  text-decoration: none;
-}
 
 /* Mobile Timeline Layout */
 @media (max-width: 768px) {
@@ -982,13 +963,12 @@ body:not([class*="home-layout-"]) {
     left: 0;
   }
 
-  .icoleft, .activity-badge-left {
-    left: var(--space-2);
+  .timelineleft .timeline-activity-icon,
+  .timelineright .timeline-activity-icon {
+    left: 12px;
+    right: auto;
   }
 
-  .icoright, .activity-badge-right {
-    right: var(--space-2);
-  }
 
   .timelinecontent {
     padding: var(--space-4);

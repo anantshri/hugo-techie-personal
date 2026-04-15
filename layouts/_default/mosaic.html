@@ -97,11 +97,11 @@
             {{/* Try theme assets if not found in site assets */}}
             {{ $activityIcon = resources.GetMatch (printf "images/%s.svg" $primaryActivity) }}
           {{ end }}
+          {{ if not $activityIcon }}
+            {{ $activityIcon = resources.GetMatch "images/question.svg" }}
+          {{ end }}
           {{ if $activityIcon }}
-            <a href="/activity/{{ $primaryActivity }}/"><img src="{{ $activityIcon.RelPermalink }}" alt="Icon for {{ $primaryActivity }}" class="{{ if modBool $index 2 }}icoleft{{ else }}icoright{{ end }}" /></a>
-          {{ else }}
-            {{/* Fallback: Show activity name as text badge */}}
-            <a href="/activity/{{ $primaryActivity }}/" class="activity-text-badge {{ if modBool $index 2 }}activity-badge-left{{ else }}activity-badge-right{{ end }}">{{ $primaryActivity | humanize | title }}</a>
+            <a href="/activity/{{ $primaryActivity }}/" class="timeline-activity-icon"><img src="{{ $activityIcon.RelPermalink }}" alt="Icon for {{ $primaryActivity }}" /></a>
           {{ end }}
         {{ end }}
       {{ end }}
