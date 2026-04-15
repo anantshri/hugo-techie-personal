@@ -24,7 +24,20 @@ enableRobotsTXT = true
   # featured_image = "/images/profile.png"      # Add your own featured image
   Banner = "<a href='#'>🚀 Explore the Hugo Techie Personal Theme Features! 🌐 📅</a>"
   home_layout = "home-layout-50-50"
-  
+
+  # Custom CSS files (paths relative to site root static dir)
+  # custom_css = ["/css/custom.css"]
+
+  # Custom JS files (paths relative to site root static dir, loaded before </body>)
+  # custom_js = ["/js/custom.js"]
+
+  # Custom font configuration (optional, overrides theme default JetBrains Mono)
+  # [params.fonts]
+  #   google_fonts_url = "https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
+  #   family_sans = "'Inter', system-ui, sans-serif"
+  #   family_serif = "'Georgia', 'Times New Roman', serif"
+  #   family_mono = "'Fira Code', 'JetBrains Mono', monospace"
+
   # Site descriptions for different sections
   description_timeline = "A chronological journey through activities and achievements"
   description_projects = "Current and past projects showcasing various technologies and interests"
