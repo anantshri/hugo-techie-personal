@@ -1,12 +1,18 @@
 ---
 title: "Modern Web Security: Beyond HTTPS"
 date: 2024-03-15T14:30:00Z
-activity: ["talk", "presentation"]
-focus: ["Security", "Web Development"]
+activity: talk
+focus:
+  - appsec
+  - pentesting
 event: "TechConf 2024"
-location: "San Francisco, CA"
 redirect_url: "https://example.com/talks/web-security-2024"
 featured_image: "images/nonexistent-image.jpg"
+location:
+  city: "San Francisco"
+  country: "USA"
+  latitude: 37.7749
+  longitude: -122.4194
 ---
 
 Delivered a comprehensive presentation on modern web security practices at TechConf 2024, focusing on advanced security measures beyond basic HTTPS implementation.

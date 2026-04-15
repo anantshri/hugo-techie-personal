@@ -2,6 +2,7 @@
 
 A timeline-based personal site theme designed specifically for tech professionals who love to share their work, projects, and journey with the community.
 
+[![Version](https://img.shields.io/badge/version-2.0.0-green.svg)](CHANGELOG.md)
 [![Hugo](https://img.shields.io/badge/hugo-0.141.0+-blue.svg)](https://gohugo.io)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -476,7 +477,7 @@ Configure timeline activity icons in your `config.toml`:
 The theme uses a **hierarchical icon system** that checks multiple locations:
 
 **Theme Icons (Built-in):**
-- Default icons included with theme in `themes/anantshri/assets/images/`
+- Default icons included with theme in `themes/hugo-techie-personal/assets/images/`
 - Includes all standard activity icons: `talk.svg`, `tool.svg`, `training.svg`, etc.
 - Social media icons: `twitter.svg`, `linkedin.svg`, `mastodon.svg`, etc.
 - Notice system icons: `info.svg`, `note.svg`, `tip.svg`, `warning.svg`
@@ -801,6 +802,44 @@ Display badges from all platforms in a unified grid:
 - **Local image caching**: Reduces API calls and improves load times
 - **Error handling**: Graceful fallbacks when APIs are unavailable
 - **Unified display**: Mix badges from multiple platforms seamlessly
+
+### Bio Page
+
+A structured biography page with copy-to-clipboard functionality, multiple format views (Rendered, Markdown, Plain Text), and a downloadable photos section.
+
+Set `layout: bio` in your page frontmatter with `short_bio`, `long_bio`, and optional `photos` fields. See [docs/layouts.md](docs/layouts.md) for full details.
+
+### Events Map Page
+
+A standalone page showing all physical event locations on a Leaflet map. Set `layout: map` in your page frontmatter. Requires `params.slides.map.enabled = true` and `LocationsJSON` output format on the home page.
+
+Timeline and slide entries with `location.latitude` and `location.longitude` (and not marked `online: true`) appear on the map. See [docs/layouts.md](docs/layouts.md) for details.
+
+### Related Links
+
+Timeline entries can display card-style links to external content (blog posts, research pages, etc.) using the `related_links` frontmatter field:
+
+```yaml
+related_links:
+  - url: "https://example.com/blog/post"
+    title: "Blog Post Title"
+    image: "https://example.com/og-image.jpg"
+    description: "Short description"
+```
+
+Title, image, and description are auto-fetched from Open Graph meta tags when omitted.
+
+### AI Summaries
+
+AI-generated summaries are stored in `ai_summary/` subdirectories and automatically included by templates at build time. No shortcodes needed in content files. See your project's AGENTS.md or theme docs for the full workflow.
+
+## Documentation
+
+Detailed documentation is available in the [`docs/`](docs/) directory:
+
+- **[Configuration Reference](docs/configuration.md)** — All `config.toml` parameters
+- **[Page Layouts](docs/layouts.md)** — Bio, Map, Home, alternate list layouts, Banner
+- **[Shortcodes Reference](docs/shortcodes.md)** — All available shortcodes with examples
 
 ## Automated Deployment
 

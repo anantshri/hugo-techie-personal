@@ -35,6 +35,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Auto-fetches Open Graph metadata (title, image, description) when omitted
 - **Noti.st migration script** (`scripts/migrate-notist.py`) — Import existing Noti.st presentations
 - **Slides migration script** (`scripts/migrate-slides.sh`) — Move legacy bundle PDFs to new inbox workflow
+- **Documentation** — Added `docs/` directory with detailed reference guides:
+  - `docs/configuration.md` — Complete `config.toml` parameter reference
+  - `docs/layouts.md` — Bio page, Map page, Home page, alternate list layouts, Banner
+  - `docs/shortcodes.md` — All shortcodes with usage examples
+- **Example site content** — Added missing examples:
+  - Timeline entries for all activity types: `discussion`, `whitepaper`, `quote`, `curator`
+  - Timeline entries with `location` coordinates, `social_chatter`, `related_links`, `online: true`
+  - Interests section with example pages
+  - Bio page demonstrating the biography layout
+  - Events map standalone page
+  - AI summary example in `ai_summary/unified/`
 
 ### Changed
 - **BREAKING**: Minimum Hugo version requirement updated from 0.18 to 0.141.0
@@ -67,6 +78,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed CI HTML validation false positives (CSS color codes containing "404" no longer trigger errors)
 - Fixed GitHub Actions release notification script (now updates release description instead of creating invalid comments)
 - Fixed badge template error in `manual-badges.html` (added proper type checking and nil safety)
+- Fixed incorrect icon path in README (`themes/anantshri/` → `themes/hugo-techie-personal/`)
+- Fixed `banner` → `Banner` parameter name in exampleSite config to match template expectation
+- Updated exampleSite README to accurately describe demonstrated features
 
 ## [1.1.0] - 2024-12-28
 

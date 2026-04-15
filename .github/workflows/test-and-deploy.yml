@@ -23,7 +23,7 @@ jobs:
     permissions:
       contents: read  # Only needs to read repository contents
     env:
-      HUGO_VERSION: 0.150.1
+      HUGO_VERSION: 0.160.0
     steps:
       - name: Install Hugo CLI
         run: |
@@ -105,7 +105,7 @@ jobs:
     permissions:
       contents: read    # Read repository contents and upload artifact
     env:
-      HUGO_VERSION: 0.150.1
+      HUGO_VERSION: 0.160.0
     steps:
       - name: Install Hugo CLI
         run: |
