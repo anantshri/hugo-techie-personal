@@ -42,14 +42,6 @@ enableRobotsTXT = true
   description_whitepaper = "Technical whitepapers and research publications"
   description_badges = "Professional certifications and badges from Credly and Accredible"
 
-  # Social links for home page
-  [params.social_links]
-    twitter_url = "https://twitter.com/example"
-    linkedin_url = "https://linkedin.com/in/example"
-    mastodon_url = "https://mastodon.social/@example"
-    mastodon_verify = "https://mastodon.social/@example"
-    github_url = "https://github.com/example"
-
   # Noti.st integration
   notist_username = "example"
   notist_custom_domains = ["slides.example.com"]
@@ -74,6 +66,14 @@ enableRobotsTXT = true
   # HackerOne badge integration (optional)
   hackerone_username = ""
   hackerone_image_dir = "images/HackerOneBadges"
+
+  # Social links for home page
+  [params.social_links]
+    twitter_url = "https://twitter.com/example"
+    linkedin_url = "https://linkedin.com/in/example"
+    mastodon_url = "https://mastodon.social/@example"
+    mastodon_verify = "https://mastodon.social/@example"
+    github_url = "https://github.com/example"
 
   # Analytics configuration (Plausible example)
   [params.analytics]
