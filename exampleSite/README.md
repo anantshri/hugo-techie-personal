@@ -15,30 +15,37 @@ This is a complete example site demonstrating the Hugo Techie Personal theme fea
 ## What's Included
 
 ### Content Examples
-- **Timeline entries** with different activity types (talks, tools, articles, awards)
+- **Timeline entries** covering all activity types (talk, training, tool, panel, discussion, whitepaper, article, quote, recognition, ctf, curator)
 - **Slide presentations** with interactive viewer, OEmbed support, and embeddable iframes
-- **Project pages** showing active, completed, and discontinued projects
+- **Project pages** showing active, completed, discontinued, and planned projects
 - **Gadget reviews** with various device statuses and categories
+- **Interests** section with personal interest pages
+- **Bio page** demonstrating the biography layout with copy-to-clipboard and format tabs
+- **Events map** standalone page with timeline and slide locations
+- **AI summary** example (auto-included from `ai_summary/unified/`)
 
 ### Theme Features Demonstrated
-- **Self-hosted slides/presentations** - Interactive PDF slide viewer with keyboard/touch navigation, grid overview, fullscreen, and PDF download
-- **OEmbed & embeddable slides** - Each presentation has OEmbed discovery and an iframe-embeddable viewer
-- **Events map** - Leaflet-based map showing physical event locations from slides and timeline entries
-- **Social chatter** - Embedded social media posts on timeline entry pages
-- **Professional badge integration** - Credly and Accredible badge display with API integration
+- **Self-hosted slides/presentations** — Interactive PDF slide viewer with keyboard/touch navigation
+- **OEmbed & embeddable slides** — Each presentation has OEmbed discovery and an iframe-embeddable viewer
+- **Events map** — Leaflet-based map with locations from slides and timeline entries
+- **Bio page** — Structured biography with Rendered/Markdown/Plain Text tabs and copy button
+- **Social chatter** — Embedded social media posts on timeline entry pages
+- **Related links** — Card-style blocks linking to blogs, research, and external content
+- **Professional badge integration** — Credly and Accredible badge display with API integration
 - **Responsive design** with mobile-first approach
-- **Activity-based filtering** for timeline content
+- **All activity types** — talk, training, tool, panel, discussion, whitepaper, article, quote, recognition, ctf, curator
 - **Notice/admonition system** with multiple types (info, warning, tip, note)
 - **Work-in-progress notifications** for sections and pages
 - **Navigation system** with breadcrumbs and prev/next
-- **OEmbed support** for external content embedding (YouTube, Vimeo, SlideShare, Noti.st)
-- **AI summary disclaimer** system for AI-generated content
+- **OEmbed support** for external content embedding (YouTube, Vimeo, and more)
+- **AI summary** — Auto-included from `ai_summary/` directory
+- **Location coordinates** — Timeline entries with lat/lng for the events map
+- **Online events** — `online: true` flag to exclude virtual events from the map
 - **Configurable analytics** (Plausible, Google Analytics, custom)
-- **Image shortcodes** for optimized image handling
 
 ### Configuration Examples
 The `config.toml` file demonstrates:
-- **Complete theme configuration** with all available options
+- **Theme configuration** with commonly used options
 - **Slides/presentations module** with viewer, map, and OEmbed settings
 - **Output formats** for OEmbed, Embed, SlidesJSON, and LocationsJSON
 - **Social media integration** with verification links
@@ -54,6 +61,9 @@ The `config.toml` file demonstrates:
 2. **Replace timeline entries** in `content/timeline/` with your activities
 3. **Add your projects** to `content/projects/` with appropriate status
 4. **Create gadget reviews** in `content/gadget/` for your devices
+5. **Add interests** in `content/interests/` for personal interest pages
+6. **Update `content/bio.md`** with your biography and photos
+7. **Add AI summaries** in `ai_summary/unified/` for timeline entries
 
 ### Update Configuration
 1. **Modify `config.toml`** with your site details and preferences

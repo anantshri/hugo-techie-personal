@@ -22,7 +22,8 @@ enableRobotsTXT = true
   footer = "&copy; [Hugo Techie Personal Demo](https://example.com)"
   # social_share_image = "/images/profile.png"  # Add your own social share image
   # featured_image = "/images/profile.png"      # Add your own featured image
-  banner = "<a href='#'>🚀 Explore the Hugo Techie Personal Theme Features! 🌐 📅</a>"
+  Banner = "<a href='#'>🚀 Explore the Hugo Techie Personal Theme Features! 🌐 📅</a>"
+  home_layout = "home-layout-50-50"
   
   # Site descriptions for different sections
   description_timeline = "A chronological journey through activities and achievements"
@@ -156,6 +157,7 @@ enableRobotsTXT = true
       enabled = true
       embed_width = 640
       embed_height = 480
+      embed_chrome_height = 70
 
 [markup]
   [markup.goldmark]
@@ -238,6 +240,21 @@ enableRobotsTXT = true
   weight = 6
 
 [[menu.main]]
+  name = "Interests"
+  url = "/interests/"
+  weight = 7
+
+[[menu.main]]
+  name = "Map"
+  url = "/map/"
+  weight = 8
+
+[[menu.main]]
+  name = "Bio"
+  url = "/bio/"
+  weight = 9
+
+[[menu.main]]
   name = "About"
   url = "/about/"
-  weight = 7
+  weight = 10
