@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **YouTube playlist OEmbed support** — The `oembed` shortcode now detects YouTube playlist URLs and renders each video as a separate embed
+  - Two-tier video enumeration: YouTube Data API v3 (if `params.youtube.api_key` is configured) with full pagination, falling back to YouTube RSS feed (max 15 videos, no API key needed)
+  - Two layout modes: `full` (one video per row, stacked vertically) and `grid` (responsive multi-column CSS grid)
+  - Layout configurable at three levels (shortcode param > page frontmatter `playlist_layout` > site config `params.youtube.default_playlist_layout`)
+  - Usage: `{{% oembed url="https://www.youtube.com/playlist?list=PLxxxxxx" layout="grid" %}}`
+- **Configurable default placeholder images** — Placeholder images for timeline, projects, and gadgets are now customizable via `[params.placeholders]` in `config.toml`
+  - `timeline`, `project`, `gadget` keys specify asset paths (relative to `assets/` directory)
+  - Theme SVGs remain as built-in defaults when no override is configured
+
+### Changed
+- **Timeline icons centered on spine** — Activity icons are now positioned directly on the timeline spine as circular node markers (replacing the plain dots), giving each entry a clear visual category indicator
+  - Unified `icoleft`/`icoright` classes into a single `.timeline-activity-icon` class; positioning is determined by the parent `.timelineleft`/`.timelineright` container
+  - Icons are slightly larger (36px, up from 28px) with a circular border matching the theme's primary color
+  - The timeline dot is automatically hidden when an icon is present (via CSS `:has()`)
+- **Mobile timeline icons fixed** — All activity icons now consistently appear on the left side of the spine in mobile view; previously, icons on even/odd entries alternated left/right even though all cards stack on one side
+- **Fallback to question-mark icon** — Entries with unrecognized activity types now display `question.svg` on the spine instead of a text badge, ensuring every entry has a consistent icon marker
+
 ## [2.1.0] - 2026-04-15
 
 ### Added

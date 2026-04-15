@@ -45,7 +45,7 @@
         <img src='{{ ($img_found.Resize "x400 q100").RelPermalink }}' class="project-image-regular" />
       {{ end }}
     {{ else }}
-      {{ $placeholder := resources.Get "images/project-placeholder.svg" }}
+      {{ $placeholder := resources.Get (site.Params.placeholders.project | default "images/project-placeholder.svg") }}
       {{ if $placeholder }}
         <img src="{{ $placeholder.RelPermalink }}" alt="Placeholder for {{ $.Title }}" class="project-image-svg" style="opacity: 0.7;" />
       {{ end }}
