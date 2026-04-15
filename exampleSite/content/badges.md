@@ -114,80 +114,82 @@ Add Open Badges (JSON-LD format) by creating `data/OpenBadges.json`:
 
 
 ### Display all badges (normal size)
+
 ```
-{{< badges >}}
+{{</* badges */>}}
 ```
+
 {{< badges >}}
 
 ### Display big badges
 ```
-{{< badges size="big" >}}
+{{</* badges size="big" */>}}
 ```
 {{< badges size="big" >}}
 
 ###  Display small badges
 ```
-{{< badges size="small" >}}
+{{</* badges size="small" */>}}
 ```
 {{< badges size="small" >}}
 
 ###  Hide expired badges 
 ```
-{{< badges hide_expired="true" >}}
+{{</* badges hide_expired="true" */>}}
 ```
 {{< badges hide_expired="true" >}}
 
 ###  Show only expired badges 
 ```
-{{< badges show_expired="true" >}}
+{{</* badges show_expired="true" */>}}
 ```
 {{< badges show_expired="true" >}}
 
 ###  Display only Credly badges 
 ```
-{{< badges show_accredible="false" >}}
+{{</* badges show_accredible="false" */>}}
 ```
 {{< badges show_accredible="false" >}}
 
 ### Display only Accredible badges 
 ```
-{{< badges show_credly="false" >}}
+{{</* badges show_credly="false" */>}}
 ```
 {{< badges show_credly="false" >}}
 
 ### Display only Manual badges
 ```
-{{< badges show_credly="false" show_accredible="false" show_openbadges="false" show_badgr="false" >}}
+{{</* badges show_credly="false" show_accredible="false" show_openbadges="false" show_badgr="false" */>}}
 ```
 {{< badges show_credly="false" show_accredible="false" show_openbadges="false" show_badgr="false" >}}
 
 ### Display only Open Badges
 ```
-{{< openbadges-badges >}}
+{{</* openbadges-badges */>}}
 ```
 {{< openbadges-badges >}}
 
 ### Display only Badgr badges
 ```
-{{< badgr-badges >}}
+{{</* badgr-badges */>}}
 ```
 {{< badgr-badges >}}
 
 ### Display only Bugcrowd badges
 ```
-{{< bugcrowd-badges >}}
+{{</* bugcrowd-badges */>}}
 ```
 {{< bugcrowd-badges >}}
 
 ### Display only HackerOne badges
 ```
-{{< hackerone-badges >}}
+{{</* hackerone-badges */>}}
 ```
 {{< hackerone-badges >}}
 
 ### Display Bugcrowd badges with statistics and hall of fame
 ```
-{{< bugcrowd-badges show_statistics="true" show_hall_of_fame="true" >}}
+{{</* bugcrowd-badges show_statistics="true" show_hall_of_fame="true" */>}}
 ```
 {{< notice info "Note" >}}
 Bugcrowd integration automatically fetches and caches performance statistics and hall of fame data, but only displays awarded badges by default. Use `show_statistics="true"` and `show_hall_of_fame="true"` to display additional information.
