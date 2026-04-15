@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-04-16
+
 ### Added
 - **YouTube playlist OEmbed support** — The `oembed` shortcode now detects YouTube playlist URLs and renders each video as a separate embed
   - Two-tier video enumeration: YouTube Data API v3 (if `params.youtube.api_key` is configured) with full pagination, falling back to YouTube RSS feed (max 15 videos, no API key needed)
@@ -16,6 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Configurable default placeholder images** — Placeholder images for timeline, projects, and gadgets are now customizable via `[params.placeholders]` in `config.toml`
   - `timeline`, `project`, `gadget` keys specify asset paths (relative to `assets/` directory)
   - Theme SVGs remain as built-in defaults when no override is configured
+- **Slides page: focus area tags in header** — Focus areas (`focus` frontmatter) now display as clickable tag pills in the slide page header, replacing the previous bottom-of-page tags section
+- **Slides page: timeline entry quick-link** — Slide pages with a `timeline_entry` now show a pill-style link to the related timeline entry in the header
+- **New activity icons** — Added `question.svg`, `instagram.svg`, and `youtube.svg` to the built-in icon set
 
 ### Changed
 - **Timeline icons centered on spine** — Activity icons are now positioned directly on the timeline spine as circular node markers (replacing the plain dots), giving each entry a clear visual category indicator
@@ -24,6 +29,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - The timeline dot is automatically hidden when an icon is present (via CSS `:has()`)
 - **Mobile timeline icons fixed** — All activity icons now consistently appear on the left side of the spine in mobile view; previously, icons on even/odd entries alternated left/right even though all cards stack on one side
 - **Fallback to question-mark icon** — Entries with unrecognized activity types now display `question.svg` on the spine instead of a text badge, ensuring every entry has a consistent icon marker
+- **Slide viewer capped width on wide screens** — On viewports >= 1200px the slide viewer is constrained to 1200px and centered; images fill 100% width instead of the previous `max-height: 75vh` / `object-fit: contain` approach
+
+### Fixed
+- Fixed exampleSite `badges.md` shortcode rendering — code blocks now use `{{</* */>}}` escaping to prevent double shortcode execution during build
 
 ## [2.1.0] - 2026-04-15
 
