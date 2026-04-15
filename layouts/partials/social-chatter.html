@@ -7,9 +7,10 @@
     {{ $items = slice $items }}
   {{ end }}
   {{ if $items }}
-<section class="social-chatter">
-  <h2>Social chatter</h2>
-  <div class="social-chatter__list">
+    {{ $scratch := newScratch }}
+    {{ $scratch.Set "platformOrder" (slice) }}
+
+    {{/* First pass: classify each URL and generate embed content, grouped by platform */}}
     {{ range $items }}
       {{ $itemUrl := "" }}
       {{ if not (reflect.IsMap .) }}
@@ -70,16 +71,37 @@
         {{ end }}
 
         {{ if $embedContent }}
-        <div class="social-chatter__item">
-          <span class="social-chatter__platform-label">{{ $platformLabel }}</span>
-          <div class="social-chatter__embed">
-            {{ $embedContent }}
-          </div>
-        </div>
+          {{ if not ($scratch.Get (printf "seen_%s" $platformLabel)) }}
+            {{ $scratch.Set (printf "seen_%s" $platformLabel) true }}
+            {{ $scratch.Add "platformOrder" (slice $platformLabel) }}
+          {{ end }}
+          {{ $scratch.Add (printf "embeds_%s" $platformLabel) (slice $embedContent) }}
         {{ end }}
       {{ end }}
     {{ end }}
+
+    {{/* Second pass: render one container per platform */}}
+    {{ $platformOrder := $scratch.Get "platformOrder" }}
+    {{ if $platformOrder }}
+<section class="social-chatter">
+  <h2>Social chatter</h2>
+  <div class="social-chatter__list">
+    {{ range $platformOrder }}
+      {{ $label := . }}
+      {{ $embeds := $scratch.Get (printf "embeds_%s" $label) }}
+      <div class="social-chatter__item">
+        <span class="social-chatter__platform-label">{{ $label }}</span>
+        <div class="social-chatter__embeds">
+          {{ range $embeds }}
+            <div class="social-chatter__embed">
+              {{ . }}
+            </div>
+          {{ end }}
+        </div>
+      </div>
+    {{ end }}
   </div>
 </section>
+    {{ end }}
   {{ end }}
 {{ end }}

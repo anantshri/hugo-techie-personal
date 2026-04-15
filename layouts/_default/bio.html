@@ -1,0 +1,108 @@
+{{ partial "header.html" . }}
+
+<div class="bio-page">
+  <div class="bio-page-intro">
+    <h1>{{ .Title }}</h1>
+    {{ with .Params.subtitle }}<p>{{ . }}</p>{{ end }}
+  </div>
+
+  {{/* ---- Short Biography ---- */}}
+  {{ with .Params.short_bio }}
+  {{ $htmlContent := . | $.Page.RenderString }}
+  <div class="bio-section" data-bio-section="short">
+    <div class="bio-section-header">
+      <h2>Short Biography</h2>
+      <div class="bio-controls">
+        <div class="bio-tab-group">
+          <button class="bio-tab active" data-format="html">Rendered</button>
+          <button class="bio-tab" data-format="markdown">Markdown</button>
+          <button class="bio-tab" data-format="text">Plain Text</button>
+        </div>
+        <button class="bio-copy-btn">&#x2398; Copy</button>
+      </div>
+    </div>
+    <div class="bio-content-area">
+      <div class="bio-content-pane active" data-pane="html">
+        {{ $htmlContent }}
+      </div>
+      <div class="bio-content-pane format-raw" data-pane="markdown">{{ . }}</div>
+      <div class="bio-content-pane format-raw" data-pane="text">{{ plainify $htmlContent }}</div>
+    </div>
+  </div>
+  {{ end }}
+
+  {{/* ---- Long Biography ---- */}}
+  {{ with .Params.long_bio }}
+  {{ $htmlContent := . | $.Page.RenderString }}
+  <div class="bio-section" data-bio-section="long">
+    <div class="bio-section-header">
+      <h2>Full Biography</h2>
+      <div class="bio-controls">
+        <div class="bio-tab-group">
+          <button class="bio-tab active" data-format="html">Rendered</button>
+          <button class="bio-tab" data-format="markdown">Markdown</button>
+          <button class="bio-tab" data-format="text">Plain Text</button>
+        </div>
+        <button class="bio-copy-btn">&#x2398; Copy</button>
+      </div>
+    </div>
+    <div class="bio-content-area">
+      <div class="bio-content-pane active" data-pane="html">
+        {{ $htmlContent }}
+      </div>
+      <div class="bio-content-pane format-raw" data-pane="markdown">{{ . }}</div>
+      <div class="bio-content-pane format-raw" data-pane="text">{{ plainify $htmlContent }}</div>
+    </div>
+  </div>
+  {{ end }}
+
+  {{/* ---- Photos ---- */}}
+  {{ with .Params.photos }}
+  <div class="bio-photos-section">
+    <h2>Photos</h2>
+    <p class="bio-photos-subtitle">The following photos can be used for publication. Please see any attribution information listed with each.</p>
+    <div class="bio-photos-grid">
+      {{ range . }}
+      {{ $img := resources.Get .file }}
+      {{ if $img }}
+      {{ $thumb := $img.Fit "600x600 q85" }}
+      {{ $medium := $img.Fit "1200x1200 q90" }}
+      {{ $large := $img.Fit "1600x1600 q90" }}
+      <div class="bio-photo-card">
+        <a href="{{ $img.RelPermalink }}" target="_blank">
+          <img src="{{ $thumb.RelPermalink }}" alt="{{ .label }}" loading="lazy">
+        </a>
+        <div class="bio-photo-card-info">
+          <div class="bio-photo-card-label">{{ .label }}</div>
+          <div class="bio-photo-card-size">Original: {{ $img.Width }}&times;{{ $img.Height }}</div>
+          <div class="bio-photo-sizes">
+            <span class="bio-photo-sizes-label">Sizes:</span>
+            <a class="bio-photo-size-link" href="{{ $thumb.RelPermalink }}" download>Thumb <span class="bio-photo-size-dim">({{ $thumb.Width }}&times;{{ $thumb.Height }})</span></a>
+            <a class="bio-photo-size-link" href="{{ $medium.RelPermalink }}" download>Medium <span class="bio-photo-size-dim">({{ $medium.Width }}&times;{{ $medium.Height }})</span></a>
+            <a class="bio-photo-size-link" href="{{ $large.RelPermalink }}" download>Large <span class="bio-photo-size-dim">({{ $large.Width }}&times;{{ $large.Height }})</span></a>
+            <a class="bio-photo-size-link" href="{{ $img.RelPermalink }}" download>Original <span class="bio-photo-size-dim">({{ $img.Width }}&times;{{ $img.Height }})</span></a>
+          </div>
+        </div>
+      </div>
+      {{ end }}
+      {{ end }}
+    </div>
+
+    <div class="bio-usage-note">
+      <strong>Usage:</strong> These photos are provided for use in conference programs, event websites, speaker profiles, and publication materials. Please credit as &ldquo;Anant Shrivastava&rdquo; when used.
+    </div>
+  </div>
+  {{ end }}
+
+  {{/* ---- Additional content from .Content ---- */}}
+  {{ with .Content }}
+  <div class="bio-section">
+    {{ . }}
+  </div>
+  {{ end }}
+</div>
+
+{{ $bioJS := resources.Get "js/bio.js" | fingerprint }}
+<script src="{{ $bioJS.RelPermalink }}"></script>
+
+{{ partial "footer.html" . }}
