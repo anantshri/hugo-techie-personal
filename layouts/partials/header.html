@@ -28,6 +28,110 @@
     <link rel="stylesheet" href="{{ $fontsCSS.RelPermalink }}" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    {{/* Favicon and App Icons using Hugo Resources */}}
+    {{ $appleIcon57 := resources.Get "favicons/apple-icon-57x57.png" }}
+    {{ $appleIcon60 := resources.Get "favicons/apple-icon-60x60.png" }}
+    {{ $appleIcon72 := resources.Get "favicons/apple-icon-72x72.png" }}
+    {{ $appleIcon76 := resources.Get "favicons/apple-icon-76x76.png" }}
+    {{ $appleIcon114 := resources.Get "favicons/apple-icon-114x114.png" }}
+    {{ $appleIcon120 := resources.Get "favicons/apple-icon-120x120.png" }}
+    {{ $appleIcon144 := resources.Get "favicons/apple-icon-144x144.png" }}
+    {{ $appleIcon152 := resources.Get "favicons/apple-icon-152x152.png" }}
+    {{ $appleIcon180 := resources.Get "favicons/apple-icon-180x180.png" }}
+    {{ $androidIcon192 := resources.Get "favicons/android-icon-192x192.png" }}
+    {{ $favicon32 := resources.Get "favicons/favicon-32x32.png" }}
+    {{ $favicon96 := resources.Get "favicons/favicon-96x96.png" }}
+    {{ $favicon16 := resources.Get "favicons/favicon-16x16.png" }}
+    {{ $manifest := resources.Get "favicons/manifest.json" }}
+    {{ $msIcon144 := resources.Get "favicons/ms-icon-144x144.png" }}
+    {{ with $appleIcon57 }}<link rel="apple-touch-icon" sizes="57x57" href="{{ .RelPermalink }}">{{ end }}
+    {{ with $appleIcon60 }}<link rel="apple-touch-icon" sizes="60x60" href="{{ .RelPermalink }}">{{ end }}
+    {{ with $appleIcon72 }}<link rel="apple-touch-icon" sizes="72x72" href="{{ .RelPermalink }}">{{ end }}
+    {{ with $appleIcon76 }}<link rel="apple-touch-icon" sizes="76x76" href="{{ .RelPermalink }}">{{ end }}
+    {{ with $appleIcon114 }}<link rel="apple-touch-icon" sizes="114x114" href="{{ .RelPermalink }}">{{ end }}
+    {{ with $appleIcon120 }}<link rel="apple-touch-icon" sizes="120x120" href="{{ .RelPermalink }}">{{ end }}
+    {{ with $appleIcon144 }}<link rel="apple-touch-icon" sizes="144x144" href="{{ .RelPermalink }}">{{ end }}
+    {{ with $appleIcon152 }}<link rel="apple-touch-icon" sizes="152x152" href="{{ .RelPermalink }}">{{ end }}
+    {{ with $appleIcon180 }}<link rel="apple-touch-icon" sizes="180x180" href="{{ .RelPermalink }}">{{ end }}
+    {{ with $androidIcon192 }}<link rel="icon" type="image/png" sizes="192x192" href="{{ .RelPermalink }}">{{ end }}
+    {{ with $favicon32 }}<link rel="icon" type="image/png" sizes="32x32" href="{{ .RelPermalink }}">{{ end }}
+    {{ with $favicon96 }}<link rel="icon" type="image/png" sizes="96x96" href="{{ .RelPermalink }}">{{ end }}
+    {{ with $favicon16 }}<link rel="icon" type="image/png" sizes="16x16" href="{{ .RelPermalink }}">{{ end }}
+    {{ with $manifest }}<link rel="manifest" href="{{ .RelPermalink }}">{{ end }}
+    <meta name="msapplication-TileColor" content="#ffffff">
+    {{ with $msIcon144 }}<meta name="msapplication-TileImage" content="{{ .RelPermalink }}">{{ end }}
+    {{ with .Site.Params.analytics }}
+      {{ if and .provider .domain }}
+        {{ if eq .provider "plausible" }}
+          <script defer data-api="{{ .api_endpoint | default "/api/event" }}" data-domain="{{ .domain }}" src="{{ .script_src | default "/js/script.js" }}"></script>
+        {{ else if eq .provider "plausible_cloud" }}
+          <script defer data-domain="{{ .domain }}" src="https://plausible.io/js/script.js"></script>
+        {{ else if and (eq .provider "google") .tracking_id }}
+          <meta name="ga-tracking-id" content="{{ .tracking_id }}">
+          <script async src="https://www.googletagmanager.com/gtag/js?id={{ .tracking_id }}"></script>
+          {{ $gaJS := resources.Get "js/analytics-google.js" | minify | fingerprint }}
+          <script src="{{ $gaJS.RelPermalink }}"></script>
+        {{ else if and (eq .provider "custom") .custom_code }}
+          {{ .custom_code | safeHTML }}
+        {{ end }}
+      {{ end }}
+    {{ end }}
+    <meta name="theme-color" content="#ffffff">
+    {{/* Slides section: OG, Twitter Card, OEmbed discovery, Schema.org */}}
+    {{ if eq .Section "slides" }}
+      {{ if .IsPage }}
+        {{ $ogImage := printf "%sslides/slide-001-medium.jpg" .Permalink }}
+        {{ $authorName := .Params.oembed.author_name | default (site.Params.slides.default_author | default "") }}
+        <meta property="og:type" content="article" />
+        <meta property="og:title" content="{{ .Title }}" />
+        <meta property="og:description" content="{{ .Summary | plainify | truncate 200 }}" />
+        <meta property="og:image" content="{{ $ogImage }}" />
+        <meta property="og:url" content="{{ .Permalink }}" />
+        <meta property="article:published_time" content="{{ .Date.Format "2006-01-02T15:04:05Z07:00" }}" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="{{ .Title }}" />
+        <meta name="twitter:description" content="{{ .Summary | plainify | truncate 200 }}" />
+        <meta name="twitter:image" content="{{ $ogImage }}" />
+        {{ if site.Params.slides.oembed.enabled | default true }}
+          <link rel="alternate" type="application/json+oembed"
+                href="{{ .Permalink }}oembed.json" title="{{ .Title }}" />
+        {{ end }}
+        <script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@type": "PresentationDigitalDocument",
+          "name": {{ .Title | jsonify }},
+          "description": {{ .Summary | plainify | truncate 200 | jsonify }},
+          "datePublished": "{{ .Date.Format "2006-01-02" }}",
+          "author": { "@type": "Person", "name": {{ $authorName | jsonify }} },
+          "url": {{ .Permalink | jsonify }},
+          "thumbnailUrl": {{ $ogImage | jsonify }}
+          {{ with .Params.conference }},"event": { "@type": "Event", "name": {{ . | jsonify }} }{{ end }}
+        }
+        </script>
+      {{ end }}
+    {{ end }}
+    {{/* Custom font overrides from site config */}}
+    {{ with .Site.Params.fonts }}
+      {{ with .google_fonts_url }}
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="{{ . }}">
+      {{ end }}
+      {{ if or .family_sans .family_serif .family_mono }}
+        {{- $fontCSS := printf ":root { %s%s%s }"
+          (cond (not .family_sans)  "" (printf "--font-family-sans: %s; "  .family_sans))
+          (cond (not .family_serif) "" (printf "--font-family-serif: %s; " .family_serif))
+          (cond (not .family_mono)  "" (printf "--font-family-mono: %s; "  .family_mono))
+        -}}
+        {{- $fontResource := resources.FromString "css/font-overrides.css" $fontCSS | minify | fingerprint -}}
+        <link rel="stylesheet" href="{{ $fontResource.RelPermalink }}" />
+      {{ end }}
+    {{ end }}
+    {{/* Custom CSS from site config */}}
+    {{ range .Site.Params.custom_css }}
+      <link rel="stylesheet" href="{{ . | relURL }}" />
+    {{ end }}
     {{ partial "head_custom.html" . }}
   </head>
     <body>

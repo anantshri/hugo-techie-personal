@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-04-15
+
+### Added
+- **Custom CSS support** — Load additional stylesheets via `params.custom_css` list in site config
+- **Custom JS support** — Load additional scripts via `params.custom_js` list in site config (loaded before `</body>`)
+- **Custom font overrides** — Override theme fonts via `[params.fonts]` config section (CSP-safe, no inline styles)
+  - `google_fonts_url` — Load a custom Google Fonts stylesheet
+  - `family_sans`, `family_serif`, `family_mono` — Override CSS custom properties for font families
+  - Uses Hugo's `resources.FromString` to generate an external fingerprinted CSS file
+
+### Changed
+- **Partial restructuring for site-level overrides:**
+  - Moved theme `<head>` content (favicons, analytics, slides OG/OEmbed/Schema.org) from `head_custom.html` into `header.html`
+  - `head_custom.html` is now an empty hook — site owners can override it in their `layouts/partials/` to inject custom `<head>` content
+  - `foot_custom.html` is now shipped as an empty hook in the theme — site owners can override it to inject content before `</body>`
+  - Custom JS scripts load before `foot_custom.html`, giving site overrides access to any custom libraries
+
+## [2.0.1] - 2026-04-15
+
+### Fixed
+- Fixed exampleSite `config.toml` configuration errors that caused build failures on sites using the example as a starting point
+
 ## [2.0.0] - 2026-04-15
 
 ### Added
