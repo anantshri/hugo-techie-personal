@@ -3,7 +3,7 @@
 {{ partial "breadcrumbs.html" . }}
 
 {{/* ===== Slides CSS ===== */}}
-{{ $slidesCSS := resources.Get "css/slides.css" | fingerprint }}
+{{ $slidesCSS := resources.Get "css/slides.css" | minify | fingerprint }}
 <link rel="stylesheet" href="{{ $slidesCSS.RelPermalink }}" />
 
 <article class="slides-single">
@@ -188,7 +188,7 @@
 
 {{ partial "prev_next_nav.html" . }}
 
-{{ $viewerJS := resources.Get "js/slideviewer.js" | fingerprint }}
+{{ $viewerJS := resources.Get "js/slideviewer.js" | minify | fingerprint }}
 <script src="{{ $viewerJS.RelPermalink }}" defer></script>
 
 {{ partial "footer.html" . }}

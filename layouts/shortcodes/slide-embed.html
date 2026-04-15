@@ -3,7 +3,7 @@
 {{- $slidePage := site.GetPage $src -}}
 
 {{- if $slidePage -}}
-  {{- $slidesCSS := resources.Get "css/slides.css" | fingerprint -}}
+  {{- $slidesCSS := resources.Get "css/slides.css" | minify | fingerprint -}}
   <link rel="stylesheet" href="{{ $slidesCSS.RelPermalink }}" />
   {{ partial "slide-card.html" $slidePage }}
 {{- else -}}

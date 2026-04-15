@@ -3,7 +3,7 @@
 {{ partial "breadcrumbs.html" . }}
 
 {{/* ===== Slides CSS ===== */}}
-{{ $slidesCSS := resources.Get "css/slides.css" | fingerprint }}
+{{ $slidesCSS := resources.Get "css/slides.css" | minify | fingerprint }}
 <link rel="stylesheet" href="{{ $slidesCSS.RelPermalink }}" />
 
 <div class="slides-listing">

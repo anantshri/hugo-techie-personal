@@ -1,8 +1,10 @@
 {{ $url := "" }}
 {{ $page := "" }}
+{{ $variant := "list" }}
 {{ if reflect.IsMap . }}
   {{ $url = .url }}
   {{ $page = .page }}
+  {{ with .variant }}{{ $variant = . }}{{ end }}
 {{ else }}
   {{ $url = . }}
   {{ $page = . }}
@@ -37,7 +39,7 @@
       {{ else }}
         {{ with try ( .Value | transform.Unmarshal) }}
           {{ with .Err }}
-            {{ warnf " Errorize %s " . }}
+            {{ warnf "OEmbed JSON parse error: %s" . }}
           {{ else }}
             {{ $data = .Value }}
           {{ end }}
@@ -91,43 +93,83 @@
   {{ end }}
 {{ end }}
 
+{{/* Same-site slides: if URL points to a local slides page, render embed directly
+     without remote fetching — faster, works during dev, avoids cache staleness */}}
+{{ if eq $matched 0 }}
+  {{ $parsedPath := strings.TrimRight "/" $videoUrl.Path }}
+  {{ with site.GetPage $parsedPath }}
+    {{ if eq .Section "slides" }}
+      {{ $matched = 1 }}
+      {{ $slug := .File.ContentBaseName }}
+      {{ $slideW := 0 }}
+      {{ $slideH := 0 }}
+      {{ with resources.Get (printf "slides/%s/slide-001.webp" $slug) }}
+        {{ $slideW = .Width }}
+        {{ $slideH = .Height }}
+      {{ end }}
+      {{ $chromeH := site.Params.slides.oembed.embed_chrome_height | default 70 }}
+      {{ $iframeStyle := "position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;" }}
+      {{ $iframe := printf "<iframe src='%sembed.html' loading='lazy' style='%s' allowfullscreen title='%s'></iframe>" .RelPermalink $iframeStyle (.Title | htmlEscape) }}
+      {{ $containerStyle := "" }}
+      {{ if and (gt $slideW 0) (gt $slideH 0) }}
+        {{ $slidePct := div (mul $slideH 100.0) $slideW }}
+        {{ $containerStyle = printf " style='padding-bottom: calc(%.4f%% + %dpx)'" $slidePct $chromeH }}
+      {{ end }}
+      {{ $out = printf "<div class='oembed-container-auto'%s>%s</div>" $containerStyle $iframe | safeHTML }}
+    {{ end }}
+  {{ end }}
+{{ end }}
+
 {{/* OEmbed discovery: fetch page and look for <link> oembed discovery tag */}}
 {{ if eq $matched 0 }}
   {{ with try (resources.GetRemote $url) }}
     {{ with .Err }}
       {{ warnf "OEmbed discovery: error fetching %q: %s" $url . }}
     {{ else }}
-      {{ $pageHTML := .Value.Content }}
-      {{ $linkTags := findRE "<link[^>]+json.oembed[^>]+>" $pageHTML 1 }}
-      {{ if $linkTags }}
-        {{ $linkTag := index $linkTags 0 }}
-        {{ $urlMatches := findRE "https?://[^ <>]+" $linkTag 1 }}
-        {{ if $urlMatches }}
-          {{ $oembedJsonUrl := index $urlMatches 0 }}
-          {{ $oembedJsonUrl = replaceRE "[^a-zA-Z0-9/]$" "" $oembedJsonUrl }}
-          {{ $oembedJsonUrl = replace $oembedJsonUrl "&amp;" "&" }}
-          {{ with try (resources.GetRemote $oembedJsonUrl) }}
-            {{ with .Err }}
-              {{ warnf "OEmbed discovery: error fetching oembed JSON %q: %s" $oembedJsonUrl . }}
-            {{ else }}
-              {{ with try (.Value | transform.Unmarshal) }}
-                {{ with .Err }}
-                  {{ warnf "OEmbed discovery: JSON parse error: %s" . }}
-                {{ else }}
-                  {{ $oData := .Value }}
-                  {{ with $oData.html }}
-                    {{ $matched = 1 }}
-                    {{ $html := . }}
-                    {{ $iframeStyle := "position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;" }}
-                    {{ $frame := printf "iframe loading='lazy' allow='accelerometer; autoplay; clipboard-write; encrypted-media; fullscreen; gyroscope; picture-in-picture; web-share' style='%s'" $iframeStyle }}
-                    {{ $html = replace $html "iframe " $frame }}
-                    {{ $containerStyle := "" }}
-                    {{ with $oData.width }}
-                      {{ with $oData.height }}
-                        {{ $containerStyle = printf " style='padding-bottom: %.4f%%'" (div (mul $oData.height 100.0) $oData.width) }}
+      {{ with .Value }}
+        {{ $pageHTML := .Content }}
+        {{ $linkTags := findRE "<link[^>]+json.oembed[^>]+>" $pageHTML 1 }}
+        {{ if $linkTags }}
+          {{ $linkTag := index $linkTags 0 }}
+          {{ $urlMatches := findRE "https?://[^ <>]+" $linkTag 1 }}
+          {{ if $urlMatches }}
+            {{ $oembedJsonUrl := index $urlMatches 0 }}
+            {{ $oembedJsonUrl = replaceRE "[^a-zA-Z0-9/]$" "" $oembedJsonUrl }}
+            {{ $oembedJsonUrl = replace $oembedJsonUrl "&amp;" "&" }}
+            {{ with try (resources.GetRemote $oembedJsonUrl) }}
+              {{ with .Err }}
+                {{ warnf "OEmbed discovery: error fetching oembed JSON %q: %s" $oembedJsonUrl . }}
+              {{ else }}
+                {{ with try (.Value | transform.Unmarshal) }}
+                  {{ with .Err }}
+                    {{ warnf "OEmbed discovery: JSON parse error: %s" . }}
+                  {{ else }}
+                    {{ $oData := .Value }}
+                    {{ with $oData.html }}
+                      {{ $matched = 1 }}
+                      {{ $html := . }}
+                      {{ $iframeStyle := "position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;" }}
+                      {{ $frame := printf "iframe loading='lazy' allow='accelerometer; autoplay; clipboard-write; encrypted-media; fullscreen; gyroscope; picture-in-picture; web-share' style='%s'" $iframeStyle }}
+                      {{ $html = replace $html "iframe " $frame }}
+                      {{ $containerStyle := "" }}
+                      {{ $sw := 0 }}
+                      {{ $sh := 0 }}
+                      {{ $ch := 0 }}
+                      {{ with $oData.slide_width }}{{ $sw = . }}{{ end }}
+                      {{ with $oData.slide_height }}{{ $sh = . }}{{ end }}
+                      {{ with $oData.chrome_height }}{{ $ch = . }}{{ end }}
+                      {{ if and (gt $sw 0) (gt $sh 0) (gt $ch 0) }}
+                        {{ $slidePct := div (mul $sh 100.0) $sw }}
+                        {{ $containerStyle = printf " style='padding-bottom: calc(%.4f%% + %dpx)'" $slidePct (int $ch) }}
+                      {{ else }}
+                        {{ with $oData.width }}
+                          {{ with $oData.height }}
+                            {{ $containerStyle = printf " style='padding-bottom: %.4f%%'" (div (mul $oData.height 100.0) $oData.width) }}
+                          {{ end }}
+                        {{ end }}
                       {{ end }}
+                      {{ $out = printf "<div class='oembed-container-auto'%s>%s</div>" $containerStyle $html | safeHTML }}
                     {{ end }}
-                    {{ $out = printf "<div class='oembed-container-auto'%s>%s</div>" $containerStyle $html | safeHTML }}
                   {{ end }}
                 {{ end }}
               {{ end }}
@@ -158,7 +200,15 @@
     {{ else }}
       {{ $notist_username = "notist" }}
     {{ end }}
-    {{ $frm_src := printf "%s" "/embed' frameborder='0' width='450' height='250' allowfullscreen='allowfullscreen' class='frame_notist_list' \u003e\u003c/iframe\u003e"| printf "%s%s" $url_id |  printf "%s%s" (printf "\u003ciframe sandbox='allow-scripts' scrolling='no' src='https://noti.st/%s/" $notist_username) }}
+    {{ $notistW := "450" }}
+    {{ $notistH := "250" }}
+    {{ $notistClass := "frame_notist_list" }}
+    {{ if eq $variant "full" }}
+      {{ $notistW = "960" }}
+      {{ $notistH = "540" }}
+      {{ $notistClass = "frame_notist" }}
+    {{ end }}
+    {{ $frm_src := printf "%s" "/embed' frameborder='0' width='" | printf "%s%s%s' height='%s' allowfullscreen='allowfullscreen' class='%s' \u003e\u003c/iframe\u003e" $url_id $notistW $notistH $notistClass | printf "%s%s" (printf "\u003ciframe sandbox='allow-scripts' scrolling='no' src='https://noti.st/%s/" $notist_username) }}
     {{ $out = $frm_src | safeHTML }}
   {{ end }}
 {{ end }}
@@ -175,7 +225,7 @@
 {{ end }}
 {{- if and $isTwitter (not ($page.Store.Get "twitter-widgets-loaded")) -}}
   {{- $page.Store.Set "twitter-widgets-loaded" true -}}
-  {{- $policyJS := resources.Get "js/trusted-types-policy.js" | fingerprint -}}
+  {{- $policyJS := resources.Get "js/trusted-types-policy.js" | minify | fingerprint -}}
   <script src="{{ $policyJS.RelPermalink }}"></script>
   <script src="https://platform.twitter.com/widgets.js" async charset="utf-8"></script>
 {{- end -}}

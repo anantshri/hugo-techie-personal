@@ -1,5 +1,9 @@
 {{ partial "header.html" . }}
 
-404 NOT FOUND
+<main class="error-page" style="text-align:center; padding: 4rem 1rem;">
+  <h1 style="font-size: 4rem; margin-bottom: 0.5rem;">404</h1>
+  <p style="font-size: 1.2rem; color: var(--color-text-muted, #666); margin-bottom: 2rem;">Page not found</p>
+  <p><a href="{{ .Site.BaseURL }}" style="color: var(--color-primary, #0066cc);">&larr; Back to {{ .Site.Title }}</a></p>
+</main>
 
 {{ partial "footer.html" . }}

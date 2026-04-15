@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ .Title }}</title>
-  {{ $slidesCSS := resources.Get "css/slides.css" | fingerprint }}
+  {{ $slidesCSS := resources.Get "css/slides.css" | minify | fingerprint }}
   <link rel="stylesheet" href="{{ $slidesCSS.RelPermalink }}" />
   <style>
     :root {
@@ -54,7 +54,7 @@
       <a href="{{ .Permalink }}" target="_blank" rel="noopener">{{ .Title }} &mdash; view full presentation</a>
     </div>
   </div>
-  {{ $viewerJS := resources.Get "js/slideviewer.js" | fingerprint }}
+  {{ $viewerJS := resources.Get "js/slideviewer.js" | minify | fingerprint }}
   <script src="{{ $viewerJS.RelPermalink }}" defer></script>
 </body>
 </html>

@@ -3,10 +3,10 @@
 {{- $slidePage := site.GetPage $src -}}
 
 {{- if $slidePage -}}
-  {{- $slidesCSS := resources.Get "css/slides.css" | fingerprint -}}
+  {{- $slidesCSS := resources.Get "css/slides.css" | minify | fingerprint -}}
   <link rel="stylesheet" href="{{ $slidesCSS.RelPermalink }}" />
   {{ partial "slideviewer.html" (dict "page" $slidePage "id" (printf "sv-%s" ($slidePage.File.ContentBaseName | urlize))) }}
-  {{- $viewerJS := resources.Get "js/slideviewer.js" | fingerprint -}}
+  {{- $viewerJS := resources.Get "js/slideviewer.js" | minify | fingerprint -}}
   <script src="{{ $viewerJS.RelPermalink }}" defer></script>
 {{- else -}}
   <p><em>Presentation not found: {{ $src }}</em></p>
