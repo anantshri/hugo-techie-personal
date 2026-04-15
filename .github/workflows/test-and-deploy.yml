@@ -51,7 +51,7 @@ jobs:
       - name: Test theme build
         run: |
           cd exampleSite
-          hugo --gc --minify --buildDrafts --buildFuture
+          hugo build --gc --minify --buildDrafts --buildFuture --themesDir ../..
       - name: Test theme with minimum supported Hugo version
         run: |
           # Test with minimum supported version dynamically extracted from theme.toml
@@ -62,7 +62,8 @@ jobs:
           && sudo dpkg -i ${{ runner.temp }}/hugo-min.deb
           hugo version
           cd exampleSite
-          hugo --gc --minify --buildDrafts --buildFuture
+          hugo --gc --minify --buildDrafts --buildFuture --themesDir ../..
+
       - name: Validate HTML output
         run: |
           cd exampleSite
@@ -133,9 +134,10 @@ jobs:
           # Update config for GitHub Pages
           sed -i 's|baseURL = "https://example.com"|baseURL = "${{ steps.pages.outputs.base_url }}/"|g' config.toml
           # Build the site
-          hugo \
+          hugo build \
             --gc \
             --minify \
+            --themesDir ../.. \
             --baseURL "${{ steps.pages.outputs.base_url }}/"
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
