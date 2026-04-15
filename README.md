@@ -3,7 +3,7 @@
 A timeline-based personal site theme designed specifically for tech professionals who love to share their work, projects, and journey with the community.
 
 [![Version](https://img.shields.io/badge/version-2.0.0-green.svg)](CHANGELOG.md)
-[![Hugo](https://img.shields.io/badge/hugo-0.141.0+-blue.svg)](https://gohugo.io)
+[![Hugo](https://img.shields.io/badge/hugo-0.158.0+-blue.svg)](https://gohugo.io)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## Features
@@ -34,7 +34,7 @@ A timeline-based personal site theme designed specifically for tech professional
 
 ## Quick Start
 
-1. **Install Hugo** (version 0.141.0 or later)
+1. **Install Hugo** (version 0.158.0 or later)
 2. **Create a new site**:
    ```bash
    hugo new site my-techie-site

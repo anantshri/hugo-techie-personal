@@ -48,7 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - AI summary example in `ai_summary/unified/`
 
 ### Changed
-- **BREAKING**: Minimum Hugo version requirement updated from 0.18 to 0.141.0
+- **BREAKING**: Minimum Hugo version requirement updated from 0.18 to 0.158.0 (required for `.Site.Language.Locale` support)
 - **BREAKING**: Slide PDFs now live in `assets/slides/pdf_files/` inbox instead of content bundles; `process-slides.sh` copies them to `static/slides/<slug>/slides.pdf` for download
 - **CI Improvement**: Workflow now dynamically extracts minimum Hugo version from `theme.toml`
 - **Security**: Implemented job-level permissions instead of workflow-level write access
