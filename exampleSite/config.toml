@@ -1,12 +1,12 @@
 baseURL = "https://example.com"
 defaultContentLanguage = "en"
 title = "Hugo Techie Personal Demo"
-
-[languages.en]
-  locale = "en-US"
 theme = "hugo-techie-personal"
 disableHugoGeneratorInject = true
 enableRobotsTXT = true
+
+[languages.en]
+  locale = "en-US"
 
 # Enable taxonomies
 [taxonomies]

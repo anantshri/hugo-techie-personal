@@ -30,7 +30,7 @@ jobs:
           wget -O ${{ runner.temp }}/hugo.deb https://github.com/gohugoio/hugo/releases/download/v${HUGO_VERSION}/hugo_extended_${HUGO_VERSION}_linux-amd64.deb \
           && sudo dpkg -i ${{ runner.temp }}/hugo.deb
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           submodules: recursive
           fetch-depth: 0
@@ -51,7 +51,7 @@ jobs:
       - name: Test theme build
         run: |
           cd exampleSite
-          hugo build --gc --minify --buildDrafts --buildFuture --themesDir ../..
+          hugo --gc --minify --buildDrafts --buildFuture
       - name: Test theme with minimum supported Hugo version
         run: |
           # Test with minimum supported version dynamically extracted from theme.toml
@@ -62,7 +62,7 @@ jobs:
           && sudo dpkg -i ${{ runner.temp }}/hugo-min.deb
           hugo version
           cd exampleSite
-          hugo --gc --minify --buildDrafts --buildFuture --themesDir ../..
+          hugo --gc --minify --buildDrafts --buildFuture
 
       - name: Validate HTML output
         run: |
@@ -115,13 +115,13 @@ jobs:
       - name: Install Dart Sass
         run: sudo snap install dart-sass
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           submodules: recursive
           fetch-depth: 0
       - name: Setup Pages
         id: pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6
       - name: Install Node.js dependencies
         run: "[[ -f package-lock.json || -f npm-shrinkwrap.json ]] && npm ci || true"
       - name: Build demo site with Hugo
@@ -134,13 +134,12 @@ jobs:
           # Update config for GitHub Pages
           sed -i 's|baseURL = "https://example.com"|baseURL = "${{ steps.pages.outputs.base_url }}/"|g' config.toml
           # Build the site
-          hugo build \
+          hugo \
             --gc \
             --minify \
-            --themesDir ../.. \
             --baseURL "${{ steps.pages.outputs.base_url }}/"
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
         with:
           path: ./exampleSite/public
 
@@ -159,10 +158,10 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5
       - name: Update Release with Demo Link (if release)
         if: github.event_name == 'release'
-        uses: actions/github-script@v7
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           script: |
             try {
