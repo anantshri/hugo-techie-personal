@@ -2,12 +2,16 @@
 {{ $out := "" }}
 {{ $videoUrl := urls.Parse $url }}
 {{ $matched := 0 }}
+{{ $isTwitter := false }}
 
 {{/* Try data-driven approach first */}}
 {{ $data := dict }}
 {{- range hugo.Data.oembed }}
   {{- if le 1 ( findRE .pattern $videoUrl.Host | len ) }}
     {{ $matched = 1 }}
+    {{ if or (eq .pattern "twitter.com") (eq .pattern "x.com") }}
+      {{ $isTwitter = true }}
+    {{ end }}
     {{ $nowrapper := .nowrapper | default false }}
     {{ $autoheight := .autoheight | default false }}
     {{ $remove := .remove | default "" }}
@@ -200,3 +204,6 @@
   {{ . }}
 </div>
 {{ end }}
+{{- if $isTwitter -}}
+<script>!function(){if(!window.__twtr_wjs_loaded){window.__twtr_wjs_loaded=1;var s=document.createElement("script");s.src="https://platform.twitter.com/widgets.js";s.async=true;s.charset="utf-8";document.head.appendChild(s)}}()</script>
+{{- end -}}

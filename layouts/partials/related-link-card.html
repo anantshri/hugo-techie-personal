@@ -22,50 +22,42 @@
     {{ with .Err }}
       {{ warnf "related-link-card: failed to fetch %s: %s" $url . }}
     {{ else }}
-      {{ $body := .Value.Content }}
+      {{ with .Value }}
+        {{ $body := .Content }}
 
-      {{ if not $title }}
-        {{ $m := findRE `<meta[^>]*property="og:title"[^>]*>` $body 1 }}
-        {{ with $m }}
-          {{ $tag := index . 0 }}
-          {{ $extracted := replaceRE `(?s).*content="([^"]*)".*` "$1" $tag }}
-          {{ if ne $extracted $tag }}
-            {{ $title = $extracted }}
-          {{ end }}
-        {{ end }}
         {{ if not $title }}
-          {{ $m := findRE `<title[^>]*>[^<]+</title>` $body 1 }}
+          {{ $m := findRE `<meta[^>]*property="og:title"[^>]*>` $body 1 }}
           {{ with $m }}
-            {{ $extracted := replaceRE `<title[^>]*>([^<]+)</title>` "$1" (index . 0) }}
-            {{ if ne $extracted (index . 0) }}
-              {{ $title = $extracted | strings.TrimSpace }}
+            {{ $tag := index . 0 }}
+            {{ $extracted := replaceRE `(?s).*content="([^"]*)".*` "$1" $tag }}
+            {{ if ne $extracted $tag }}
+              {{ $title = $extracted }}
+            {{ end }}
+          {{ end }}
+          {{ if not $title }}
+            {{ $m := findRE `<title[^>]*>[^<]+</title>` $body 1 }}
+            {{ with $m }}
+              {{ $extracted := replaceRE `<title[^>]*>([^<]+)</title>` "$1" (index . 0) }}
+              {{ if ne $extracted (index . 0) }}
+                {{ $title = $extracted | strings.TrimSpace }}
+              {{ end }}
             {{ end }}
           {{ end }}
         {{ end }}
-      {{ end }}
 
-      {{ if not $image }}
-        {{ $m := findRE `<meta[^>]*property="og:image"[^>]*>` $body 1 }}
-        {{ with $m }}
-          {{ $tag := index . 0 }}
-          {{ $extracted := replaceRE `(?s).*content="([^"]*)".*` "$1" $tag }}
-          {{ if ne $extracted $tag }}
-            {{ $image = $extracted }}
+        {{ if not $image }}
+          {{ $m := findRE `<meta[^>]*property="og:image"[^>]*>` $body 1 }}
+          {{ with $m }}
+            {{ $tag := index . 0 }}
+            {{ $extracted := replaceRE `(?s).*content="([^"]*)".*` "$1" $tag }}
+            {{ if ne $extracted $tag }}
+              {{ $image = $extracted }}
+            {{ end }}
           {{ end }}
         {{ end }}
-      {{ end }}
 
-      {{ if not $description }}
-        {{ $m := findRE `<meta[^>]*property="og:description"[^>]*>` $body 1 }}
-        {{ with $m }}
-          {{ $tag := index . 0 }}
-          {{ $extracted := replaceRE `(?s).*content="([^"]*)".*` "$1" $tag }}
-          {{ if ne $extracted $tag }}
-            {{ $description = $extracted }}
-          {{ end }}
-        {{ end }}
         {{ if not $description }}
-          {{ $m := findRE `<meta[^>]*name="description"[^>]*>` $body 1 }}
+          {{ $m := findRE `<meta[^>]*property="og:description"[^>]*>` $body 1 }}
           {{ with $m }}
             {{ $tag := index . 0 }}
             {{ $extracted := replaceRE `(?s).*content="([^"]*)".*` "$1" $tag }}
@@ -73,9 +65,19 @@
               {{ $description = $extracted }}
             {{ end }}
           {{ end }}
+          {{ if not $description }}
+            {{ $m := findRE `<meta[^>]*name="description"[^>]*>` $body 1 }}
+            {{ with $m }}
+              {{ $tag := index . 0 }}
+              {{ $extracted := replaceRE `(?s).*content="([^"]*)".*` "$1" $tag }}
+              {{ if ne $extracted $tag }}
+                {{ $description = $extracted }}
+              {{ end }}
+            {{ end }}
+          {{ end }}
         {{ end }}
-      {{ end }}
 
+      {{ end }}
     {{ end }}
   {{ end }}
 {{ end }}
