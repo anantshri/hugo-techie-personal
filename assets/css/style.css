@@ -748,7 +748,6 @@ body:not([class*="home-layout-"]) {
 
 .mytimeline {
   position: relative;
-  max-width: 1024px;
   margin: var(--space-8) auto;
   padding: 0 var(--space-4);
 }
@@ -3073,7 +3072,6 @@ main {
 
 /* Timeline Text Page Container */
 .timeline-text-page {
-  max-width: 1000px;
   margin: 0 auto;
   padding: 0 var(--space-4);
 }
@@ -4378,7 +4376,7 @@ html {
    =============================================== */
 
 .bio-page {
-  max-width: 960px;
+  max-width: 1200px;
   margin: 0 auto;
 }
 
