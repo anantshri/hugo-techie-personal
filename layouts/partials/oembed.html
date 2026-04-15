@@ -173,6 +173,7 @@
   {{ . }}
 </div>
 {{ end }}
-{{- if $isTwitter -}}
-<script>!function(){if(!window.__twtr_wjs_loaded){window.__twtr_wjs_loaded=1;var s=document.createElement("script");s.src="https://platform.twitter.com/widgets.js";s.async=true;s.charset="utf-8";document.head.appendChild(s)}}()</script>
+{{- if and $isTwitter (not ($page.Store.Get "twitter-widgets-loaded")) -}}
+  {{- $page.Store.Set "twitter-widgets-loaded" true -}}
+  <script src="https://platform.twitter.com/widgets.js" async charset="utf-8"></script>
 {{- end -}}
