@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-04-15
+
 ### Added
 - **Slides / Presentations system** — Self-hosted PDF presentation viewer with interactive navigation
   - PDF-to-WebP slide processing pipeline (`process-slides.sh`, `scaffold-slides.sh`)
@@ -41,8 +43,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Security**: Implemented job-level permissions instead of workflow-level write access
 - **Security**: Reduced `build-and-prepare` job permissions (removed unnecessary `pages:write`)
 - Updated documentation to reflect new Hugo version requirement
+- All CSS and JS assets now minified via Hugo Pipes (`| minify`) before fingerprinting
+- Styled 404 page with proper heading and back-to-home link
+- Added LICENSE file for vendored Leaflet and Leaflet.markercluster libraries
+- Deduplicated OEmbed logic: shortcode is now a thin wrapper around `partials/oembed.html`
+- Added `-webkit-backdrop-filter` prefix for older Safari compatibility
+- Added missing `allow` iframe attribute to shortcode OEmbed output (was only in partial)
+- Added same-site slides rendering to partial OEmbed (was only in shortcode)
+
+### Removed
+- Removed legacy `list_old.html` layout
+- Removed empty `layouts/badges/` directory
 
 ### Fixed
+- Fixed empty `canonical` and `og:url` meta tags — now correctly use page permalink
+- Fixed `og:title` and `og:description` meta tags to use page-specific values instead of site-wide defaults
+- Fixed hardcoded `article:modified_time` (was stuck at 2021-05-24) — now uses page `.Lastmod`
+- Fixed `og:image` emitting broken URL when page has no `featured_image`
+- Fixed hardcoded "2 minutes" reading time — now uses Hugo's computed `.ReadingTime`
+- Fixed duplicate Google Fonts loading (Inter/Merriweather loaded in `<head>` but unused; JetBrains Mono loaded twice)
+- Added missing Leaflet marker images (`marker-icon.png`, `marker-icon-2x.png`, `marker-shadow.png`) for events map
 - Fixed compatibility issues with Hugo versions below 0.141.0 due to `try` function usage
 - Fixed CI HTML validation false positives (CSS color codes containing "404" no longer trigger errors)
 - Fixed GitHub Actions release notification script (now updates release description instead of creating invalid comments)

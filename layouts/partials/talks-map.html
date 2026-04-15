@@ -15,7 +15,7 @@
 <link rel="stylesheet" href="{{ "lib/leaflet/markercluster.default.min.css" | relURL }}" />
 
 {{/* Map CSS */}}
-{{ $mapCSS := resources.Get "css/map.css" | fingerprint }}
+{{ $mapCSS := resources.Get "css/map.css" | minify | fingerprint }}
 <link rel="stylesheet" href="{{ $mapCSS.RelPermalink }}" />
 
 <div class="talks-map" id="{{ $id }}" style="height: {{ $height }}"
@@ -29,11 +29,11 @@
 </div>
 
 {{/* Leaflet JS — policy first so Trusted Types allow innerHTML */}}
-{{ $policyJS := resources.Get "js/trusted-types-policy.js" | fingerprint }}
+{{ $policyJS := resources.Get "js/trusted-types-policy.js" | minify | fingerprint }}
 <script src="{{ $policyJS.RelPermalink }}"></script>
 <script src="{{ "lib/leaflet/leaflet.min.js" | relURL }}"></script>
 <script src="{{ "lib/leaflet/markercluster.min.js" | relURL }}"></script>
 
 {{/* Map init */}}
-{{ $mapJS := resources.Get "js/map.js" | fingerprint }}
+{{ $mapJS := resources.Get "js/map.js" | minify | fingerprint }}
 <script src="{{ $mapJS.RelPermalink }}"></script>

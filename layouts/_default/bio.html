@@ -102,7 +102,7 @@
   {{ end }}
 </div>
 
-{{ $bioJS := resources.Get "js/bio.js" | fingerprint }}
+{{ $bioJS := resources.Get "js/bio.js" | minify | fingerprint }}
 <script src="{{ $bioJS.RelPermalink }}"></script>
 
 {{ partial "footer.html" . }}

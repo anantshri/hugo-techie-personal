@@ -8,26 +8,26 @@
     {{ else }}
     <title>{{ .Title }} | {{ .Site.Title }}</title>
     {{ end }}
-    <meta name="description" content="{{ .Site.Params.description }}" />
-    <link rel="canonical" href="" />
-    <meta property="og:locale" content="en_US" />
-    <meta property="og:type" content="website" />
-    <meta property="og:title" content="{{ .Site.Title }}" />
-    <meta property="og:description" content="{{ .Site.Params.description }}" />
-    <meta property="og:url" content="" />
+    {{- $description := .Params.description | default (.Summary | plainify | truncate 200) | default .Site.Params.description -}}
+    <meta name="description" content="{{ $description }}" />
+    <link rel="canonical" href="{{ .Permalink }}" />
+    <meta property="og:locale" content="{{ .Site.Language.Locale | default "en_US" }}" />
+    <meta property="og:type" content="{{ cond .IsPage "article" "website" }}" />
+    <meta property="og:title" content="{{ cond .IsHome .Site.Title .Title }}" />
+    <meta property="og:description" content="{{ $description }}" />
+    <meta property="og:url" content="{{ .Permalink }}" />
     <meta property="og:site_name" content="{{ .Site.Title }}" />
-    <meta property="article:modified_time" content="2021-05-24T08:02:23+00:00" />
-    <meta property="og:image" content="{{ .Params.featured_image | absURL }}" />
-    <meta name="twitter:label1" content="Est. reading time">
+    {{ with .Lastmod }}<meta property="article:modified_time" content="{{ .Format "2006-01-02T15:04:05Z07:00" }}" />{{ end }}
+    {{ with .Params.featured_image }}<meta property="og:image" content="{{ . | absURL }}" />{{ end }}
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:data1" content="2 minutes">
-    {{ $styleCSS := resources.Get "css/style.css" | fingerprint }}
-    {{ $fontsCSS := resources.Get "css/fonts.css" | fingerprint }}
+    {{ if .IsPage }}<meta name="twitter:label1" content="Est. reading time">
+    <meta name="twitter:data1" content="{{ .ReadingTime }} minute{{ if ne .ReadingTime 1 }}s{{ end }}">{{ end }}
+    {{ $styleCSS := resources.Get "css/style.css" | minify | fingerprint }}
+    {{ $fontsCSS := resources.Get "css/fonts.css" | minify | fingerprint }}
     <link rel="stylesheet" href="{{ $styleCSS.RelPermalink }}" />
     <link rel="stylesheet" href="{{ $fontsCSS.RelPermalink }}" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Merriweather:ital,wght@0,300;0,400;0,700;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
     {{ partial "head_custom.html" . }}
   </head>
     <body>
