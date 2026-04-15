@@ -175,5 +175,7 @@
 {{ end }}
 {{- if and $isTwitter (not ($page.Store.Get "twitter-widgets-loaded")) -}}
   {{- $page.Store.Set "twitter-widgets-loaded" true -}}
+  {{- $policyJS := resources.Get "js/trusted-types-policy.js" | fingerprint -}}
+  <script src="{{ $policyJS.RelPermalink }}"></script>
   <script src="https://platform.twitter.com/widgets.js" async charset="utf-8"></script>
 {{- end -}}
