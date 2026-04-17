@@ -1,0 +1,83 @@
+{{ partial "header.html" . }}
+
+{{ $isRoot := eq .Kind "section" | and (eq .Section "archive") | and (not .Parent.IsHome) }}
+{{ $platformParam := .Params.platform | default "" }}
+
+<div class="archive-list">
+  <header class="archive-list-header">
+    <h1>{{ .Title }}</h1>
+    {{ with .Params.description }}
+      <p class="archive-list-description">{{ . | markdownify }}</p>
+    {{ end }}
+    {{ if .Content }}
+      <div class="archive-list-intro">{{ .Content }}</div>
+    {{ end }}
+  </header>
+
+  {{/* Filter chips — only on the root /archive/ page */}}
+  {{ if not $platformParam }}
+    <nav class="archive-filter-nav">
+      <a href="{{ "/archive/" | relURL }}" class="archive-filter archive-filter--active">All</a>
+      <a href="{{ "/archive/twitter/" | relURL }}" class="archive-filter archive-filter--twitter">X / Twitter</a>
+      <a href="{{ "/archive/linkedin/" | relURL }}" class="archive-filter archive-filter--linkedin">LinkedIn</a>
+      <a href="{{ "/archive/instagram/" | relURL }}" class="archive-filter archive-filter--instagram">Instagram</a>
+      <a href="{{ "/archive/facebook/" | relURL }}" class="archive-filter archive-filter--facebook">Facebook</a>
+    </nav>
+  {{ end }}
+
+  {{/* Collect archive posts */}}
+  {{ $posts := where site.RegularPages "Section" "archive" }}
+  {{ if $platformParam }}
+    {{ $posts = where $posts "Params.platform" $platformParam }}
+  {{ end }}
+  {{ $posts = $posts.ByDate.Reverse }}
+
+  {{ if eq (len $posts) 0 }}
+    <p class="archive-empty">No archived posts yet. Drop a takeout zip into <code>takeouts/</code> and run the importer.</p>
+  {{ else }}
+    <p class="archive-count">{{ len $posts }} archived post{{ if ne (len $posts) 1 }}s{{ end }}.</p>
+    <div class="archive-grid">
+      {{ range $posts }}
+        {{ $platform := .Params.platform | default "social" }}
+        <a href="{{ .RelPermalink }}" class="archive-card archive-card--{{ $platform }}">
+          <div class="archive-card-meta">
+            <span class="archive-card-platform">{{ $platform | title }}</span>
+            {{ if (gt .Params.date 0) }}
+              <time>{{ .Date.Format "02 Jan 2006" }}</time>
+            {{ end }}
+          </div>
+          <div class="archive-card-title">{{ .Title }}</div>
+          {{ with .Params.media }}
+            {{ $mediaCount := len . }}
+            {{ if gt $mediaCount 0 }}
+              <div class="archive-card-media-count">{{ $mediaCount }} media item{{ if ne $mediaCount 1 }}s{{ end }}</div>
+            {{ end }}
+          {{ end }}
+        </a>
+      {{ end }}
+    </div>
+  {{ end }}
+</div>
+
+<style>
+  .archive-list { max-width: 1000px; margin: 2rem auto; padding: 0 1rem; }
+  .archive-list-header { margin-bottom: 1.5rem; }
+  .archive-filter-nav { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem; }
+  .archive-filter { padding: 0.4rem 0.9rem; border-radius: 999px; background: var(--color-bg-muted, #f0f0f0); color: var(--color-text, #333); text-decoration: none; font-size: 0.9rem; border: 1px solid transparent; }
+  .archive-filter:hover { border-color: var(--color-border, #ccc); }
+  .archive-count { color: var(--color-text-muted, #666); font-size: 0.9rem; }
+  .archive-empty { padding: 2rem; text-align: center; color: var(--color-text-muted, #666); }
+  .archive-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; margin-top: 1rem; }
+  .archive-card { display: block; padding: 1rem; border-radius: 8px; border: 1px solid var(--color-border, #e0e0e0); background: var(--color-bg, #fff); text-decoration: none; color: inherit; transition: transform 0.1s, box-shadow 0.1s; }
+  .archive-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+  .archive-card-meta { display: flex; justify-content: space-between; gap: 0.5rem; font-size: 0.8rem; color: var(--color-text-muted, #666); margin-bottom: 0.5rem; }
+  .archive-card-platform { font-weight: 600; padding: 0.1rem 0.5rem; border-radius: 4px; background: var(--color-bg-muted, #f0f0f0); font-size: 0.75rem; }
+  .archive-card-title { font-size: 0.95rem; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+  .archive-card-media-count { font-size: 0.75rem; color: var(--color-text-muted, #666); margin-top: 0.5rem; }
+  .archive-card--twitter .archive-card-platform { background: #1da1f2; color: white; }
+  .archive-card--linkedin .archive-card-platform { background: #0a66c2; color: white; }
+  .archive-card--instagram .archive-card-platform { background: linear-gradient(45deg, #f09433, #dc2743, #bc1888); color: white; }
+  .archive-card--facebook .archive-card-platform { background: #1877f2; color: white; }
+</style>
+
+{{ partial "footer.html" . }}

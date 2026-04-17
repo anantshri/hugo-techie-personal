@@ -3,3 +3,4 @@ resources/_gen/
 public/
 exampleSite/resources/
 exampleSite/public/
+scripts/__pycache__/

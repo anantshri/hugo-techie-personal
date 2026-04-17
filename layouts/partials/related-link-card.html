@@ -4,7 +4,7 @@
   Input: dict with url (required), title (optional), image (optional), description (optional)
 
   Image resolution order:
-    1. Local asset in assets/images/related-links/{slug}.* (run scripts/fetch-related-images.sh to populate)
+    1. Local asset in assets/images/related-links/{slug}.* (run themes/hugo-techie-personal/scripts/fetch-related-images.sh to populate)
     2. Remote fetch via resources.GetRemote as fallback
 */}}
 {{ $url := .url }}
@@ -119,7 +119,7 @@
     {{ end }}
   {{ end }}
   {{ if not $localImg }}
-    {{ warnf "related-link-card: image not cached locally. Run: scripts/fetch-related-images.sh" }}
+    {{ warnf "related-link-card: image not cached locally. Run: ./themes/hugo-techie-personal/scripts/fetch-related-images.sh" }}
   {{ end }}
 {{ end }}
 

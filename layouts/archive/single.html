@@ -1,0 +1,106 @@
+{{ partial "header.html" . }}
+
+{{ $platform := .Params.platform | default "social" }}
+{{ $platformLabel := dict "twitter" "X / Twitter" "linkedin" "LinkedIn" "instagram" "Instagram" "facebook" "Facebook" }}
+{{ $label := index $platformLabel $platform | default (title $platform) }}
+
+<article class="archive-post archive-post--{{ $platform }}">
+  <header class="archive-post-header">
+    <div class="archive-post-meta">
+      <span class="archive-post-platform">{{ $label }}</span>
+      {{ if .Params.platform_user }}
+        <span class="archive-post-user">@{{ .Params.platform_user }}</span>
+      {{ end }}
+      {{ if (gt .Params.date 0) }}
+        <time class="archive-post-date" datetime="{{ .Date.Format "2006-01-02T15:04:05Z07:00" }}">{{ .Date.Format "02 January 2006, 15:04" }}</time>
+      {{ end }}
+    </div>
+    <h1 class="archive-post-title">{{ .Title | markdownify }}</h1>
+    {{ if .Params.original_url }}
+      <p class="archive-post-original">
+        <a href="{{ .Params.original_url }}" target="_blank" rel="noreferrer noopener nofollow">
+          View original on {{ $label }} &rarr;
+        </a>
+      </p>
+    {{ end }}
+    {{ if .Params.retweet_of }}
+      <p class="archive-post-retweet">Retweet of <code>{{ .Params.retweet_of }}</code></p>
+    {{ end }}
+    {{ if .Params.reply_to }}
+      <p class="archive-post-reply">Reply to <code>{{ .Params.reply_to }}</code></p>
+    {{ end }}
+  </header>
+
+  {{ if .Content }}
+    <div class="archive-post-body">
+      {{ .Content }}
+    </div>
+  {{ end }}
+
+  {{ with .Params.media }}
+    <div class="archive-post-media">
+      {{ range . }}
+        {{ $file := .file }}
+        {{ $res := $.Resources.GetMatch $file }}
+        {{ $url := "" }}
+        {{ if $res }}
+          {{ $url = $res.RelPermalink }}
+        {{ else }}
+          {{ $url = $file }}
+        {{ end }}
+        {{ if eq .type "image" }}
+          <figure class="archive-media archive-media--image">
+            <img src="{{ $url }}" alt="{{ .alt | default "" }}" loading="lazy" />
+          </figure>
+        {{ else if eq .type "video" }}
+          {{ $poster := "" }}
+          {{ with .poster }}
+            {{ $pres := $.Resources.GetMatch . }}
+            {{ if $pres }}{{ $poster = $pres.RelPermalink }}{{ else }}{{ $poster = . }}{{ end }}
+          {{ end }}
+          <figure class="archive-media archive-media--video">
+            <video controls preload="metadata"{{ with $poster }} poster="{{ . }}"{{ end }}>
+              <source src="{{ $url }}" />
+            </video>
+          </figure>
+        {{ else if eq .type "gif" }}
+          <figure class="archive-media archive-media--gif">
+            <img src="{{ $url }}" alt="{{ .alt | default "" }}" loading="lazy" />
+          </figure>
+        {{ end }}
+      {{ end }}
+    </div>
+  {{ end }}
+
+  <footer class="archive-post-footer">
+    <p class="archive-disclaimer">
+      This is an archived copy. Content preserved from my platform data export
+      {{ with .Params.archived_at }}
+        (archived <time datetime="{{ . }}">{{ dateFormat "02 January 2006" . }}</time>)
+      {{ end }}.
+      {{ if .Params.original_url }}
+        For the live version, <a href="{{ .Params.original_url }}" target="_blank" rel="noreferrer noopener nofollow">visit the original post</a>.
+      {{ end }}
+    </p>
+  </footer>
+</article>
+
+<style>
+  .archive-post { max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
+  .archive-post-header { border-bottom: 1px solid var(--color-border, #e0e0e0); padding-bottom: 1rem; margin-bottom: 1.5rem; }
+  .archive-post-meta { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; font-size: 0.9rem; color: var(--color-text-muted, #666); margin-bottom: 0.5rem; }
+  .archive-post-platform { font-weight: 600; padding: 0.15rem 0.5rem; border-radius: 4px; background: var(--color-bg-muted, #f0f0f0); }
+  .archive-post-title { font-size: 1.3rem; margin: 0.25rem 0; line-height: 1.4; font-weight: 500; }
+  .archive-post-body { font-size: 1.05rem; line-height: 1.6; white-space: pre-wrap; word-wrap: break-word; }
+  .archive-post-body p { white-space: pre-wrap; }
+  .archive-post-media { margin: 1.5rem 0; display: grid; gap: 1rem; }
+  .archive-media img, .archive-media video { max-width: 100%; height: auto; border-radius: 8px; }
+  .archive-post-footer { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--color-border, #e0e0e0); }
+  .archive-disclaimer { font-size: 0.85rem; color: var(--color-text-muted, #666); font-style: italic; }
+  .archive-post--twitter .archive-post-platform { background: #1da1f2; color: white; }
+  .archive-post--linkedin .archive-post-platform { background: #0a66c2; color: white; }
+  .archive-post--instagram .archive-post-platform { background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); color: white; }
+  .archive-post--facebook .archive-post-platform { background: #1877f2; color: white; }
+</style>
+
+{{ partial "footer.html" . }}

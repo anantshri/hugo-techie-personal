@@ -1,5 +1,43 @@
 {{ partial "header.html" . }}
 
+<script>
+  // Smart redirect for archived social posts whose original URL contains
+  // URL-significant separators that static hosts can't route on:
+  //   - ":" in LinkedIn URNs (urn:li:activity:1234)
+  //   - "?", "&", "=" in query-string permalinks
+  //     (e.g. facebook.com/permalink.php?story_fbid=555&id=999)
+  // We store such posts under a flattened folder structure where each of
+  // those characters becomes a "/". This script mirrors that transformation
+  // on the request path so pasting the original URL still resolves.
+  (function () {
+    try {
+      var p = window.location.pathname;
+      var q = window.location.search;
+      var h = window.location.hash;
+      var changed = false;
+      if (p.indexOf(':') !== -1) {
+        p = p.split(':').join('/');
+        changed = true;
+      }
+      if (q && q.length > 1) {
+        var qFlat = q.slice(1).split('&').map(function (kv) {
+          return kv.split('=').join('/');
+        }).join('/');
+        if (qFlat) {
+          p = p.replace(/\/+$/, '') + '/' + qFlat + '/';
+          q = '';
+          changed = true;
+        }
+      }
+      p = p.replace(/\/+/g, '/');
+      if (changed) {
+        window.location.replace(p + q + h);
+        return;
+      }
+    } catch (e) { /* fall through to the regular 404 body */ }
+  })();
+</script>
+
 <main class="error-page" style="text-align:center; padding: 4rem 1rem;">
   <h1 style="font-size: 4rem; margin-bottom: 0.5rem;">404</h1>
   <p style="font-size: 1.2rem; color: var(--color-text-muted, #666); margin-bottom: 2rem;">Page not found</p>

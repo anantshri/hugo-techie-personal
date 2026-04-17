@@ -18,6 +18,7 @@ A timeline-based personal site theme designed specifically for tech professional
 🎨 **Notice system** - Beautiful callout boxes for important information  
 🔗 **OEmbed support** - Embed YouTube, Vimeo, Twitter, and more  
 💬 **Social chatter** - Embed social media posts (Twitter/X, Bluesky, Mastodon, LinkedIn) on timeline pages  
+🗄️ **Social archive** - Import X/Twitter, LinkedIn, Instagram, and Facebook takeouts into local page bundles served at mirrored URLs  
 🌐 **Social integration** - Built-in social media links with verification support  
 📊 **Analytics ready** - Supports Plausible, Google Analytics, and custom solutions  
 ♿ **Accessible** - Semantic HTML5 with proper ARIA labels  
@@ -834,6 +835,34 @@ Title, image, and description are auto-fetched from Open Graph meta tags when om
 ### AI Summaries
 
 AI-generated summaries are stored in `ai_summary/` subdirectories and automatically included by templates at build time. No shortcodes needed in content files. See your project's AGENTS.md or theme docs for the full workflow.
+
+### Social Archive (Takeouts)
+
+The theme ships a small set of Python importers that convert X/Twitter, LinkedIn, Instagram, and Facebook data exports into Hugo page bundles under `content/archive/<platform>/`. Each archived post is published at a URL that mirrors the original (e.g. `/x.com/<user>/status/<id>/`), so pasting the original URL behind your site's domain resolves to the local copy.
+
+**Importers** (all live under `themes/hugo-techie-personal/scripts/`):
+
+```bash
+uv run --with pyyaml python3 themes/hugo-techie-personal/scripts/import_twitter.py \
+    --takeout takeouts/twitter-<date>.zip --user <handle>
+
+uv run --with pyyaml python3 themes/hugo-techie-personal/scripts/import_linkedin.py \
+    --takeout takeouts/linkedin-<date>.zip
+
+uv run --with pyyaml python3 themes/hugo-techie-personal/scripts/import_instagram.py \
+    --takeout takeouts/instagram-<date>.zip --user <handle>
+
+uv run --with pyyaml python3 themes/hugo-techie-personal/scripts/import_facebook.py \
+    --takeout takeouts/facebook-<date>.zip --user <handle>
+```
+
+- The scripts auto-detect the site root from their location in the theme (or honour `HUGO_SITE_ROOT` if set).
+- All posts default to `draft: true` — pass `--publish` to bulk-publish new imports, or flip `draft: false` manually.
+- Re-running an importer is idempotent (SHA-256 manifest) and never clobbers a manually-curated `draft` value.
+- Instagram and Facebook exports omit public permalinks; optional sidecars (`takeouts/instagram-shortcode-map.json`, `takeouts/facebook-url-map.json`) restore URL mirroring.
+- A smart redirector in `layouts/404.html` flattens `:`, `?`, `&`, `=` → `/` so URLs with LinkedIn URNs or Facebook query-string permalinks still resolve.
+
+**Content section**: create `content/archive/_index.md` (optionally per-platform `content/archive/<platform>/_index.md`) to enable the browse listing at `/archive/`.
 
 ## Documentation
 
