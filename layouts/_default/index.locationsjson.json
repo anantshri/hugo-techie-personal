@@ -1,10 +1,13 @@
 {{- /* Combined locations from slides + timeline for global events map */ -}}
 {{- $entries := slice -}}
 
-{{- /* Slides with location (exclude online) */ -}}
+{{- /* Slides with location (exclude online). Skip any slide that has a timeline_entry
+       to avoid duplicate markers: the linked timeline entry is the source of truth
+       on the global events map. */ -}}
 {{- range where site.RegularPages "Section" "slides" -}}
   {{- $loc := .Params.location -}}
-  {{- if and $loc (ne ($loc.latitude | default 0.0) 0.0) (ne ($loc.longitude | default 0.0) 0.0) (not .Params.online) -}}
+  {{- $tl  := .Params.timeline_entry | default "" -}}
+  {{- if and $loc (ne ($loc.latitude | default 0.0) 0.0) (ne ($loc.longitude | default 0.0) 0.0) (not .Params.online) (eq $tl "") -}}
     {{- $entries = $entries | append (dict
       "title" .Title
       "url" .RelPermalink

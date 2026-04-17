@@ -334,6 +334,8 @@ If `params.slides.map.enabled` is true and a presentation has `location.latitude
 
 **Global events map:** If the home page also outputs `LocationsJSON`, the site can serve `locations.json` combining **slides** and **timeline** entries that have structured `location` (with `latitude` and `longitude`) and are **not** marked `online: true`. A standalone map page (e.g. `layout: map` and content at `/map/`) can then show all physical event locations. Timeline entries use the same `location` structure as slides (city, country, latitude, longitude) and the same `online` marker.
 
+**Dedup between slides and timeline:** When a slide sets `timeline_entry` to link to a timeline page, the slide is **excluded** from the global events map; the linked timeline entry represents that event instead. This prevents duplicate markers for the same physical event. Ensure the linked timeline entry has its own `location` block — otherwise the event will not show on `/maps/`. The slide continues to appear on the slides-section map (`/slides/`) independent of this rule.
+
 ### Social Chatter (Timeline)
 
 Timeline entry pages can display a **Social chatter** section with embedded social media posts. In timeline frontmatter, add a list of post URLs (strings only; platform is auto-detected):
@@ -813,7 +815,7 @@ Set `layout: bio` in your page frontmatter with `short_bio`, `long_bio`, and opt
 
 A standalone page showing all physical event locations on a Leaflet map. Set `layout: map` in your page frontmatter. Requires `params.slides.map.enabled = true` and `LocationsJSON` output format on the home page.
 
-Timeline and slide entries with `location.latitude` and `location.longitude` (and not marked `online: true`) appear on the map. See [docs/layouts.md](docs/layouts.md) for details.
+Timeline and slide entries with `location.latitude` and `location.longitude` (and not marked `online: true`) appear on the map. Slides that set `timeline_entry` are excluded from this map and represented by their linked timeline entry instead, so each physical event appears only once. See [docs/layouts.md](docs/layouts.md) for details.
 
 ### Related Links
 
