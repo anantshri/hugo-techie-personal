@@ -1,18 +1,31 @@
 #!/usr/bin/env python3
 """Import a Facebook data export into ``content/archive/facebook/``.
 
+Both the JSON-format and the HTML-format data exports are supported. Facebook
+used to ship HTML-only; newer takeouts let you pick. The importer auto-detects
+the format.
+
 Usage
 -----
 
+    # JSON format
     uv run --with pyyaml python3 themes/hugo-techie-personal/scripts/import_facebook.py \
         --takeout takeouts/facebook-2026-04-10.zip \
+        --user anantshrivastava
+
+    # HTML format (requires beautifulsoup4 + lxml)
+    uv run --with pyyaml --with beautifulsoup4 --with lxml python3 \
+        themes/hugo-techie-personal/scripts/import_facebook.py \
+        --takeout takeouts/facebook-anantshri.zip \
         --user anantshrivastava
 
 Facebook's JSON export stores your posts in files named like
 ``your_facebook_activity/posts/your_posts__check_ins__photos_and_videos_1.json``.
 Each entry has a ``timestamp``, a ``data`` list (usually containing the post
 text under ``post``) and optional ``attachments`` referencing media files that
-live elsewhere in the archive.
+live elsewhere in the archive. The HTML export renders the same information
+inside ``posts/your_posts_1.html``; the importer parses each ``.pam.uiBoxWhite``
+post card and filters out empty "Updated <date>" album filler rows.
 
 URL caveat
 ----------
@@ -44,6 +57,7 @@ import shutil
 import sys
 import tempfile
 import zipfile
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
 
@@ -64,6 +78,28 @@ POSTS_GLOBS = (
     "your_facebook_activity/posts/your_posts_*.json",
     "posts/your_posts__check_ins__photos_and_videos_*.json",
     "posts/your_posts_*.json",
+)
+
+POSTS_HTML_GLOBS = (
+    "posts/your_posts_*.html",
+    "your_facebook_activity/posts/your_posts_*.html",
+)
+
+# Facebook HTML timestamps look like "17 Aug 2019, 00:13" or
+# "8 Apr 2021, 21:40". Some locales also emit a trailing am/pm.
+_FB_HTML_DATE_FORMATS = (
+    "%d %b %Y, %H:%M",
+    "%d %b %Y %H:%M",
+    "%b %d, %Y, %I:%M %p",
+    "%b %d, %Y %I:%M %p",
+)
+
+# Media roots used for local attachments in the HTML export.
+_HTML_MEDIA_PREFIXES = (
+    "photos_and_videos/",
+    "photos/",
+    "videos/",
+    "media/",
 )
 
 URL_MAP_FILE = "facebook-url-map.json"
@@ -104,10 +140,200 @@ def _locate_posts_files(root: Path) -> list[Path]:
     ]
     if fallback:
         return sorted(fallback)
-    raise SystemExit(
-        "Could not find posts JSON in Facebook takeout. Looked for: "
-        + ", ".join(POSTS_GLOBS)
-    )
+    return []
+
+
+def _locate_posts_html_files(root: Path) -> list[Path]:
+    results: list[Path] = []
+    for pattern in POSTS_HTML_GLOBS:
+        results.extend(sorted(root.glob(pattern)))
+    if results:
+        seen: set[Path] = set()
+        unique: list[Path] = []
+        for p in results:
+            rp = p.resolve()
+            if rp not in seen:
+                seen.add(rp)
+                unique.append(p)
+        return unique
+    fallback = [
+        p
+        for p in root.rglob("your_posts_*.html")
+        if p.is_file() and "posts" in p.parts
+    ]
+    return sorted(fallback)
+
+
+def _parse_fb_html_timestamp(text: str) -> int | None:
+    """Parse a Facebook HTML timestamp string into epoch seconds (UTC)."""
+    cleaned = re.sub(r"\s+", " ", text).strip()
+    if not cleaned:
+        return None
+    normalised = re.sub(r"\b([ap])m\b", lambda m: m.group(1).upper() + "M", cleaned)
+    for fmt in _FB_HTML_DATE_FORMATS:
+        try:
+            dt = datetime.strptime(normalised, fmt)
+        except ValueError:
+            continue
+        return int(dt.replace(tzinfo=timezone.utc).timestamp())
+    return None
+
+
+def _html_text(node) -> str:
+    """Return readable text from a BeautifulSoup node, preserving <br> as newlines."""
+    if node is None:
+        return ""
+    from bs4 import NavigableString  # local import — only needed on HTML path
+
+    # Replace <br> tags with literal newlines so get_text doesn't collapse them.
+    for br in node.find_all("br"):
+        br.replace_with(NavigableString("\n"))
+    text = node.get_text("\n", strip=False)
+    # Collapse runs of blank lines and trim trailing whitespace on each line.
+    lines = [line.strip() for line in text.splitlines()]
+    # Drop leading/trailing empty lines and squash >1 consecutive blanks.
+    cleaned: list[str] = []
+    prev_blank = True
+    for line in lines:
+        if not line:
+            if prev_blank:
+                continue
+            cleaned.append("")
+            prev_blank = True
+        else:
+            cleaned.append(line)
+            prev_blank = False
+    while cleaned and not cleaned[-1]:
+        cleaned.pop()
+    return "\n".join(cleaned).strip()
+
+
+def _load_posts_from_html(html_paths: list[Path]) -> list[dict]:
+    """Parse Facebook HTML ``your_posts_*.html`` files into JSON-shaped dicts.
+
+    Returns a list shaped like the JSON export entries so ``_build_records``
+    can consume it unchanged::
+
+        [{"timestamp": 1566003180,
+          "title": "Anant Shrivastava added a new photo.",
+          "data": [{"post": "body text..."}],
+          "attachments": [{"data": [{"media": {"uri": "photos_and_videos/.../foo.jpg"}}]}]}]
+
+    Empty "Updated <date>" album filler cards (no body text AND no local
+    media) are skipped.
+    """
+    try:
+        from bs4 import BeautifulSoup  # type: ignore
+    except ImportError as exc:  # pragma: no cover
+        raise SystemExit(
+            "HTML Facebook export detected but beautifulsoup4 is not installed. "
+            "Re-run with: uv run --with pyyaml --with beautifulsoup4 --with lxml python3 ..."
+        ) from exc
+
+    posts: list[dict] = []
+    for html_path in html_paths:
+        html = html_path.read_text(encoding="utf-8", errors="replace")
+        try:
+            soup = BeautifulSoup(html, "lxml")
+        except Exception:
+            soup = BeautifulSoup(html, "html.parser")
+
+        container = soup.find(class_="_4t5n") or soup.body or soup
+        for card in container.find_all("div", class_="pam"):
+            classes = card.get("class") or []
+            if "uiBoxWhite" not in classes:
+                continue
+
+            # --- attribution header (optional) -----------------------------
+            header = ""
+            header_div = card.find("div", class_="_2lek")
+            if header_div:
+                header_text = _html_text(header_div)
+                if header_text:
+                    header = header_text
+
+            # --- body ------------------------------------------------------
+            body_parts: list[str] = []
+            body_div = card.find("div", class_="_2let")
+            if body_div is None:
+                # Occasionally posts use ``_2lek`` alone for text content.
+                body_div = None if header_div else card
+            if body_div is not None:
+                body_text = _html_text(body_div)
+                if body_text:
+                    body_parts.append(body_text)
+            body = "\n\n".join(p for p in body_parts if p).strip()
+
+            # --- media -----------------------------------------------------
+            media_uris: list[str] = []
+            seen: set[str] = set()
+            for tag in card.find_all(["a", "img", "video", "source"]):
+                candidate = tag.get("href") or tag.get("src")
+                if not candidate:
+                    continue
+                candidate = candidate.strip()
+                if candidate.startswith("./"):
+                    candidate = candidate[2:]
+                if not candidate.startswith(_HTML_MEDIA_PREFIXES):
+                    continue
+                if candidate in seen:
+                    continue
+                seen.add(candidate)
+                media_uris.append(candidate)
+
+            # --- timestamp -------------------------------------------------
+            ts_div = None
+            for div in card.find_all("div"):
+                cls = div.get("class") or []
+                if "_2lem" in cls:
+                    ts_div = div  # last wins (typically the footer)
+            ts_text = ""
+            if ts_div is not None:
+                # The anchor text carries the human-readable date.
+                anchor = ts_div.find("a")
+                ts_text = (anchor.get_text(" ", strip=True) if anchor else ts_div.get_text(" ", strip=True))
+            timestamp = _parse_fb_html_timestamp(ts_text) if ts_text else None
+            if timestamp is None:
+                continue
+
+            # --- filter noise ---------------------------------------------
+            # Empty album "Updated …" rows have no attribution header, no
+            # local media, and a body that only says ``Updated <date>``.
+            if not media_uris and not header:
+                if not body:
+                    continue
+                if re.match(r"^updated\s+\d", body, re.IGNORECASE):
+                    continue
+
+            attachments = [
+                {"data": [{"media": {"uri": uri}}]} for uri in media_uris
+            ]
+
+            post_entry: dict = {
+                "timestamp": timestamp,
+                "data": [{"post": body}] if body else [],
+                "attachments": attachments,
+            }
+            if header:
+                post_entry["title"] = header
+            posts.append(post_entry)
+
+    # Facebook HTML timestamps are minute-granular, so many posts collapse to
+    # the same epoch second. The bundle id is keyed on timestamp, so naive
+    # collisions would cause later posts to overwrite earlier ones. Bump
+    # each colliding timestamp by 1 second until unique — small enough that
+    # chronological order is preserved, large enough to give every post its
+    # own bundle.
+    posts.sort(key=lambda p: p["timestamp"])
+    used: set[int] = set()
+    for p in posts:
+        ts = p["timestamp"]
+        while ts in used:
+            ts += 1
+        used.add(ts)
+        p["timestamp"] = ts
+
+    return posts
 
 
 def _load_url_map() -> dict[str, str]:
@@ -321,22 +547,35 @@ def main() -> int:
     root, tmp = _open_takeout(args.takeout)
     try:
         posts_files = _locate_posts_files(root)
-        print(f"reading {len(posts_files)} posts file(s):")
         posts: list[dict] = []
-        for pf in posts_files:
-            print(f"  - {pf.relative_to(root)}")
-            data = json.loads(pf.read_text(encoding="utf-8"))
-            if isinstance(data, dict):
-                items = data.get("posts") or data.get("status_updates_v2") or []
-                if not items:
-                    # Some exports store a top-level list under a single key
-                    for v in data.values():
-                        if isinstance(v, list):
-                            items = v
-                            break
-                posts.extend(items)
-            elif isinstance(data, list):
-                posts.extend(data)
+        if posts_files:
+            print(f"reading {len(posts_files)} JSON posts file(s):")
+            for pf in posts_files:
+                print(f"  - {pf.relative_to(root)}")
+                data = json.loads(pf.read_text(encoding="utf-8"))
+                if isinstance(data, dict):
+                    items = data.get("posts") or data.get("status_updates_v2") or []
+                    if not items:
+                        # Some exports store a top-level list under a single key
+                        for v in data.values():
+                            if isinstance(v, list):
+                                items = v
+                                break
+                    posts.extend(items)
+                elif isinstance(data, list):
+                    posts.extend(data)
+        else:
+            html_files = _locate_posts_html_files(root)
+            if not html_files:
+                raise SystemExit(
+                    "Could not find posts JSON or HTML in Facebook takeout. "
+                    "Looked for JSON: " + ", ".join(POSTS_GLOBS)
+                    + "; HTML: " + ", ".join(POSTS_HTML_GLOBS)
+                )
+            print(f"reading {len(html_files)} HTML posts file(s):")
+            for hf in html_files:
+                print(f"  - {hf.relative_to(root)}")
+            posts = _load_posts_from_html(html_files)
 
         print(f"found {len(posts)} facebook posts")
 

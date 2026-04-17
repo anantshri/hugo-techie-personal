@@ -4,18 +4,38 @@
 Usage
 -----
 
-    uv run --with pyyaml python3 themes/hugo-techie-personal/scripts/import_linkedin.py \
+    uv run --with pyyaml --with beautifulsoup4 --with markdownify python3 \
+        themes/hugo-techie-personal/scripts/import_linkedin.py \
         --takeout takeouts/linkedin-2026-04-10.zip
 
-LinkedIn ships ``Shares.csv`` in the "Basic" archive with one row per post,
-including the activity URN and text. This importer maps each URN to a clean
-folder structure (so ``urn:li:activity:1234`` becomes
-``/www.linkedin.com/feed/update/urn/li/activity/1234/``) while preserving the
-canonical colon URL in ``original_url``. The smart 404 handler in the theme
-turns requests for the colon URL into a redirect to the folder path.
+Two content kinds are handled from a LinkedIn archive:
+
+1. **Feed shares** (``Shares.csv``, in the "Complete" archive). Each row is a
+   feed post identified by one of several LinkedIn URN types:
+
+   * ``urn:li:activity:<id>`` — legacy shape kept for backward compat.
+   * ``urn:li:share:<id>`` — most common shape in current exports.
+   * ``urn:li:ugcPost:<id>`` — newer user-generated content (polls, carousels).
+   * ``urn:li:groupPost:<group-id>-<post-id>`` — posts inside a LinkedIn group.
+
+   ``ShareLink`` values are URL-encoded in the export (``urn%3Ali%3A…``); the
+   importer decodes them before matching. Each URN is mapped to a typed folder
+   (``content/archive/linkedin/<urn_type>-<id>/``) and a flattened URL
+   (``/www.linkedin.com/feed/update/urn/li/<urn_type>/<id>/``) while preserving
+   the canonical colon URL in ``original_url``. The smart 404 handler in the
+   theme turns requests for the colon URL into a redirect to the folder path.
+
+2. **Pulse articles** (``Articles/Articles/*.html``, shipped even in the "Basic"
+   archive). Each HTML file is a long-form Pulse article authored on LinkedIn.
+   Title, publish date and the canonical slug are extracted from the HTML; the
+   article body is converted from HTML to Markdown. Bundle URL:
+   ``/www.linkedin.com/pulse/<slug>/``.
+
+Either source may be absent in a given archive. If both are missing the script
+exits with an error; otherwise it processes whichever is present.
 
 If the archive also contains a ``media/`` directory with images referenced by
-``MediaUrl``, those files are copied into the bundle.
+``MediaUrl``, those files are copied into the bundles.
 """
 
 from __future__ import annotations
@@ -27,8 +47,10 @@ import shutil
 import sys
 import tempfile
 import zipfile
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
+from urllib.parse import unquote
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _archive_common import (  # noqa: E402
@@ -38,11 +60,37 @@ from _archive_common import (  # noqa: E402
     guess_media_kind,
     load_exclude_set,
     parse_utc,
+    slugify,
     write_bundle,
 )
 
 SHARES_CSV = "Shares.csv"
-URN_RE = re.compile(r"urn:li:activity:(\d+)", re.IGNORECASE)
+# LinkedIn feed posts ship under several URN types: ``activity`` (legacy),
+# ``share`` (most common), ``ugcPost`` (newer user-generated content: polls,
+# multi-image carousels, etc.) and ``groupPost`` (posts inside a group, whose
+# id is a composite ``<group-id>-<post-id>``). ``ShareLink`` values are usually
+# URL-encoded (``urn%3Ali%3Ashare%3A<id>``) so we decode before matching.
+URN_RE = re.compile(
+    r"urn:li:(activity|share|ugcPost|groupPost):([\w-]+)", re.IGNORECASE
+)
+URN_TYPES = {"activity", "share", "ugcpost", "grouppost"}
+PULSE_URL_RE = re.compile(
+    r"https?://(?:www\.)?linkedin\.com/pulse/([^/?#\s]+)", re.IGNORECASE
+)
+ARTICLE_FILENAME_DATE_RE = re.compile(
+    r"^(\d{4}-\d{2}-\d{2})[T _]?(\d{2}:\d{2}:\d{2})"
+)
+
+
+def _canonical_urn_type(urn_type: str) -> str:
+    """Return the canonical (LinkedIn-documented) casing for a URN type."""
+    mapping = {
+        "activity": "activity",
+        "share": "share",
+        "ugcpost": "ugcPost",
+        "grouppost": "groupPost",
+    }
+    return mapping.get(urn_type.lower(), urn_type)
 
 
 def _open_takeout(path: Path) -> tuple[Path, Path | None]:
@@ -56,14 +104,35 @@ def _open_takeout(path: Path) -> tuple[Path, Path | None]:
     raise SystemExit(f"Takeout path not found or unsupported: {path}")
 
 
-def _locate_shares_csv(root: Path) -> Path:
+def _locate_shares_csv(root: Path) -> Path | None:
     direct = root / SHARES_CSV
     if direct.exists():
         return direct
     for match in root.rglob(SHARES_CSV):
         if match.is_file():
             return match
-    raise SystemExit(f"Could not find {SHARES_CSV} in {root}")
+    return None
+
+
+def _locate_articles_dir(root: Path) -> Path | None:
+    """Locate the LinkedIn Pulse articles directory.
+
+    LinkedIn exports place article HTML files at ``Articles/Articles/`` (yes,
+    nested). Fall back to any directory named ``Articles`` that contains HTML
+    files.
+    """
+    preferred = root / "Articles" / "Articles"
+    if preferred.is_dir() and any(preferred.glob("*.html")):
+        return preferred
+    for candidate in root.rglob("Articles"):
+        if not candidate.is_dir():
+            continue
+        nested = candidate / "Articles"
+        if nested.is_dir() and any(nested.glob("*.html")):
+            return nested
+        if any(candidate.glob("*.html")):
+            return candidate
+    return None
 
 
 def _locate_media_root(root: Path) -> Path | None:
@@ -79,16 +148,22 @@ def _locate_media_root(root: Path) -> Path | None:
     return None
 
 
-def _extract_activity_id(share_link: str) -> str | None:
+def _extract_urn(share_link: str) -> tuple[str, str] | None:
+    """Return ``(urn_type, id)`` for a LinkedIn share link, or ``None``.
+
+    Handles both the URL-encoded form (``urn%3Ali%3Ashare%3A<id>``) used by the
+    current export format and the plain colon form. Also tolerates legacy
+    ``/activity-<id>`` style paths.
+    """
     if not share_link:
         return None
-    m = URN_RE.search(share_link)
+    decoded = unquote(share_link)
+    m = URN_RE.search(decoded)
     if m:
-        return m.group(1)
-    # Some exports store the numeric id directly as the URL path
-    m = re.search(r"/activity[-_:](\d+)", share_link, re.IGNORECASE)
+        return _canonical_urn_type(m.group(1)), m.group(2)
+    m = re.search(r"/activity[-_:](\d+)", decoded, re.IGNORECASE)
     if m:
-        return m.group(1)
+        return "activity", m.group(1)
     return None
 
 
@@ -120,6 +195,141 @@ def _resolve_media_files(media_value: str, media_root: Path | None) -> list[Path
     return results
 
 
+def _parse_date_text(text: str) -> datetime | None:
+    """Extract a UTC datetime from a 'Created on ...' / 'Published on ...' label."""
+    if not text:
+        return None
+    m = re.search(r"(\d{4}-\d{2}-\d{2})(?:[ T](\d{2}:\d{2}(?::\d{2})?))?", text)
+    if not m:
+        return None
+    date_part = m.group(1)
+    time_part = m.group(2) or "00:00:00"
+    if len(time_part) == 5:
+        time_part += ":00"
+    try:
+        return parse_utc(f"{date_part} {time_part}")
+    except ValueError:
+        return None
+
+
+def _parse_filename_date(path: Path) -> datetime | None:
+    m = ARTICLE_FILENAME_DATE_RE.match(path.name)
+    if not m:
+        return None
+    try:
+        return parse_utc(f"{m.group(1)} {m.group(2)}")
+    except ValueError:
+        return None
+
+
+def _derive_article_slug(
+    *, pulse_href: str | None, html_path: Path, title: str
+) -> str:
+    """Return the canonical slug for a Pulse article.
+
+    Preference order:
+    1. Slug from the in-HTML ``linkedin.com/pulse/<slug>`` href.
+    2. Slug portion of the HTML filename (strip leading date + title prefix).
+    3. Slugified title.
+    """
+    if pulse_href:
+        m = PULSE_URL_RE.search(pulse_href)
+        if m:
+            return m.group(1).rstrip("-/")
+    stem = html_path.stem
+    # Filenames may start with "YYYY-MM-DD HH:MM:SS.0-<Title>" — strip the date.
+    stem = re.sub(r"^\d{4}-\d{2}-\d{2}[ T_]\d{2}:\d{2}:\d{2}(?:\.\d+)?-", "", stem)
+    candidate = slugify(stem, fallback="")
+    if candidate:
+        return candidate
+    return slugify(title, fallback="pulse-article")
+
+
+def _article_body_to_markdown(body_html_element) -> str:
+    """Render the article's body HTML to Markdown, trimming trailing blanks."""
+    from markdownify import markdownify as md
+
+    html = str(body_html_element)
+    text = md(html, heading_style="ATX", strip=["style", "script"])
+    text = re.sub(r"\n{3,}", "\n\n", text).strip()
+    return text
+
+
+def _build_article_records(
+    article_paths: Iterable[Path],
+    *,
+    user: str,
+    exclude_ids: set[str],
+    draft: bool,
+) -> Iterable[ArchiveRecord]:
+    from bs4 import BeautifulSoup
+
+    for html_path in article_paths:
+        try:
+            html = html_path.read_text(encoding="utf-8")
+        except OSError as exc:
+            print(f"  ! cannot read {html_path.name}: {exc}")
+            continue
+        soup = BeautifulSoup(html, "lxml")
+        h1 = soup.find("h1")
+        if h1 is None:
+            print(f"  ! no <h1> in {html_path.name}, skipping")
+            continue
+        anchor = h1.find("a")
+        pulse_href = anchor.get("href") if anchor and anchor.has_attr("href") else None
+        title = h1.get_text(" ", strip=True)
+
+        published_el = soup.find(class_="published")
+        created_el = soup.find(class_="created")
+        date = (
+            _parse_date_text(published_el.get_text(" ", strip=True) if published_el else "")
+            or _parse_date_text(created_el.get_text(" ", strip=True) if created_el else "")
+            or _parse_filename_date(html_path)
+        )
+        if date is None:
+            print(f"  ! no date found for {html_path.name}, skipping")
+            continue
+
+        slug = _derive_article_slug(pulse_href=pulse_href, html_path=html_path, title=title)
+        if not slug or slug in exclude_ids:
+            continue
+
+        # Body is the last <div> sibling of <body>; fall back to all content after
+        # the published paragraph.
+        body_div = None
+        if soup.body is not None:
+            divs = [c for c in soup.body.children if getattr(c, "name", None) == "div"]
+            if divs:
+                body_div = divs[-1]
+        body_md = _article_body_to_markdown(body_div) if body_div else ""
+
+        if pulse_href:
+            original_url = pulse_href if pulse_href.endswith("/") else pulse_href + "/"
+        else:
+            original_url = f"https://www.linkedin.com/pulse/{slug}/"
+        url = f"/www.linkedin.com/pulse/{slug}/"
+
+        extra = {"kind": "article"}
+        if created_el:
+            created_dt = _parse_date_text(created_el.get_text(" ", strip=True))
+            if created_dt and created_dt != date:
+                extra["created_at"] = created_dt.astimezone(timezone.utc).isoformat()
+
+        yield ArchiveRecord(
+            platform="linkedin",
+            post_id=slug,
+            url=url,
+            original_url=original_url,
+            date=date,
+            title=title,
+            body=body_md,
+            platform_user=user,
+            draft=draft,
+            media=[],
+            extra=extra,
+        )
+
+
 def _build_records(
     rows: Iterable[dict],
     *,
@@ -130,8 +340,14 @@ def _build_records(
 ) -> Iterable[ArchiveRecord]:
     for row in rows:
         share_link = row.get("ShareLink") or row.get("Share Link") or ""
-        activity_id = _extract_activity_id(share_link)
-        if not activity_id or activity_id in exclude_ids:
+        urn = _extract_urn(share_link)
+        if urn is None:
+            continue
+        urn_type, urn_id = urn
+        # Use a typed folder name so activity/share/ugcPost/groupPost can coexist
+        # without collisions, and so folder names are self-describing.
+        post_id = f"{urn_type.lower()}-{urn_id}"
+        if urn_id in exclude_ids or post_id in exclude_ids:
             continue
         date_str = row.get("Date") or row.get("Date Published") or ""
         try:
@@ -159,15 +375,18 @@ def _build_records(
             MediaItem(src_path=f, kind=guess_media_kind(f)) for f in media_files
         ]
 
+        # Preserve canonical colon form in ``original_url`` (the 404 handler
+        # flattens colons to slashes so pasting this URL still resolves). The
+        # local ``url`` uses the flattened form directly.
         original_url = (
-            f"https://www.linkedin.com/feed/update/urn:li:activity:{activity_id}/"
+            f"https://www.linkedin.com/feed/update/urn:li:{urn_type}:{urn_id}/"
         )
-        url = f"/www.linkedin.com/feed/update/urn/li/activity/{activity_id}/"
+        url = f"/www.linkedin.com/feed/update/urn/li/{urn_type}/{urn_id}/"
 
         visibility = (row.get("Visibility") or "").strip().lower()
         yield ArchiveRecord(
             platform="linkedin",
-            post_id=activity_id,
+            post_id=post_id,
             url=url,
             original_url=original_url,
             date=date,
@@ -178,6 +397,8 @@ def _build_records(
             extra={
                 k: v
                 for k, v in {
+                    "urn_type": urn_type,
+                    "urn_id": urn_id,
                     "visibility": visibility,
                     "shared_url": shared_url,
                 }.items()
@@ -212,25 +433,55 @@ def main() -> int:
     root, tmp = _open_takeout(args.takeout)
     try:
         shares_csv = _locate_shares_csv(root)
-        print(f"reading {shares_csv.relative_to(root)}")
+        articles_dir = _locate_articles_dir(root)
+        if shares_csv is None and articles_dir is None:
+            raise SystemExit(
+                f"No Shares.csv and no Articles/ directory found in {root}. "
+                "Is this a LinkedIn takeout?"
+            )
+
         media_root = _locate_media_root(root)
         if media_root:
             print(f"media root: {media_root.relative_to(root)}")
 
         exclude_ids = load_exclude_set()
-        with shares_csv.open("r", encoding="utf-8-sig", newline="") as fh:
-            reader = csv.DictReader(fh)
-            records = list(
-                _build_records(
-                    reader,
-                    media_root=media_root,
+        records: list[ArchiveRecord] = []
+
+        if shares_csv is not None:
+            print(f"reading shares: {shares_csv.relative_to(root)}")
+            with shares_csv.open("r", encoding="utf-8-sig", newline="") as fh:
+                reader = csv.DictReader(fh)
+                share_records = list(
+                    _build_records(
+                        reader,
+                        media_root=media_root,
+                        user=args.user,
+                        exclude_ids=exclude_ids,
+                        draft=not args.publish,
+                    )
+                )
+            print(f"found {len(share_records)} linkedin feed posts")
+            records.extend(share_records)
+        else:
+            print(
+                "no Shares.csv in this archive (Basic export?); "
+                "skipping feed-post import"
+            )
+
+        if articles_dir is not None:
+            print(f"reading articles: {articles_dir.relative_to(root)}")
+            article_paths = sorted(articles_dir.glob("*.html"))
+            article_records = list(
+                _build_article_records(
+                    article_paths,
                     user=args.user,
                     exclude_ids=exclude_ids,
                     draft=not args.publish,
                 )
             )
+            print(f"found {len(article_records)} linkedin pulse articles")
+            records.extend(article_records)
 
-        print(f"found {len(records)} linkedin posts")
         stats = ImportStats()
         for count, record in enumerate(records):
             if args.limit and count >= args.limit:

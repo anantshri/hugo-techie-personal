@@ -846,8 +846,11 @@ The theme ships a small set of Python importers that convert X/Twitter, LinkedIn
 uv run --with pyyaml python3 themes/hugo-techie-personal/scripts/import_twitter.py \
     --takeout takeouts/twitter-<date>.zip --user <handle>
 
-uv run --with pyyaml python3 themes/hugo-techie-personal/scripts/import_linkedin.py \
+uv run --with pyyaml --with beautifulsoup4 --with lxml --with markdownify python3 \
+    themes/hugo-techie-personal/scripts/import_linkedin.py \
     --takeout takeouts/linkedin-<date>.zip
+# Imports feed posts from Shares.csv and/or Pulse articles from
+# Articles/Articles/*.html, whichever are present in the archive.
 
 uv run --with pyyaml python3 themes/hugo-techie-personal/scripts/import_instagram.py \
     --takeout takeouts/instagram-<date>.zip --user <handle>

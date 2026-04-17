@@ -1,0 +1,29 @@
+{{/*
+  Render a single card for an archived social post.
+
+  Context: a Page (a single archive entry).
+  Recognises ``.Params.extra.kind == "article"`` and renders an extra
+  "Article" badge so Pulse articles stand out from short feed posts.
+*/}}
+{{ $platform := .Params.platform | default "social" }}
+{{ $kind := "" }}
+{{ with .Params.extra }}{{ $kind = .kind | default "" }}{{ end }}
+{{ $isArticle := eq $kind "article" }}
+<a href="{{ .RelPermalink }}" class="archive-card archive-card--{{ $platform }}{{ if $isArticle }} archive-card--article{{ end }}">
+  <div class="archive-card-meta">
+    <span class="archive-card-platform">{{ $platform | title }}</span>
+    {{ if $isArticle }}
+      <span class="archive-card-kind" title="LinkedIn Pulse article">Article</span>
+    {{ end }}
+    {{ if (gt .Params.date 0) }}
+      <time>{{ .Date.Format "02 Jan 2006" }}</time>
+    {{ end }}
+  </div>
+  <div class="archive-card-title">{{ .Title }}</div>
+  {{ with .Params.media }}
+    {{ $mediaCount := len . }}
+    {{ if gt $mediaCount 0 }}
+      <div class="archive-card-media-count">{{ $mediaCount }} media item{{ if ne $mediaCount 1 }}s{{ end }}</div>
+    {{ end }}
+  {{ end }}
+</a>

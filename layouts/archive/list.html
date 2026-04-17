@@ -34,26 +34,50 @@
 
   {{ if eq (len $posts) 0 }}
     <p class="archive-empty">No archived posts yet. Drop a takeout zip into <code>takeouts/</code> and run the importer.</p>
+  {{ else if eq $platformParam "linkedin" }}
+    {{/* LinkedIn: split into Pulse articles (long-form) and feed posts. */}}
+    {{ $articles := where $posts "Params.extra.kind" "article" }}
+    {{ $feedPosts := where $posts "Params.extra.kind" "!=" "article" }}
+    <p class="archive-count">
+      {{ len $posts }} archived item{{ if ne (len $posts) 1 }}s{{ end }}
+      ({{ len $articles }} Pulse article{{ if ne (len $articles) 1 }}s{{ end }},
+      {{ len $feedPosts }} feed post{{ if ne (len $feedPosts) 1 }}s{{ end }}).
+    </p>
+
+    {{ if gt (len $articles) 0 }}
+      <section class="archive-subsection" id="pulse-articles">
+        <h2 class="archive-subsection-title">
+          Pulse Articles
+          <span class="archive-subsection-count">({{ len $articles }})</span>
+        </h2>
+        <p class="archive-subsection-description">Long-form articles published on LinkedIn Pulse.</p>
+        <div class="archive-grid">
+          {{ range $articles }}
+            {{ partial "archive-card.html" . }}
+          {{ end }}
+        </div>
+      </section>
+    {{ end }}
+
+    {{ if gt (len $feedPosts) 0 }}
+      <section class="archive-subsection" id="feed-posts">
+        <h2 class="archive-subsection-title">
+          Feed Posts
+          <span class="archive-subsection-count">({{ len $feedPosts }})</span>
+        </h2>
+        <p class="archive-subsection-description">Short-form updates from the LinkedIn feed.</p>
+        <div class="archive-grid">
+          {{ range $feedPosts }}
+            {{ partial "archive-card.html" . }}
+          {{ end }}
+        </div>
+      </section>
+    {{ end }}
   {{ else }}
     <p class="archive-count">{{ len $posts }} archived post{{ if ne (len $posts) 1 }}s{{ end }}.</p>
     <div class="archive-grid">
       {{ range $posts }}
-        {{ $platform := .Params.platform | default "social" }}
-        <a href="{{ .RelPermalink }}" class="archive-card archive-card--{{ $platform }}">
-          <div class="archive-card-meta">
-            <span class="archive-card-platform">{{ $platform | title }}</span>
-            {{ if (gt .Params.date 0) }}
-              <time>{{ .Date.Format "02 Jan 2006" }}</time>
-            {{ end }}
-          </div>
-          <div class="archive-card-title">{{ .Title }}</div>
-          {{ with .Params.media }}
-            {{ $mediaCount := len . }}
-            {{ if gt $mediaCount 0 }}
-              <div class="archive-card-media-count">{{ $mediaCount }} media item{{ if ne $mediaCount 1 }}s{{ end }}</div>
-            {{ end }}
-          {{ end }}
-        </a>
+        {{ partial "archive-card.html" . }}
       {{ end }}
     </div>
   {{ end }}
@@ -67,6 +91,12 @@
   .archive-filter:hover { border-color: var(--color-border, #ccc); }
   .archive-count { color: var(--color-text-muted, #666); font-size: 0.9rem; }
   .archive-empty { padding: 2rem; text-align: center; color: var(--color-text-muted, #666); }
+  .archive-subsection { margin-top: 2rem; }
+  .archive-subsection-title { font-size: 1.25rem; margin-bottom: 0.25rem; display: flex; align-items: baseline; gap: 0.5rem; }
+  .archive-subsection-count { font-size: 0.9rem; color: var(--color-text-muted, #666); font-weight: normal; }
+  .archive-subsection-description { color: var(--color-text-muted, #666); font-size: 0.9rem; margin: 0 0 0.75rem 0; }
+  .archive-card-kind { font-size: 0.7rem; padding: 0.1rem 0.4rem; border-radius: 4px; background: var(--color-bg-muted, #f0f0f0); color: var(--color-text, #333); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
+  .archive-card--article .archive-card-kind { background: #f4a261; color: #fff; }
   .archive-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; margin-top: 1rem; }
   .archive-card { display: block; padding: 1rem; border-radius: 8px; border: 1px solid var(--color-border, #e0e0e0); background: var(--color-bg, #fff); text-decoration: none; color: inherit; transition: transform 0.1s, box-shadow 0.1s; }
   .archive-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
