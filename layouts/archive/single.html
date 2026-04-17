@@ -72,6 +72,42 @@
     </div>
   {{ end }}
 
+  {{/* LinkedIn reshare context: embed the parent post when known. Set via
+       InstantReposts.csv (plain reposts, extra.kind == "repost") or via the
+       optional takeouts/linkedin-reshare-map.json (quote-reshares). */}}
+  {{ $reshareUrl := "" }}
+  {{ with .Params.extra }}
+    {{ $reshareUrl = index . "reshare_of_url" }}
+  {{ end }}
+  {{ with $reshareUrl }}
+    {{ $isRepost := false }}
+    {{ with $.Params.extra }}
+      {{ if eq (index . "kind") "repost" }}{{ $isRepost = true }}{{ end }}
+    {{ end }}
+    {{ $label := cond $isRepost "Reposted from" "Resharing" }}
+    <section class="archive-post-reshare" aria-label="Reshared post">
+      <h2 class="archive-post-reshare__heading">{{ $label }} LinkedIn</h2>
+      {{ $urn := "" }}
+      {{ $matches := findRE "urn:li:(activity|share|ugcPost):[0-9]+" . }}
+      {{ if $matches }}{{ $urn = index $matches 0 }}{{ end }}
+      {{ if $urn }}
+        {{ $embedSrc := printf "https://www.linkedin.com/embed/feed/update/%s" $urn }}
+        <iframe
+          src="{{ $embedSrc }}"
+          class="archive-post-reshare__iframe"
+          title="Reshared LinkedIn post"
+          loading="lazy"
+          allowfullscreen
+          allow="encrypted-media"></iframe>
+      {{ end }}
+      <p class="archive-post-reshare__link">
+        <a href="{{ . }}" target="_blank" rel="noreferrer noopener nofollow">
+          View reshared post on LinkedIn &rarr;
+        </a>
+      </p>
+    </section>
+  {{ end }}
+
   <footer class="archive-post-footer">
     <p class="archive-disclaimer">
       This is an archived copy. Content preserved from my platform data export
@@ -95,6 +131,10 @@
   .archive-post-body p { white-space: pre-wrap; }
   .archive-post-media { margin: 1.5rem 0; display: grid; gap: 1rem; }
   .archive-media img, .archive-media video { max-width: 100%; height: auto; border-radius: 8px; }
+  .archive-post-reshare { margin: 1.5rem 0; padding: 1rem; border: 1px solid var(--color-border, #e0e0e0); border-radius: 8px; background: var(--color-bg-muted, #f7f7f7); }
+  .archive-post-reshare__heading { margin: 0 0 0.75rem; font-size: 0.95rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-muted, #666); }
+  .archive-post-reshare__iframe { width: 100%; min-height: 520px; border: 0; border-radius: 6px; background: #fff; }
+  .archive-post-reshare__link { margin: 0.75rem 0 0; font-size: 0.9rem; }
   .archive-post-footer { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--color-border, #e0e0e0); }
   .archive-disclaimer { font-size: 0.85rem; color: var(--color-text-muted, #666); font-style: italic; }
   .archive-post--twitter .archive-post-platform { background: #1da1f2; color: white; }

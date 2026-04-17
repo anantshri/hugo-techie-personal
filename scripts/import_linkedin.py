@@ -8,7 +8,7 @@ Usage
         themes/hugo-techie-personal/scripts/import_linkedin.py \
         --takeout takeouts/linkedin-2026-04-10.zip
 
-Two content kinds are handled from a LinkedIn archive:
+Three content kinds are handled from a LinkedIn archive:
 
 1. **Feed shares** (``Shares.csv``, in the "Complete" archive). Each row is a
    feed post identified by one of several LinkedIn URN types:
@@ -31,8 +31,38 @@ Two content kinds are handled from a LinkedIn archive:
    article body is converted from HTML to Markdown. Bundle URL:
    ``/www.linkedin.com/pulse/<slug>/``.
 
-Either source may be absent in a given archive. If both are missing the script
+3. **Plain reposts** (``InstantReposts.csv``, in the "Complete" archive). Each
+   row is a repost-without-commentary action and contains only the parent
+   post's URN, not a URN for the repost itself. Bundles land under
+   ``content/archive/linkedin/repost-<urn_type>-<urn_id>/`` with an empty body
+   and ``extra.reshare_of_url`` pointing at the parent. The template embeds the
+   parent in a LinkedIn iframe so the archived page shows what was reshared.
+
+Either source may be absent in a given archive. If all are missing the script
 exits with an error; otherwise it processes whichever is present.
+
+Reshare context for quote-reshares
+----------------------------------
+
+LinkedIn's export does **not** include the parent URN for reshares that carry
+commentary (the common "reshare with your thoughts" flow). ``Shares.csv`` only
+ships your commentary text and leaves ``SharedUrl`` empty. To recover the
+parent for specific posts you can maintain an optional manual map at
+``takeouts/linkedin-reshare-map.json``:
+
+.. code-block:: json
+
+    {
+      "ugcPost-7411939790561890304":
+        "https://www.linkedin.com/feed/update/urn:li:activity:7411359639843360768/",
+      "share-7404293582125498370": "urn:li:activity:7404210000000000000"
+    }
+
+Keys are the bundle ``platform_id`` (``<urn_type.lower()>-<urn_id>``). Values
+may be a full LinkedIn feed URL or a bare ``urn:li:...`` URN; the importer
+normalises both into a canonical URL and writes it into
+``extra.reshare_of_url``. The archive template embeds the parent as a LinkedIn
+iframe below your commentary when this field is present.
 
 If the archive also contains a ``media/`` directory with images referenced by
 ``MediaUrl``, those files are copied into the bundles.
@@ -42,6 +72,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
 import re
 import shutil
 import sys
@@ -54,6 +85,7 @@ from urllib.parse import unquote
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _archive_common import (  # noqa: E402
+    TAKEOUTS_ROOT,
     ArchiveRecord,
     ImportStats,
     MediaItem,
@@ -65,6 +97,8 @@ from _archive_common import (  # noqa: E402
 )
 
 SHARES_CSV = "Shares.csv"
+INSTANT_REPOSTS_CSV = "InstantReposts.csv"
+RESHARE_MAP_FILENAME = "linkedin-reshare-map.json"
 # LinkedIn feed posts ship under several URN types: ``activity`` (legacy),
 # ``share`` (most common), ``ugcPost`` (newer user-generated content: polls,
 # multi-image carousels, etc.) and ``groupPost`` (posts inside a group, whose
@@ -109,6 +143,16 @@ def _locate_shares_csv(root: Path) -> Path | None:
     if direct.exists():
         return direct
     for match in root.rglob(SHARES_CSV):
+        if match.is_file():
+            return match
+    return None
+
+
+def _locate_instant_reposts_csv(root: Path) -> Path | None:
+    direct = root / INSTANT_REPOSTS_CSV
+    if direct.exists():
+        return direct
+    for match in root.rglob(INSTANT_REPOSTS_CSV):
         if match.is_file():
             return match
     return None
@@ -165,6 +209,63 @@ def _extract_urn(share_link: str) -> tuple[str, str] | None:
     if m:
         return "activity", m.group(1)
     return None
+
+
+def _normalize_reshare_url(value: str) -> str | None:
+    """Return a canonical LinkedIn feed URL for a reshare target, or None.
+
+    Accepts any of:
+
+    * full ``https://www.linkedin.com/feed/update/urn:li:<type>:<id>/`` URLs
+    * URL-encoded variants (``urn%3Ali%3A…``)
+    * bare ``urn:li:<type>:<id>`` URNs
+
+    All forms are normalised to the canonical colon URL the template already
+    knows how to embed via ``https://www.linkedin.com/embed/feed/update/<urn>``.
+    """
+    if not value:
+        return None
+    text = value.strip()
+    if not text:
+        return None
+    urn = _extract_urn(text)
+    if urn is None:
+        return None
+    urn_type, urn_id = urn
+    return f"https://www.linkedin.com/feed/update/urn:li:{urn_type}:{urn_id}/"
+
+
+def _load_reshare_map() -> dict[str, str]:
+    """Read ``takeouts/linkedin-reshare-map.json`` if present.
+
+    Returns a mapping of ``<urn_type_lower>-<urn_id>`` bundle ids to canonical
+    parent URLs. Bad entries are skipped with a warning; a missing file is
+    silently an empty map (common case).
+    """
+    path = TAKEOUTS_ROOT / RESHARE_MAP_FILENAME
+    if not path.exists():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f"  ! ignoring malformed {RESHARE_MAP_FILENAME}: {exc}")
+        return {}
+    if not isinstance(data, dict):
+        print(
+            f"  ! {RESHARE_MAP_FILENAME} should be a JSON object, got "
+            f"{type(data).__name__}; ignoring"
+        )
+        return {}
+    out: dict[str, str] = {}
+    for key, raw in data.items():
+        if not isinstance(key, str) or not isinstance(raw, str):
+            continue
+        url = _normalize_reshare_url(raw)
+        if url is None:
+            print(f"  ! {RESHARE_MAP_FILENAME}: cannot parse URN from {raw!r}")
+            continue
+        out[key.strip().lower()] = url
+    return out
 
 
 def _resolve_media_files(media_value: str, media_root: Path | None) -> list[Path]:
@@ -337,6 +438,7 @@ def _build_records(
     user: str,
     exclude_ids: set[str],
     draft: bool,
+    reshare_map: dict[str, str],
 ) -> Iterable[ArchiveRecord]:
     for row in rows:
         share_link = row.get("ShareLink") or row.get("Share Link") or ""
@@ -384,6 +486,7 @@ def _build_records(
         url = f"/www.linkedin.com/feed/update/urn/li/{urn_type}/{urn_id}/"
 
         visibility = (row.get("Visibility") or "").strip().lower()
+        reshare_of_url = reshare_map.get(post_id.lower())
         yield ArchiveRecord(
             platform="linkedin",
             post_id=post_id,
@@ -401,8 +504,67 @@ def _build_records(
                     "urn_id": urn_id,
                     "visibility": visibility,
                     "shared_url": shared_url,
+                    "reshare_of_url": reshare_of_url,
                 }.items()
                 if v
+            },
+        )
+
+
+def _build_instant_repost_records(
+    rows: Iterable[dict],
+    *,
+    user: str,
+    exclude_ids: set[str],
+    draft: bool,
+) -> Iterable[ArchiveRecord]:
+    """Yield ArchiveRecords for plain reposts from ``InstantReposts.csv``.
+
+    LinkedIn doesn't assign a distinct URN to a plain repost action — the
+    ``Link`` column points at the parent post that was reshared. We mint a
+    ``repost-<urn_type>-<urn_id>`` bundle id so these never collide with our
+    own posts (which use ``<urn_type>-<urn_id>``) and stash the parent URL in
+    ``extra.reshare_of_url`` for the template to embed.
+    """
+    for row in rows:
+        link = (row.get("Link") or row.get("Url") or row.get("URL") or "").strip()
+        urn = _extract_urn(link)
+        if urn is None:
+            continue
+        urn_type, urn_id = urn
+        post_id = f"repost-{urn_type.lower()}-{urn_id}"
+        if urn_id in exclude_ids or post_id in exclude_ids:
+            continue
+        date_str = (row.get("Date") or row.get("Date Published") or "").strip()
+        try:
+            date = parse_utc(date_str)
+        except ValueError:
+            continue
+
+        parent_url = (
+            f"https://www.linkedin.com/feed/update/urn:li:{urn_type}:{urn_id}/"
+        )
+        # Local path for our browse index. Kept distinct from any feed-share
+        # bundle we might also own for the same URN (highly unlikely, but
+        # cheap to guarantee).
+        url = f"/www.linkedin.com/reposts/{urn_type}/{urn_id}/"
+
+        yield ArchiveRecord(
+            platform="linkedin",
+            post_id=post_id,
+            url=url,
+            original_url=parent_url,
+            date=date,
+            body="",
+            title="Reposted a LinkedIn post",
+            platform_user=user,
+            draft=draft,
+            media=[],
+            extra={
+                "kind": "repost",
+                "urn_type": urn_type,
+                "urn_id": urn_id,
+                "reshare_of_url": parent_url,
             },
         )
 
@@ -434,10 +596,11 @@ def main() -> int:
     try:
         shares_csv = _locate_shares_csv(root)
         articles_dir = _locate_articles_dir(root)
-        if shares_csv is None and articles_dir is None:
+        instant_reposts_csv = _locate_instant_reposts_csv(root)
+        if shares_csv is None and articles_dir is None and instant_reposts_csv is None:
             raise SystemExit(
-                f"No Shares.csv and no Articles/ directory found in {root}. "
-                "Is this a LinkedIn takeout?"
+                f"No Shares.csv, Articles/ directory or InstantReposts.csv "
+                f"found in {root}. Is this a LinkedIn takeout?"
             )
 
         media_root = _locate_media_root(root)
@@ -445,6 +608,12 @@ def main() -> int:
             print(f"media root: {media_root.relative_to(root)}")
 
         exclude_ids = load_exclude_set()
+        reshare_map = _load_reshare_map()
+        if reshare_map:
+            print(
+                f"reshare map: {len(reshare_map)} quote-reshare parents loaded "
+                f"from takeouts/{RESHARE_MAP_FILENAME}"
+            )
         records: list[ArchiveRecord] = []
 
         if shares_csv is not None:
@@ -458,6 +627,7 @@ def main() -> int:
                         user=args.user,
                         exclude_ids=exclude_ids,
                         draft=not args.publish,
+                        reshare_map=reshare_map,
                     )
                 )
             print(f"found {len(share_records)} linkedin feed posts")
@@ -481,6 +651,28 @@ def main() -> int:
             )
             print(f"found {len(article_records)} linkedin pulse articles")
             records.extend(article_records)
+
+        if instant_reposts_csv is not None:
+            print(f"reading reposts: {instant_reposts_csv.relative_to(root)}")
+            with instant_reposts_csv.open(
+                "r", encoding="utf-8-sig", newline=""
+            ) as fh:
+                reader = csv.DictReader(fh)
+                repost_records = list(
+                    _build_instant_repost_records(
+                        reader,
+                        user=args.user,
+                        exclude_ids=exclude_ids,
+                        draft=not args.publish,
+                    )
+                )
+            print(f"found {len(repost_records)} linkedin plain reposts")
+            records.extend(repost_records)
+        else:
+            print(
+                "no InstantReposts.csv in this archive (Basic export?); "
+                "skipping plain-repost import"
+            )
 
         stats = ImportStats()
         for count, record in enumerate(records):
