@@ -46,23 +46,37 @@ Reshare context for quote-reshares
 
 LinkedIn's export does **not** include the parent URN for reshares that carry
 commentary (the common "reshare with your thoughts" flow). ``Shares.csv`` only
-ships your commentary text and leaves ``SharedUrl`` empty. To recover the
-parent for specific posts you can maintain an optional manual map at
+ships your commentary text and leaves ``SharedUrl`` empty. The importer
+recovers the parent URN automatically by fetching LinkedIn's public embed
+endpoint for each candidate post::
+
+    https://www.linkedin.com/embed/feed/update/urn:li:<type>:<id>
+
+If the embed HTML contains a ``data-test-id="feed-reshare-content"`` block
+with a ``data-activity-urn`` attribute, that URN is the parent and is written
+into ``extra.reshare_of_url``. Results are cached on disk at
+``takeouts/.linkedin-reshare-cache.json`` so subsequent imports are offline
+and instant. Non-reshare originals are also cached (``parent_url: null``) to
+avoid re-fetching. Use ``--no-scrape-reshares`` to skip the network step
+entirely, and ``--refresh-reshare-cache`` to invalidate the cache.
+
+You can also maintain an optional manual override map at
 ``takeouts/linkedin-reshare-map.json``:
 
 .. code-block:: json
 
     {
       "ugcPost-7411939790561890304":
-        "https://www.linkedin.com/feed/update/urn:li:activity:7411359639843360768/",
+        "https://www.linkedin.com/feed/update/urn:li:activity:7411939530704080896/",
       "share-7404293582125498370": "urn:li:activity:7404210000000000000"
     }
 
 Keys are the bundle ``platform_id`` (``<urn_type.lower()>-<urn_id>``). Values
-may be a full LinkedIn feed URL or a bare ``urn:li:...`` URN; the importer
-normalises both into a canonical URL and writes it into
-``extra.reshare_of_url``. The archive template embeds the parent as a LinkedIn
-iframe below your commentary when this field is present.
+may be a full LinkedIn feed URL or a bare ``urn:li:...`` URN. Manual entries
+**take precedence** over scraped results — useful when the scrape returns the
+wrong parent (e.g. for deleted posts) or for posts where the public embed is
+unavailable. The archive template embeds the parent as a LinkedIn iframe
+below your commentary when ``reshare_of_url`` is present.
 
 If the archive also contains a ``media/`` directory with images referenced by
 ``MediaUrl``, those files are copied into the bundles.
@@ -479,6 +493,60 @@ def _build_article_records(
         )
 
 
+def _clean_shares_csv_line_quotes(body: str) -> str:
+    """Undo LinkedIn's broken per-line double-quoting in ``Shares.csv``.
+
+    For multi-line share commentary LinkedIn wraps **each individual line**
+    of the body in its own ``"..."`` pair inside an already CSV-quoted field.
+    Every inner quote is escaped as ``""``, so after standard csv decoding
+    each paragraph ends up looking like ``"...text..."`` on its own line and
+    blank paragraphs show up as a lone ``""`` (or occasionally a stray ``"``).
+
+    The first line's leading quote is consumed by the csv parser as the
+    field opener, so only lines 2+ exhibit the full ``"..."`` wrapping; the
+    first line only keeps its trailing ``"``. The final line may end with a
+    dangling ``"`` from the closing artifact.
+
+    Only activate the cleanup when *every* non-first line matches the
+    artifact pattern so that legitimately quoted text inside a short,
+    single-paragraph commentary is never touched.
+    """
+    if "\n" not in body:
+        return body
+    lines = body.split("\n")
+    # Gate on a clear artifact signature: the first line must end with a
+    # stray closing ``"`` (the paragraph's own close, since the field opener
+    # ate its leading ``"``), and every subsequent line must look like a
+    # wrapped paragraph, a blank artifact, or — for the final line whose
+    # trailing ``"`` was consumed by the field closer — at least start with
+    # ``"``.
+    if not lines[0].endswith('"'):
+        return body
+    if len(lines) < 2:
+        return body
+    for idx, line in enumerate(lines[1:], start=1):
+        if line in ("", '"', '""'):
+            continue
+        if len(line) >= 2 and line.startswith('"') and line.endswith('"'):
+            continue
+        if idx == len(lines) - 1 and line.startswith('"'):
+            continue
+        return body
+    cleaned: list[str] = [lines[0][:-1]]
+    for idx, line in enumerate(lines[1:], start=1):
+        if line in ("", '"', '""'):
+            cleaned.append("")
+        elif len(line) >= 2 and line.startswith('"') and line.endswith('"'):
+            cleaned.append(line[1:-1])
+        elif idx == len(lines) - 1 and line.startswith('"'):
+            cleaned.append(line[1:])
+        else:
+            cleaned.append(line)
+    while cleaned and cleaned[-1] == "":
+        cleaned.pop()
+    return "\n".join(cleaned)
+
+
 def _build_records(
     rows: Iterable[dict],
     *,
@@ -509,7 +577,8 @@ def _build_records(
             or row.get("Share Commentary")
             or row.get("Commentary")
             or ""
-        ).strip()
+        )
+        body_raw = _clean_shares_csv_line_quotes(body_raw).strip()
         shared_url = (
             row.get("SharedUrl")
             or row.get("Shared Url")

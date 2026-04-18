@@ -1,5 +1,9 @@
 {{ partial "header.html" . }}
 
+{{/* ===== Archive CSS ===== */}}
+{{ $archiveCSS := resources.Get "css/archive.css" | minify | fingerprint }}
+<link rel="stylesheet" href="{{ $archiveCSS.RelPermalink }}" />
+
 {{ $isRoot := eq .Kind "section" | and (eq .Section "archive") | and (not .Parent.IsHome) }}
 {{ $platformParam := .Params.platform | default "" }}
 
@@ -82,32 +86,5 @@
     </div>
   {{ end }}
 </div>
-
-<style>
-  .archive-list { max-width: 1000px; margin: 2rem auto; padding: 0 1rem; }
-  .archive-list-header { margin-bottom: 1.5rem; }
-  .archive-filter-nav { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem; }
-  .archive-filter { padding: 0.4rem 0.9rem; border-radius: 999px; background: var(--color-bg-muted, #f0f0f0); color: var(--color-text, #333); text-decoration: none; font-size: 0.9rem; border: 1px solid transparent; }
-  .archive-filter:hover { border-color: var(--color-border, #ccc); }
-  .archive-count { color: var(--color-text-muted, #666); font-size: 0.9rem; }
-  .archive-empty { padding: 2rem; text-align: center; color: var(--color-text-muted, #666); }
-  .archive-subsection { margin-top: 2rem; }
-  .archive-subsection-title { font-size: 1.25rem; margin-bottom: 0.25rem; display: flex; align-items: baseline; gap: 0.5rem; }
-  .archive-subsection-count { font-size: 0.9rem; color: var(--color-text-muted, #666); font-weight: normal; }
-  .archive-subsection-description { color: var(--color-text-muted, #666); font-size: 0.9rem; margin: 0 0 0.75rem 0; }
-  .archive-card-kind { font-size: 0.7rem; padding: 0.1rem 0.4rem; border-radius: 4px; background: var(--color-bg-muted, #f0f0f0); color: var(--color-text, #333); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
-  .archive-card--article .archive-card-kind { background: #f4a261; color: #fff; }
-  .archive-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; margin-top: 1rem; }
-  .archive-card { display: block; padding: 1rem; border-radius: 8px; border: 1px solid var(--color-border, #e0e0e0); background: var(--color-bg, #fff); text-decoration: none; color: inherit; transition: transform 0.1s, box-shadow 0.1s; }
-  .archive-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
-  .archive-card-meta { display: flex; justify-content: space-between; gap: 0.5rem; font-size: 0.8rem; color: var(--color-text-muted, #666); margin-bottom: 0.5rem; }
-  .archive-card-platform { font-weight: 600; padding: 0.1rem 0.5rem; border-radius: 4px; background: var(--color-bg-muted, #f0f0f0); font-size: 0.75rem; }
-  .archive-card-title { font-size: 0.95rem; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
-  .archive-card-media-count { font-size: 0.75rem; color: var(--color-text-muted, #666); margin-top: 0.5rem; }
-  .archive-card--twitter .archive-card-platform { background: #1da1f2; color: white; }
-  .archive-card--linkedin .archive-card-platform { background: #0a66c2; color: white; }
-  .archive-card--instagram .archive-card-platform { background: linear-gradient(45deg, #f09433, #dc2743, #bc1888); color: white; }
-  .archive-card--facebook .archive-card-platform { background: #1877f2; color: white; }
-</style>
 
 {{ partial "footer.html" . }}

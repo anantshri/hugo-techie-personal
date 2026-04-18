@@ -169,6 +169,13 @@ class AutoPublishPolicy:
     min_longform_chars: int = 280
     min_caption_chars: int = 40
     min_quote_reshare_chars: int = 140
+    # Facebook posts whose title matches a system-generated pattern
+    # (e.g. "added a new photo", "shared a memory") are hard-excluded from
+    # auto-publish when the body, after stripping FB boilerplate lines
+    # (tagged people, location metadata, memory headers), has fewer than
+    # this many remaining characters. Set high enough to catch typical
+    # FB auto-posts without genuine user captions.
+    min_fb_auto_remainder_chars: int = 20
     own_domains: tuple[str, ...] = DEFAULT_OWN_DOMAINS
     own_github_orgs: tuple[str, ...] = DEFAULT_OWN_GITHUB_ORGS
 
@@ -224,6 +231,9 @@ def load_auto_publish_policy() -> AutoPublishPolicy:
         min_quote_reshare_chars=_int(
             "min_quote_reshare_chars", defaults.min_quote_reshare_chars
         ),
+        min_fb_auto_remainder_chars=_int(
+            "min_fb_auto_remainder_chars", defaults.min_fb_auto_remainder_chars
+        ),
         own_domains=_str_tuple("own_domains", defaults.own_domains),
         own_github_orgs=_str_tuple("own_github_orgs", defaults.own_github_orgs),
     )
@@ -242,6 +252,110 @@ def _visible_text(body: str) -> str:
     return re.sub(r"\s+", " ", stripped).strip()
 
 
+# ----------------------------------------------------------------------------
+# Facebook auto-generated post detection
+# ----------------------------------------------------------------------------
+#
+# Facebook stamps system-generated titles on posts that don't have a
+# user-written story — e.g. "added a new photo", "shared a memory", "followed
+# a person on SoundCloud". The body on such posts is typically FB boilerplate
+# too: a "You tagged X, Y and Z" line, location metadata ("Place:" header,
+# latitude/longitude tuple, "Address:" line), or the memory "N years ago /
+# <original title> / <date> / Updated <date>" block. These posts are rarely
+# impactful content worth auto-publishing; the helpers below let
+# ``evaluate_auto_publish`` hard-exclude them when the body has no meaningful
+# remainder after the boilerplate is stripped.
+
+_FB_AUTO_TITLE_RE = re.compile(
+    r"(?:"
+    r"added (?:a |an |\d+ )?new (?:photo|photos|video|videos|cover photo)"
+    r"|added a new photo to [^.]+?timeline"
+    r"|shared a memory"
+    r"|followed a person on \w+"
+    r"|added [^.]*? to books (?:he|she|they)[^.]*?read"
+    r"|recommends [^.]+"
+    r"|doesn'?t recommend [^.]+"
+    r"|likes a link"
+    r")",
+    re.IGNORECASE,
+)
+
+_FB_BOILERPLATE_LINE_RES: tuple[re.Pattern[str], ...] = (
+    re.compile(r"^you tagged\s", re.IGNORECASE),
+    re.compile(r"^you were tagged in\s", re.IGNORECASE),
+    re.compile(r"^place:\s*$", re.IGNORECASE),
+    re.compile(r"^location:\s*$", re.IGNORECASE),
+    re.compile(r"^address:\s", re.IGNORECASE),
+    re.compile(r"^\(-?\d+(?:\.\d+)?,\s*-?\d+(?:\.\d+)?\)$"),
+    re.compile(r"^\d+\s+years?\s+ago$", re.IGNORECASE),
+    re.compile(
+        r"^(?:updated\s+)?\d{1,2}\s+\w+\s+\d{4}(?:,?\s*\d{1,2}:\d{2}(?:\s*[AP]M)?)?$",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"^anant shrivastava\s+(?:added|shared|updated|wrote|posted|followed|"
+        r"recommends|likes|created|was tagged)",
+        re.IGNORECASE,
+    ),
+)
+
+_FB_PLACE_HEADER_RE = re.compile(r"^(?:place|location):\s*$", re.IGNORECASE)
+
+
+def _strip_fb_boilerplate_body(body: str) -> str:
+    """Remove FB auto-generated metadata lines from ``body``.
+
+    The remaining text approximates what the user actually wrote. Lines
+    matching any of :data:`_FB_BOILERPLATE_LINE_RES` are dropped; a
+    ``Place:`` / ``Location:`` header line also consumes the next non-blank
+    line (the place-name value). Used by :func:`_is_fb_auto_post` to decide
+    whether a FB post is pure system-generated content.
+    """
+    if not body:
+        return ""
+    kept: list[str] = []
+    skip_place_value = False
+    for line in body.splitlines():
+        s = line.strip()
+        if not s:
+            continue
+        if skip_place_value:
+            skip_place_value = False
+            continue
+        if _FB_PLACE_HEADER_RE.match(s):
+            skip_place_value = True
+            continue
+        if any(rx.match(s) for rx in _FB_BOILERPLATE_LINE_RES):
+            continue
+        kept.append(s)
+    return "\n".join(kept).strip()
+
+
+def _is_fb_auto_post(
+    title: str, body: str, *, min_remainder_chars: int
+) -> tuple[bool, str]:
+    """Return ``(is_auto, reason)`` for a possibly auto-generated FB post.
+
+    A post qualifies when its ``title`` matches an FB system-generated
+    pattern (:data:`_FB_AUTO_TITLE_RE`) AND the body, after stripping FB
+    boilerplate lines, has fewer than ``min_remainder_chars`` visible
+    characters. Those posts are typically photo uploads with no real
+    caption — just "You tagged X, Y" and optional location metadata.
+    """
+    if not title:
+        return False, ""
+    if not _FB_AUTO_TITLE_RE.search(title):
+        return False, ""
+    remainder = _strip_fb_boilerplate_body(body or "")
+    remainder_visible = _visible_text(remainder)
+    if len(remainder_visible) >= min_remainder_chars:
+        return False, ""
+    return True, (
+        f"fb auto-post ({len(remainder_visible)}<{min_remainder_chars} "
+        "chars after boilerplate)"
+    )
+
+
 def evaluate_auto_publish(
     record: ArchiveRecord, policy: AutoPublishPolicy
 ) -> tuple[bool, str]:
@@ -254,6 +368,10 @@ def evaluate_auto_publish(
       * Low-effort quote-reshares (``extra.reshare_of_url`` set and commentary
         shorter than ``policy.min_quote_reshare_chars``)
       * Completely empty posts with no media (and not a Pulse article)
+      * Facebook auto-generated posts — title matches a system-generated
+        pattern (e.g. "added a new photo", "shared a memory") and the body
+        has no meaningful remainder after FB boilerplate lines are stripped
+        (see :func:`_is_fb_auto_post`)
 
     Publish signals (any one is enough):
       1. LinkedIn Pulse article (``extra.kind == "article"``)
@@ -276,6 +394,15 @@ def evaluate_auto_publish(
         return False, "retweet"
     if extra.get("kind") == "repost":
         return False, "plain repost"
+
+    if record.platform == "facebook":
+        is_auto, reason = _is_fb_auto_post(
+            record.title,
+            record.body,
+            min_remainder_chars=policy.min_fb_auto_remainder_chars,
+        )
+        if is_auto:
+            return False, reason
 
     visible = _visible_text(record.body)
     visible_len = len(visible)

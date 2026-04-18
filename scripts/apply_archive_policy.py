@@ -155,6 +155,7 @@ def _record_from_frontmatter(
         original_url=str(fm.get("original_url") or ""),
         date=date,
         body=body or "",
+        title=str(fm.get("title") or ""),
         platform_user=str(fm.get("platform_user") or ""),
         reply_to=str(fm.get("reply_to") or ""),
         retweet_of=str(fm.get("retweet_of") or ""),

@@ -178,14 +178,15 @@ oembed:
 
 #### Shortcodes
 
-**Full viewer:**
+**Embedding in content files (timeline entries, posts, etc.):**
+
+Always use the `oembed` shortcode with the full absolute URL:
 
 ```hugo
-{{< slideviewer src="/slides/presentation-slug/" >}}
+{{% oembed url="https://yoursite.com/slides/presentation-slug/" %}}
 ```
 
-- `src` — path to the slides page (e.g. `/slides/blackhat-usa-2019-devsecops/`)
-- Renders the full interactive viewer (toolbar, prev/next, grid, fullscreen, download).
+This auto-discovers the slide viewer via the OEmbed endpoint and renders it in an iframe with a footer link. OEmbed with relative URLs or `localhost` will not work — use the full `https://` URL.
 
 **Card only (alternative shortcode):**
 
@@ -194,6 +195,8 @@ oembed:
 ```
 
 Always renders a card linking to the presentation page.
+
+**Theme-internal only:** The `slideviewer` shortcode exists in the theme for internal layout use (e.g. the slides section's own single page). It must **not** be used in content files — always use `oembed` with the full URL instead.
 
 #### Adding a new presentation
 
@@ -591,7 +594,7 @@ The theme includes `data/oembed.json` with additional provider configurations fo
 {{ partial "oembed.html" "https://www.youtube.com/watch?v=example" }}
 ```
 
-**Note on self-hosted slides**: The OEmbed shortcode can embed slides from your own site via OEmbed discovery (the slides section's OEmbed/Embed output formats are auto-discovered). For same-site slides, prefer the `slideviewer` shortcode which renders natively without an iframe. OEmbed with relative URLs or `localhost` will not work since Hugo's `resources.GetRemote` cannot fetch from itself during build.
+**Note on self-hosted slides**: The OEmbed shortcode can embed slides from your own site via OEmbed discovery (the slides section's OEmbed/Embed output formats are auto-discovered). For same-site slides, **always use `oembed` with the full `https://` URL** in content files — the theme's internal `slideviewer` shortcode must not be used in content (Hugo's `resources.GetRemote` cannot fetch from itself during build, and the rule is enforced across this theme). OEmbed with relative URLs or `localhost` will not work for the same reason.
 
 ### Professional Badge Integration
 
