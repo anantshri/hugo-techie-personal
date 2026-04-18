@@ -31,9 +31,12 @@ from typing import Iterable
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _archive_common import (  # noqa: E402
     ArchiveRecord,
+    AutoPublishPolicy,
     ImportStats,
     MediaItem,
+    evaluate_auto_publish,
     guess_media_kind,
+    load_auto_publish_policy,
     load_exclude_set,
     parse_utc,
     write_bundle,
@@ -217,9 +220,23 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--auto-publish",
+        action="store_true",
+        default=False,
+        help=(
+            "Apply the auto-publish policy (see AGENTS.md): newly-imported "
+            "posts that look like impactful original content are marked "
+            "draft: false, everything else stays draft: true. Mutually "
+            "exclusive with --publish. Existing bundles are untouched."
+        ),
+    )
+    parser.add_argument(
         "--limit", type=int, default=0, help="Import at most N tweets (0 = all)"
     )
     args = parser.parse_args()
+
+    if args.publish and args.auto_publish:
+        parser.error("--publish and --auto-publish are mutually exclusive")
 
     root, tmp = _open_takeout(args.takeout)
     try:
@@ -236,6 +253,9 @@ def main() -> int:
                 media_root = alt
 
         exclude_ids = load_exclude_set()
+        policy: AutoPublishPolicy | None = (
+            load_auto_publish_policy() if args.auto_publish else None
+        )
         records = _build_records(
             tweets,
             user=args.user,
@@ -251,6 +271,15 @@ def main() -> int:
         for record in records:
             if args.limit and count >= args.limit:
                 break
+            if policy is not None:
+                publish, reason = evaluate_auto_publish(record, policy)
+                record.draft = not publish
+                verdict = "publish" if publish else "draft  "
+                print(f"  [{verdict}] {record.post_id}: {reason}")
+                if publish:
+                    stats.auto_published += 1
+                else:
+                    stats.auto_drafted += 1
             state, media_count = write_bundle(
                 record, dry_run=args.dry_run, force=args.force
             )

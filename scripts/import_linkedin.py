@@ -87,10 +87,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _archive_common import (  # noqa: E402
     TAKEOUTS_ROOT,
     ArchiveRecord,
+    AutoPublishPolicy,
     ImportStats,
     MediaItem,
+    evaluate_auto_publish,
     guess_media_kind,
+    load_auto_publish_policy,
     load_exclude_set,
+    localize_inline_images,
     parse_utc,
     slugify,
     write_bundle,
@@ -362,6 +366,7 @@ def _build_article_records(
     user: str,
     exclude_ids: set[str],
     draft: bool,
+    dry_run: bool = False,
 ) -> Iterable[ArchiveRecord]:
     from bs4 import BeautifulSoup
 
@@ -391,6 +396,14 @@ def _build_article_records(
             print(f"  ! no date found for {html_path.name}, skipping")
             continue
 
+        # LinkedIn's Pulse export includes unpublished drafts in the same
+        # directory as real articles. Published ones carry a <span
+        # class="published"> element; drafts typically only have
+        # <span class="created">. Treat the absence of "published" as a
+        # never-published signal so the auto-publish policy never promotes
+        # these and the bundle ships as draft: true by default.
+        is_pulse_draft = published_el is None
+
         slug = _derive_article_slug(pulse_href=pulse_href, html_path=html_path, title=title)
         if not slug or slug in exclude_ids:
             continue
@@ -404,18 +417,52 @@ def _build_article_records(
                 body_div = divs[-1]
         body_md = _article_body_to_markdown(body_div) if body_div else ""
 
+        # Pulse article bodies embed inline images via expiring media.licdn.com
+        # signed URLs. Download them into static/images/archive/linkedin/<slug>/
+        # and rewrite the markdown to reference /images/... so the content hash
+        # is stable across re-imports and the archive keeps working once the
+        # signed URLs rot.
+        if body_md:
+            body_md, img_stats = localize_inline_images(
+                body_md,
+                platform="linkedin",
+                slug=slug,
+                dry_run=dry_run,
+            )
+            if (
+                img_stats["downloaded"]
+                or img_stats["failed"]
+                or img_stats["cached"]
+            ):
+                failed = len(img_stats["failed"])
+                print(
+                    f"  {html_path.name}: inline-images "
+                    f"downloaded={img_stats['downloaded']} "
+                    f"cached={img_stats['cached']} "
+                    f"failed={failed}"
+                )
+                for url, reason in img_stats["failed"]:
+                    print(f"    ! failed: {url} ({reason})")
+
         if pulse_href:
             original_url = pulse_href if pulse_href.endswith("/") else pulse_href + "/"
         else:
             original_url = f"https://www.linkedin.com/pulse/{slug}/"
         url = f"/www.linkedin.com/pulse/{slug}/"
 
-        extra = {"kind": "article"}
+        extra: dict = {"kind": "article_draft" if is_pulse_draft else "article"}
         if created_el:
             created_dt = _parse_date_text(created_el.get_text(" ", strip=True))
             if created_dt and created_dt != date:
                 extra["created_at"] = created_dt.astimezone(timezone.utc).isoformat()
 
+        # Drafts override the normal draft flag: a post that was never
+        # published on LinkedIn should never ship as draft: false on our
+        # mirror either, and should be hard-excluded from the auto-publish
+        # policy regardless of body length or other signals. The user can
+        # still manually flip draft: false on the bundle — the never_auto_publish
+        # flag will remain sticky across importer re-runs.
+        effective_draft = True if is_pulse_draft else draft
         yield ArchiveRecord(
             platform="linkedin",
             post_id=slug,
@@ -425,7 +472,8 @@ def _build_article_records(
             title=title,
             body=body_md,
             platform_user=user,
-            draft=draft,
+            draft=effective_draft,
+            never_auto_publish=is_pulse_draft,
             media=[],
             extra=extra,
         )
@@ -589,8 +637,22 @@ def main() -> int:
             "their current draft value regardless of this flag."
         ),
     )
+    parser.add_argument(
+        "--auto-publish",
+        action="store_true",
+        default=False,
+        help=(
+            "Apply the auto-publish policy (see AGENTS.md): newly-imported "
+            "posts that look like impactful original content are marked "
+            "draft: false, everything else stays draft: true. Mutually "
+            "exclusive with --publish. Existing bundles are untouched."
+        ),
+    )
     parser.add_argument("--limit", type=int, default=0)
     args = parser.parse_args()
+
+    if args.publish and args.auto_publish:
+        parser.error("--publish and --auto-publish are mutually exclusive")
 
     root, tmp = _open_takeout(args.takeout)
     try:
@@ -647,6 +709,7 @@ def main() -> int:
                     user=args.user,
                     exclude_ids=exclude_ids,
                     draft=not args.publish,
+                    dry_run=args.dry_run,
                 )
             )
             print(f"found {len(article_records)} linkedin pulse articles")
@@ -674,10 +737,23 @@ def main() -> int:
                 "skipping plain-repost import"
             )
 
+        policy: AutoPublishPolicy | None = (
+            load_auto_publish_policy() if args.auto_publish else None
+        )
+
         stats = ImportStats()
         for count, record in enumerate(records):
             if args.limit and count >= args.limit:
                 break
+            if policy is not None:
+                publish, reason = evaluate_auto_publish(record, policy)
+                record.draft = not publish
+                verdict = "publish" if publish else "draft  "
+                print(f"  [{verdict}] {record.post_id}: {reason}")
+                if publish:
+                    stats.auto_published += 1
+                else:
+                    stats.auto_drafted += 1
             state, media_count = write_bundle(
                 record, dry_run=args.dry_run, force=args.force
             )

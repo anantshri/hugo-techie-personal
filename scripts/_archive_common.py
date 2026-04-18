@@ -60,6 +60,20 @@ PLATFORMS = ("twitter", "linkedin", "instagram", "facebook")
 
 MANIFEST_NAME = ".manifest.json"
 
+AUTO_PUBLISH_CONFIG_FILENAME = "auto-publish.yml"
+
+DEFAULT_OWN_DOMAINS: tuple[str, ...] = (
+    "anantshri.info",
+    "cyfinoid.com",
+)
+
+DEFAULT_OWN_GITHUB_ORGS: tuple[str, ...] = (
+    "anantshri",
+    "cyfinoid",
+    "AndroidTamer",
+    "CodeVigilant",
+)
+
 
 @dataclass
 class MediaItem:
@@ -97,6 +111,13 @@ class ArchiveRecord:
     retweet_of: str = ""
     sensitive: bool = False
     draft: bool = True  # default to draft so the user curates what's public
+    # Mark bundles that should never auto-publish regardless of signals.
+    # Used for e.g. LinkedIn Pulse drafts that were never published on the
+    # source platform, sensitive posts whose text looks innocuous to the
+    # heuristics, or any bundle the user explicitly wants excluded from the
+    # promote/demote loop. The flag is sticky across importer re-runs and
+    # does not participate in the idempotency hash.
+    never_auto_publish: bool = False
     media: list[MediaItem] = field(default_factory=list)
     extra: dict = field(default_factory=dict)  # platform-specific extras
 
@@ -117,12 +138,178 @@ class ImportStats:
     updated: int = 0
     skipped: int = 0
     media_copied: int = 0
+    auto_published: int = 0
+    auto_drafted: int = 0
 
     def summary(self) -> str:
-        return (
-            f"added={self.added} updated={self.updated} "
-            f"skipped={self.skipped} media={self.media_copied}"
+        parts = [
+            f"added={self.added}",
+            f"updated={self.updated}",
+            f"skipped={self.skipped}",
+            f"media={self.media_copied}",
+        ]
+        if self.auto_published or self.auto_drafted:
+            parts.append(
+                f"auto_publish={self.auto_published}/"
+                f"{self.auto_published + self.auto_drafted}"
+            )
+        return " ".join(parts)
+
+
+@dataclass
+class AutoPublishPolicy:
+    """Thresholds and allowlists for the archive auto-publish policy.
+
+    Used by :func:`evaluate_auto_publish` to decide whether a freshly-imported
+    record is "impactful original content" that can ship as ``draft: false``
+    without manual review. Defaults mirror the policy documented in
+    ``AGENTS.md``; override via ``takeouts/auto-publish.yml``.
+    """
+
+    min_longform_chars: int = 280
+    min_caption_chars: int = 40
+    min_quote_reshare_chars: int = 140
+    own_domains: tuple[str, ...] = DEFAULT_OWN_DOMAINS
+    own_github_orgs: tuple[str, ...] = DEFAULT_OWN_GITHUB_ORGS
+
+
+def load_auto_publish_policy() -> AutoPublishPolicy:
+    """Read ``takeouts/auto-publish.yml`` if present, else return defaults.
+
+    Unknown keys are ignored so the config file stays forward-compatible.
+    Malformed YAML falls back to defaults with a warning printed to stderr.
+    """
+    path = TAKEOUTS_ROOT / AUTO_PUBLISH_CONFIG_FILENAME
+    defaults = AutoPublishPolicy()
+    if not path.exists():
+        return defaults
+    try:
+        data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    except yaml.YAMLError as exc:
+        print(f"  ! ignoring malformed {AUTO_PUBLISH_CONFIG_FILENAME}: {exc}")
+        return defaults
+    if not isinstance(data, dict):
+        print(
+            f"  ! {AUTO_PUBLISH_CONFIG_FILENAME} should be a YAML mapping, got "
+            f"{type(data).__name__}; using defaults"
         )
+        return defaults
+
+    def _int(key: str, fallback: int) -> int:
+        value = data.get(key, fallback)
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            print(
+                f"  ! {AUTO_PUBLISH_CONFIG_FILENAME}: {key!r} must be an int, "
+                f"got {value!r}; using default {fallback}"
+            )
+            return fallback
+
+    def _str_tuple(key: str, fallback: tuple[str, ...]) -> tuple[str, ...]:
+        value = data.get(key, None)
+        if value is None:
+            return fallback
+        if not isinstance(value, list):
+            print(
+                f"  ! {AUTO_PUBLISH_CONFIG_FILENAME}: {key!r} must be a list; "
+                f"using default"
+            )
+            return fallback
+        return tuple(str(x).strip() for x in value if str(x).strip())
+
+    return AutoPublishPolicy(
+        min_longform_chars=_int("min_longform_chars", defaults.min_longform_chars),
+        min_caption_chars=_int("min_caption_chars", defaults.min_caption_chars),
+        min_quote_reshare_chars=_int(
+            "min_quote_reshare_chars", defaults.min_quote_reshare_chars
+        ),
+        own_domains=_str_tuple("own_domains", defaults.own_domains),
+        own_github_orgs=_str_tuple("own_github_orgs", defaults.own_github_orgs),
+    )
+
+
+_URL_RE = re.compile(r"https?://\S+")
+
+
+def _visible_text(body: str) -> str:
+    """Return ``body`` with URLs and collapsed whitespace removed.
+
+    Used by the auto-publish policy to measure "real" caption/commentary
+    length — a body that is just a bare link should not count as long-form.
+    """
+    stripped = _URL_RE.sub(" ", body or "")
+    return re.sub(r"\s+", " ", stripped).strip()
+
+
+def evaluate_auto_publish(
+    record: ArchiveRecord, policy: AutoPublishPolicy
+) -> tuple[bool, str]:
+    """Return ``(publish, reason)`` for an auto-publish decision.
+
+    Hard exclusions (always stay draft):
+      * sensitive posts
+      * Twitter replies (``reply_to``) and plain retweets (``retweet_of``)
+      * LinkedIn plain reposts (``extra.kind == "repost"``)
+      * Low-effort quote-reshares (``extra.reshare_of_url`` set and commentary
+        shorter than ``policy.min_quote_reshare_chars``)
+      * Completely empty posts with no media (and not a Pulse article)
+
+    Publish signals (any one is enough):
+      1. LinkedIn Pulse article (``extra.kind == "article"``)
+      2. Long-form body (>= ``policy.min_longform_chars`` visible chars)
+      3. Media present with a meaningful caption
+         (>= ``policy.min_caption_chars`` visible chars)
+      4. Body mentions one of the owned domains or GitHub orgs
+    """
+    extra = record.extra or {}
+
+    if record.never_auto_publish:
+        return False, "never_auto_publish set"
+    if extra.get("kind") == "article_draft":
+        return False, "unpublished pulse draft"
+    if record.sensitive:
+        return False, "sensitive"
+    if record.reply_to:
+        return False, "reply"
+    if record.retweet_of:
+        return False, "retweet"
+    if extra.get("kind") == "repost":
+        return False, "plain repost"
+
+    visible = _visible_text(record.body)
+    visible_len = len(visible)
+
+    reshare_of = extra.get("reshare_of_url")
+    if reshare_of and visible_len < policy.min_quote_reshare_chars:
+        return (
+            False,
+            f"low-effort quote-reshare ({visible_len}<"
+            f"{policy.min_quote_reshare_chars} chars)",
+        )
+
+    is_article = extra.get("kind") == "article"
+    if not is_article and visible_len == 0 and not record.media:
+        return False, "empty body, no media"
+
+    if is_article:
+        return True, "pulse article"
+    if visible_len >= policy.min_longform_chars:
+        return True, f"long-form ({visible_len} chars)"
+    if record.media and visible_len >= policy.min_caption_chars:
+        return True, f"media + caption ({visible_len} chars)"
+
+    body_lower = (record.body or "").lower()
+    for domain in policy.own_domains:
+        needle = domain.strip().lower()
+        if needle and needle in body_lower:
+            return True, f"links to {domain}"
+    for org in policy.own_github_orgs:
+        needle = f"github.com/{org.strip().lower()}"
+        if needle in body_lower:
+            return True, f"links to github.com/{org}"
+
+    return False, "no publish signals"
 
 
 def slugify(text: str, fallback: str = "post") -> str:
@@ -184,7 +371,12 @@ def _write_manifest(bundle: Path, data: dict) -> None:
 
 
 def _frontmatter_yaml(
-    record: ArchiveRecord, media_refs: list[dict], *, draft: bool
+    record: ArchiveRecord,
+    media_refs: list[dict],
+    *,
+    draft: bool,
+    never_auto_publish: bool,
+    existing_reason: str | None = None,
 ) -> str:
     fm: dict = {
         "title": record.derived_title(),
@@ -199,6 +391,10 @@ def _frontmatter_yaml(
         "archived_at": datetime.now(timezone.utc).isoformat(),
         "sensitive": record.sensitive,
     }
+    if never_auto_publish:
+        fm["never_auto_publish"] = True
+        if existing_reason:
+            fm["reason"] = existing_reason
     if record.reply_to:
         fm["reply_to"] = record.reply_to
     if record.retweet_of:
@@ -211,11 +407,11 @@ def _frontmatter_yaml(
     return yml
 
 
-def _read_existing_draft(index_md: Path) -> bool | None:
-    """Return the current ``draft`` value of an existing bundle, or None.
+def _read_existing_frontmatter(index_md: Path) -> dict | None:
+    """Return parsed frontmatter of an existing bundle, or ``None``.
 
-    Preserves manual curation: if a user has flipped ``draft`` to ``false`` by
-    hand, re-running the importer will not clobber that choice.
+    Used by :func:`write_bundle` to preserve manually-curated values
+    (``draft``, ``never_auto_publish``, ``reason``) across importer re-runs.
     """
     if not index_md.exists():
         return None
@@ -232,10 +428,16 @@ def _read_existing_draft(index_md: Path) -> bool | None:
         fm = yaml.safe_load(text[3:end]) or {}
     except yaml.YAMLError:
         return None
-    value = fm.get("draft") if isinstance(fm, dict) else None
-    if isinstance(value, bool):
-        return value
-    return None
+    return fm if isinstance(fm, dict) else None
+
+
+def _read_existing_draft(index_md: Path) -> bool | None:
+    """Return the current ``draft`` value of an existing bundle, or None."""
+    fm = _read_existing_frontmatter(index_md)
+    if fm is None:
+        return None
+    value = fm.get("draft")
+    return value if isinstance(value, bool) else None
 
 
 def write_bundle(
@@ -254,10 +456,22 @@ def write_bundle(
     new_hash = content_hash(record)
     manifest = _load_manifest(bundle)
 
-    # Preserve any manually-curated draft value on existing bundles; the
-    # record's default only applies to brand-new imports.
-    existing_draft = _read_existing_draft(index_md)
-    effective_draft = existing_draft if existing_draft is not None else record.draft
+    # Preserve manually-curated values on existing bundles; the record's
+    # defaults only apply to brand-new imports. ``draft``, ``never_auto_publish``
+    # and the companion freeform ``reason`` are all sticky across re-runs.
+    existing_fm = _read_existing_frontmatter(index_md) or {}
+    existing_draft = existing_fm.get("draft")
+    effective_draft = (
+        existing_draft if isinstance(existing_draft, bool) else record.draft
+    )
+    existing_never = existing_fm.get("never_auto_publish")
+    effective_never = (
+        existing_never if isinstance(existing_never, bool) else record.never_auto_publish
+    )
+    existing_reason = existing_fm.get("reason")
+    effective_reason = (
+        str(existing_reason) if isinstance(existing_reason, str) and existing_reason.strip() else None
+    )
 
     if manifest and manifest.get("content_hash") == new_hash and not force:
         return "skipped", 0
@@ -297,7 +511,13 @@ def write_bundle(
             ref["poster"] = poster_name
         media_refs.append(ref)
 
-    fm_yaml = _frontmatter_yaml(record, media_refs, draft=effective_draft)
+    fm_yaml = _frontmatter_yaml(
+        record,
+        media_refs,
+        draft=effective_draft,
+        never_auto_publish=effective_never,
+        existing_reason=effective_reason,
+    )
     body = record.body.rstrip() + "\n" if record.body.strip() else ""
     index_md_text = "---\n" + fm_yaml + "---\n\n" + body
     index_md.write_text(index_md_text, encoding="utf-8")
@@ -370,6 +590,268 @@ def guess_media_kind(path: Path) -> str:
     if ext == ".gif":
         return "gif"
     return "image"
+
+
+# ----------------------------------------------------------------------------
+# Inline image localization
+# ----------------------------------------------------------------------------
+#
+# Archive article bodies (notably LinkedIn Pulse exports) embed inline images
+# via remote URLs pointing at the original platform CDN — e.g. media.licdn.com
+# URLs with signed, expiring tokens. Those links rot within months. The
+# helpers below download every remote markdown image once, store it under
+# ``<site>/static/images/archive/<platform>/<slug>/inline-N.<ext>``, and
+# rewrite the markdown body to use absolute ``/images/archive/...`` paths
+# that Hugo serves directly from ``static/``. Default Hugo markdown rendering
+# handles these with no render hooks or shortcodes.
+
+
+_MARKDOWN_IMAGE_RE = re.compile(
+    r"!\[(?P<alt>[^\]]*)\]\((?P<url>\S+?)(?P<title>\s+\"[^\"]*\")?\)",
+    re.DOTALL,
+)
+
+_CONTENT_TYPE_TO_EXT: dict[str, str] = {
+    "image/jpeg": "jpg",
+    "image/jpg": "jpg",
+    "image/pjpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "image/gif": "gif",
+    "image/svg+xml": "svg",
+    "image/bmp": "bmp",
+    "image/tiff": "tiff",
+    "image/x-icon": "ico",
+    "image/vnd.microsoft.icon": "ico",
+}
+
+
+def _extension_from_content_type(content_type: str | None) -> str | None:
+    if not content_type:
+        return None
+    base = content_type.split(";", 1)[0].strip().lower()
+    return _CONTENT_TYPE_TO_EXT.get(base)
+
+
+def _extension_from_magic(data: bytes) -> str | None:
+    if not data:
+        return None
+    if data[:3] == b"\xff\xd8\xff":
+        return "jpg"
+    if data[:8] == b"\x89PNG\r\n\x1a\n":
+        return "png"
+    if data[:6] in (b"GIF87a", b"GIF89a"):
+        return "gif"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "webp"
+    if data[:2] == b"BM":
+        return "bmp"
+    if data[:4] in (b"II*\x00", b"MM\x00*"):
+        return "tiff"
+    head = data[:256].lstrip().lower()
+    if head.startswith(b"<?xml") or head.startswith(b"<svg"):
+        return "svg"
+    return None
+
+
+def _find_existing_inline_image(target_dir: Path, n: int) -> Path | None:
+    """Return an existing ``inline-<n>.<ext>`` in ``target_dir`` if present."""
+    if not target_dir.exists():
+        return None
+    prefix = f"inline-{n}."
+    for entry in target_dir.iterdir():
+        if entry.is_file() and entry.name.startswith(prefix):
+            return entry
+    return None
+
+
+def _download_inline_image(
+    url: str, target_dir: Path, n: int, *, timeout: float = 30.0
+) -> tuple[Path | None, str | None]:
+    """Download ``url`` into ``target_dir`` as ``inline-<n>.<ext>``.
+
+    Returns ``(path, None)`` on success or ``(None, reason)`` on failure.
+    The downloaded file is written atomically: body buffered in memory,
+    extension determined from the response Content-Type (falling back to
+    magic bytes, then ``jpg``), then written in a single ``Path.write_bytes``.
+    """
+    from urllib.error import HTTPError, URLError
+    from urllib.request import Request, urlopen
+
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (compatible; anantshri-archive-importer/1.0; "
+            "+https://anantshri.info/)"
+        ),
+        "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+    }
+    req = Request(url, headers=headers)
+    try:
+        with urlopen(req, timeout=timeout) as resp:
+            status = getattr(resp, "status", 200)
+            if status >= 400:
+                return None, f"HTTP {status}"
+            content_type = resp.headers.get("Content-Type") if resp.headers else None
+            data = resp.read()
+    except HTTPError as exc:
+        return None, f"HTTP {exc.code}"
+    except URLError as exc:
+        reason = getattr(exc, "reason", exc)
+        return None, f"URL error: {reason}"
+    except (TimeoutError, OSError) as exc:
+        return None, f"IO error: {exc}"
+
+    if not data:
+        return None, "empty response"
+
+    ext = (
+        _extension_from_content_type(content_type)
+        or _extension_from_magic(data)
+        or "jpg"
+    )
+
+    # Defence against servers that return HTML (e.g. "Sign in") for dead signed
+    # URLs — the magic-byte check would have caught images, so if we got here
+    # with HTML content type, bail out.
+    if content_type:
+        base_ct = content_type.split(";", 1)[0].strip().lower()
+        if base_ct.startswith("text/") or base_ct in {
+            "application/json",
+            "application/xhtml+xml",
+        }:
+            if _extension_from_magic(data) is None:
+                return None, f"non-image content-type: {base_ct}"
+
+    target_dir.mkdir(parents=True, exist_ok=True)
+    target = target_dir / f"inline-{n}.{ext}"
+    try:
+        target.write_bytes(data)
+    except OSError as exc:
+        return None, f"write error: {exc}"
+    return target, None
+
+
+def localize_inline_images(
+    body_md: str,
+    *,
+    platform: str,
+    slug: str,
+    site_root: Path | None = None,
+    dry_run: bool = False,
+    force: bool = False,
+) -> tuple[str, dict]:
+    """Download remote markdown inline images and rewrite to local URLs.
+
+    Scans ``body_md`` for every ``![alt](url)`` (optionally with a Markdown
+    link title). Every ``url`` matching ``http(s)://...`` is treated as a
+    remote image and downloaded to::
+
+        <site_root>/static/images/archive/<platform>/<slug>/inline-<N>.<ext>
+
+    and the match is rewritten to reference ``/images/archive/<platform>/<slug>/
+    inline-<N>.<ext>`` (absolute path served by Hugo from ``static/``).
+
+    * Local URLs (paths starting with ``/``, relative paths, ``data:`` URIs,
+      etc.) are left untouched.
+    * Duplicate remote URLs in the same document reuse the same local file
+      and the same sequence number.
+    * Idempotent: existing ``inline-<N>.<ext>`` files are reused unless
+      ``force=True``.
+    * On fetch failure the original URL is kept and the error recorded in
+      ``stats["failed"]`` so callers can print a warning.
+
+    Returns ``(new_body_md, stats)`` where ``stats`` is::
+
+        {
+          "downloaded": int,    # newly fetched over the network
+          "cached": int,        # reused existing local file
+          "failed": [(url, reason), ...],
+          "rewritten": int,     # total markdown image substitutions applied
+          "skipped": int,       # images left alone (already local / data: uri)
+        }
+
+    ``dry_run=True`` still rewrites the returned body (so the caller can
+    diff / preview) but skips all disk writes.
+    """
+    stats: dict = {
+        "downloaded": 0,
+        "cached": 0,
+        "failed": [],
+        "rewritten": 0,
+        "skipped": 0,
+    }
+
+    if not body_md or "![" not in body_md:
+        return body_md, stats
+
+    root = site_root or SITE_ROOT
+    target_dir = root / "static" / "images" / "archive" / platform / slug
+    url_prefix = f"/images/archive/{platform}/{slug}/"
+
+    # Map unique remote URL -> (sequence number, local filename). Sequence
+    # numbers are assigned in order of first appearance so duplicate URLs
+    # share one file.
+    url_to_local: dict[str, str] = {}
+    next_n = 1
+
+    def _resolve(url: str) -> str | None:
+        nonlocal next_n
+        if url in url_to_local:
+            stats["cached"] += 1
+            return url_to_local[url]
+
+        n = next_n
+        next_n += 1
+
+        existing = _find_existing_inline_image(target_dir, n)
+        if existing is not None and not force:
+            name = existing.name
+            url_to_local[url] = name
+            stats["cached"] += 1
+            return name
+
+        if dry_run:
+            # Pretend we got an extension — use .jpg as a stand-in for preview.
+            # No file is written.
+            name = f"inline-{n}.jpg"
+            url_to_local[url] = name
+            stats["downloaded"] += 1
+            return name
+
+        path, err = _download_inline_image(url, target_dir, n)
+        if path is None or err is not None:
+            stats["failed"].append((url, err or "unknown error"))
+            # Roll back the sequence number so the next successful download
+            # doesn't leave a gap — callers treat ``inline-<N>`` numbering as
+            # arbitrary but contiguous sequences are nicer to read on disk.
+            next_n -= 1
+            return None
+
+        url_to_local[url] = path.name
+        stats["downloaded"] += 1
+        return path.name
+
+    def _sub(match: re.Match[str]) -> str:
+        url = match.group("url")
+        alt = match.group("alt") or ""
+        title = match.group("title") or ""
+
+        low = url.lower()
+        if not (low.startswith("http://") or low.startswith("https://")):
+            stats["skipped"] += 1
+            return match.group(0)
+
+        name = _resolve(url)
+        if name is None:
+            # Failed download — preserve original markdown verbatim.
+            return match.group(0)
+
+        new_url = url_prefix + name
+        stats["rewritten"] += 1
+        return f"![{alt}]({new_url}{title})"
+
+    new_body = _MARKDOWN_IMAGE_RE.sub(_sub, body_md)
+    return new_body, stats
 
 
 def load_exclude_set() -> set[str]:

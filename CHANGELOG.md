@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **AI-assistant guide (`AGENTS.md` + `agents/`)** — portable authoring guidance that ships with the theme so non-technical users can drive a full site build by chatting with any AI assistant (Cursor, Claude Code, ChatGPT with browsing, Codex, Aider, Windsurf, …)
+  - New `AGENTS.md` at the theme root — router-style, ≤250 lines, zero site-specific references; tells assistants the zero-CLI contract and which skill to pick per task
+  - New `agents/skills/` with 11 reusable skills covering the full site lifecycle: `bootstrap-portfolio` (flagship, 3 modes: research-only / full-generate / interactive), `create-timeline-entry`, `create-slide-deck`, `create-project`, `create-gadget`, `create-interest`, `write-bio-page`, `configure-site`, `set-up-badges`, `import-social-archive`, `deploy-site`
+  - Each skill is a single `SKILL.md` with YAML frontmatter (compatible with Cursor / Claude Agent Skills) plus a `tool-specific-tips.md` for Cursor / Claude / ChatGPT / Aider differences
+  - New `agents/prompts/` — 5 ready-to-paste prompts (bootstrap from name, add talk from URL, add project from GitHub repo, generate bio from LinkedIn, refresh content from web)
+  - New `agents/install.sh` — POSIX shell installer that copies `AGENTS.md` into the site root and wires every skill into `.cursor/skills/hugo-techie-*/` and/or `.claude/skills/hugo-techie-*/`; auto-selects symlink mode when the theme is a git submodule and copy mode otherwise; idempotent on re-run
+  - New `agents/README.md` — 5-minute human quickstart
+  - Skills ship under the theme's existing MIT license
+
 ## [2.2.0] - 2026-04-16
 
 ### Added

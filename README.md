@@ -54,6 +54,17 @@ A timeline-based personal site theme designed specifically for tech professional
    hugo server -D
    ```
 
+## Driving the theme with an AI assistant
+
+If you prefer to let an AI assistant (Cursor, Claude Code, ChatGPT with browsing, Codex, Aider, Windsurf, …) run the commands for you, the theme ships with a portable guide under [`AGENTS.md`](AGENTS.md) and [`agents/`](agents/):
+
+```bash
+# From your site root, after adding the theme as a submodule
+./themes/hugo-techie-personal/agents/install.sh
+```
+
+This copies `AGENTS.md` to your site root and wires 11 reusable skills (`bootstrap-portfolio`, `create-timeline-entry`, `create-slide-deck`, `create-project`, `create-gadget`, `create-interest`, `write-bio-page`, `configure-site`, `set-up-badges`, `import-social-archive`, `deploy-site`) into `.cursor/skills/hugo-techie-*/` and `.claude/skills/hugo-techie-*/`. You can then say things like *"bootstrap a portfolio for me from my GitHub handle"* or *"add the talk I gave at DefCon last year"* and the assistant takes care of everything, including running `hugo server`. See [`agents/README.md`](agents/README.md) for the five-minute quickstart and [`agents/prompts/`](agents/prompts/) for ready-to-paste prompts.
+
 ## Demo
 
 **Live Example:** See the theme in action at **[anantshri.info](https://anantshri.info)** - the author's personal site showcasing real-world usage with extensive timeline content, project portfolios, and gadget reviews.
