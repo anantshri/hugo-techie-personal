@@ -39,6 +39,8 @@ from _archive_common import (  # noqa: E402
     load_auto_publish_policy,
     load_exclude_set,
     parse_utc,
+    resolve_short_urls,
+    save_short_url_cache,
     write_bundle,
 )
 
@@ -166,6 +168,8 @@ def _build_records(
     include_retweets: bool,
     exclude_ids: set[str],
     draft: bool,
+    resolve_short: bool,
+    dry_run: bool,
 ) -> Iterable[ArchiveRecord]:
     for tweet in tweets:
         tweet_id = tweet.get("id_str") or str(tweet.get("id") or "")
@@ -182,6 +186,18 @@ def _build_records(
         except ValueError:
             continue
         body = _expand_body(tweet)
+        if resolve_short and body and "lnkd.in" in body.lower():
+            body, s_stats = resolve_short_urls(body, dry_run=dry_run)
+            if s_stats["rewritten"] or s_stats["failed"]:
+                failed_count = len(s_stats["failed"])
+                print(
+                    f"  {tweet_id}: lnkd.in "
+                    f"resolved={s_stats['resolved']} "
+                    f"cached={s_stats['cached']} "
+                    f"failed={failed_count}"
+                )
+                for short, reason in s_stats["failed"]:
+                    print(f"    ! could not resolve {short} ({reason})")
         media_items = _collect_media_items(tweet, media_root)
         original_url = f"https://x.com/{user}/status/{tweet_id}"
         url = f"/x.com/{user}/status/{tweet_id}/"
@@ -233,6 +249,18 @@ def main() -> int:
     parser.add_argument(
         "--limit", type=int, default=0, help="Import at most N tweets (0 = all)"
     )
+    parser.add_argument(
+        "--no-resolve-short-urls",
+        dest="resolve_short_urls",
+        action="store_false",
+        default=True,
+        help=(
+            "Do not resolve https://lnkd.in/ short URLs found in tweet "
+            "bodies. By default the importer follows each short URL once "
+            "and rewrites the body to reference the real link, caching "
+            "results in takeouts/lnkd-in-cache.json."
+        ),
+    )
     args = parser.parse_args()
 
     if args.publish and args.auto_publish:
@@ -264,6 +292,8 @@ def main() -> int:
             include_retweets=args.include_retweets,
             exclude_ids=exclude_ids,
             draft=not args.publish,
+            resolve_short=args.resolve_short_urls,
+            dry_run=args.dry_run,
         )
 
         stats = ImportStats()
@@ -294,6 +324,7 @@ def main() -> int:
 
         print(f"twitter import: {stats.summary()}")
     finally:
+        save_short_url_cache()
         if tmp is not None:
             shutil.rmtree(tmp, ignore_errors=True)
     return 0

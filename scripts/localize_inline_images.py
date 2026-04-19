@@ -258,7 +258,8 @@ def main() -> int:
         if args.dry_run:
             continue
 
-        new_text = f"---\n{fm_text}---\n{leading}{new_body}"
+        fm_sep = "" if fm_text.endswith("\n") else "\n"
+        new_text = f"---\n{fm_text}{fm_sep}---\n{leading}{new_body}"
         index_md.write_text(new_text, encoding="utf-8")
 
         record = _record_from_frontmatter(fm, new_body, slug=slug)

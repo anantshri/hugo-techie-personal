@@ -58,21 +58,60 @@ TAKEOUTS_ROOT = SITE_ROOT / "takeouts"
 
 PLATFORMS = ("twitter", "linkedin", "instagram", "facebook")
 
+# Platforms whose media attachments are stored outside the Hugo page bundle
+# (under ``<site>/static/images/archive/<platform>/<slug>/``) and referenced
+# from the bundle's frontmatter via an absolute URL. Everything else keeps
+# media as page resources co-located with ``index.md`` so Hugo's
+# ``.Resources.GetMatch`` can resolve them directly.
+#
+# Facebook exports ship every photo upload as its own bundle, often with
+# only trivial "You tagged X" body text, which historically ballooned
+# ``content/archive/facebook/`` with thousands of JPEGs that Hugo had to
+# scan as page resources. Moving them to ``static/`` keeps the content
+# tree lean while the archive layout still renders them inline (the
+# template already falls back to using ``file`` verbatim as the URL when
+# it's not a page resource).
+STATIC_MEDIA_PLATFORMS: frozenset[str] = frozenset({"facebook"})
+
 MANIFEST_NAME = ".manifest.json"
 
 AUTO_PUBLISH_CONFIG_FILENAME = "auto-publish.yml"
 
-DEFAULT_OWN_DOMAINS: tuple[str, ...] = (
-    "anantshri.info",
-    "cyfinoid.com",
+# The theme ships with empty allowlists for owned domains and GitHub orgs
+# so no site-specific identity is baked in. Site operators configure their
+# own lists via ``takeouts/auto-publish.yml`` (see ``own_domains`` /
+# ``own_github_orgs`` in the AGENTS.md auto-publish policy docs). When both
+# remain empty, the "links to own domain / github org" publish signal is
+# simply inert — the other signals (long-form body, media + caption, Pulse
+# article) still apply.
+DEFAULT_OWN_DOMAINS: tuple[str, ...] = ()
+
+DEFAULT_OWN_GITHUB_ORGS: tuple[str, ...] = ()
+
+
+# Generic User-Agent used for outbound HTTP fetches made by the archive
+# importers (inline image downloads, lnkd.in redirect resolution, etc.).
+# Intentionally theme-branded, not owner-branded, so the theme ships
+# without any site-specific identity baked in. Per RFC 9110 §10.1.5 a
+# polite crawler should include a contact URL; site operators can add one
+# by setting ``ARCHIVE_IMPORTER_USER_AGENT`` in the environment before
+# running any importer, e.g.::
+#
+#     export ARCHIVE_IMPORTER_USER_AGENT="Mozilla/5.0 (compatible; \
+#         my-archive-importer/1.0; +https://example.com/)"
+_DEFAULT_USER_AGENT = (
+    "Mozilla/5.0 (compatible; hugo-techie-personal-archive-importer/1.0)"
 )
 
-DEFAULT_OWN_GITHUB_ORGS: tuple[str, ...] = (
-    "anantshri",
-    "cyfinoid",
-    "AndroidTamer",
-    "CodeVigilant",
-)
+
+def _user_agent() -> str:
+    """Return the HTTP User-Agent string for importer HTTP requests.
+
+    Honours the ``ARCHIVE_IMPORTER_USER_AGENT`` env var when set (stripped
+    of surrounding whitespace); otherwise returns :data:`_DEFAULT_USER_AGENT`.
+    """
+    override = os.environ.get("ARCHIVE_IMPORTER_USER_AGENT", "").strip()
+    return override or _DEFAULT_USER_AGENT
 
 
 @dataclass
@@ -175,9 +214,16 @@ class AutoPublishPolicy:
     # (tagged people, location metadata, memory headers), has fewer than
     # this many remaining characters. Set high enough to catch typical
     # FB auto-posts without genuine user captions.
-    min_fb_auto_remainder_chars: int = 20
+    min_fb_auto_remainder_chars: int = 50
     own_domains: tuple[str, ...] = DEFAULT_OWN_DOMAINS
     own_github_orgs: tuple[str, ...] = DEFAULT_OWN_GITHUB_ORGS
+    # Display names of the archive owner(s) as they appear in Facebook
+    # auto-generated attribution lines (e.g. "Anant Shrivastava added a new
+    # photo"). When set, lines that *start* with one of these names followed
+    # by a FB action verb are treated as boilerplate and stripped before
+    # measuring the remainder. Leave empty to disable name-based stripping —
+    # this keeps the theme generic; configure via ``takeouts/auto-publish.yml``.
+    fb_owner_names: tuple[str, ...] = ()
 
 
 def load_auto_publish_policy() -> AutoPublishPolicy:
@@ -236,6 +282,7 @@ def load_auto_publish_policy() -> AutoPublishPolicy:
         ),
         own_domains=_str_tuple("own_domains", defaults.own_domains),
         own_github_orgs=_str_tuple("own_github_orgs", defaults.own_github_orgs),
+        fb_owner_names=_str_tuple("fb_owner_names", defaults.fb_owner_names),
     )
 
 
@@ -292,27 +339,63 @@ _FB_BOILERPLATE_LINE_RES: tuple[re.Pattern[str], ...] = (
         r"^(?:updated\s+)?\d{1,2}\s+\w+\s+\d{4}(?:,?\s*\d{1,2}:\d{2}(?:\s*[AP]M)?)?$",
         re.IGNORECASE,
     ),
-    re.compile(
-        r"^anant shrivastava\s+(?:added|shared|updated|wrote|posted|followed|"
-        r"recommends|likes|created|was tagged)",
-        re.IGNORECASE,
-    ),
 )
 
 _FB_PLACE_HEADER_RE = re.compile(r"^(?:place|location):\s*$", re.IGNORECASE)
 
+# Facebook action verbs used in auto-attribution lines of the form
+# "<Owner Name> added a new photo" / "shared a memory" / etc. Combined
+# dynamically with the configured ``fb_owner_names`` to build a per-owner
+# boilerplate pattern — see :func:`_build_fb_owner_attribution_re`.
+_FB_OWNER_ATTRIBUTION_VERBS = (
+    "added",
+    "shared",
+    "updated",
+    "wrote",
+    "posted",
+    "followed",
+    "recommends",
+    "likes",
+    "created",
+    "was tagged",
+)
 
-def _strip_fb_boilerplate_body(body: str) -> str:
+
+def _build_fb_owner_attribution_re(
+    owner_names: tuple[str, ...],
+) -> re.Pattern[str] | None:
+    """Compile a regex matching FB attribution lines for the given names.
+
+    Returns ``None`` when ``owner_names`` is empty so callers can cheaply
+    short-circuit. Names are escaped and joined as alternations, so input
+    like ``("Anant Shrivastava", "Cyfinoid Research")`` produces a pattern
+    that matches either name followed by a FB action verb.
+    """
+    names = tuple(n.strip() for n in owner_names if n and n.strip())
+    if not names:
+        return None
+    name_alt = "|".join(re.escape(n) for n in names)
+    verb_alt = "|".join(_FB_OWNER_ATTRIBUTION_VERBS)
+    return re.compile(rf"^(?:{name_alt})\s+(?:{verb_alt})", re.IGNORECASE)
+
+
+def _strip_fb_boilerplate_body(
+    body: str, *, owner_names: tuple[str, ...] = ()
+) -> str:
     """Remove FB auto-generated metadata lines from ``body``.
 
     The remaining text approximates what the user actually wrote. Lines
     matching any of :data:`_FB_BOILERPLATE_LINE_RES` are dropped; a
     ``Place:`` / ``Location:`` header line also consumes the next non-blank
-    line (the place-name value). Used by :func:`_is_fb_auto_post` to decide
-    whether a FB post is pure system-generated content.
+    line (the place-name value). When ``owner_names`` is non-empty, lines
+    starting with one of those names followed by an FB action verb are
+    also dropped (FB attribution echoes such as "Alice Smith added a new
+    photo"). Used by :func:`_is_fb_auto_post` to decide whether a FB post
+    is pure system-generated content.
     """
     if not body:
         return ""
+    owner_re = _build_fb_owner_attribution_re(owner_names)
     kept: list[str] = []
     skip_place_value = False
     for line in body.splitlines():
@@ -327,26 +410,33 @@ def _strip_fb_boilerplate_body(body: str) -> str:
             continue
         if any(rx.match(s) for rx in _FB_BOILERPLATE_LINE_RES):
             continue
+        if owner_re is not None and owner_re.match(s):
+            continue
         kept.append(s)
     return "\n".join(kept).strip()
 
 
 def _is_fb_auto_post(
-    title: str, body: str, *, min_remainder_chars: int
+    title: str,
+    body: str,
+    *,
+    min_remainder_chars: int,
+    owner_names: tuple[str, ...] = (),
 ) -> tuple[bool, str]:
     """Return ``(is_auto, reason)`` for a possibly auto-generated FB post.
 
     A post qualifies when its ``title`` matches an FB system-generated
     pattern (:data:`_FB_AUTO_TITLE_RE`) AND the body, after stripping FB
-    boilerplate lines, has fewer than ``min_remainder_chars`` visible
-    characters. Those posts are typically photo uploads with no real
-    caption — just "You tagged X, Y" and optional location metadata.
+    boilerplate lines (including owner-name attribution echoes for any
+    configured ``owner_names``), has fewer than ``min_remainder_chars``
+    visible characters. Those posts are typically photo uploads with no
+    real caption — just "You tagged X, Y" and optional location metadata.
     """
     if not title:
         return False, ""
     if not _FB_AUTO_TITLE_RE.search(title):
         return False, ""
-    remainder = _strip_fb_boilerplate_body(body or "")
+    remainder = _strip_fb_boilerplate_body(body or "", owner_names=owner_names)
     remainder_visible = _visible_text(remainder)
     if len(remainder_visible) >= min_remainder_chars:
         return False, ""
@@ -400,6 +490,7 @@ def evaluate_auto_publish(
             record.title,
             record.body,
             min_remainder_chars=policy.min_fb_auto_remainder_chars,
+            owner_names=policy.fb_owner_names,
         )
         if is_auto:
             return False, reason
@@ -479,6 +570,36 @@ def content_hash(record: ArchiveRecord) -> str:
 def bundle_dir(record: ArchiveRecord) -> Path:
     """Return the Hugo content bundle directory for this record."""
     return CONTENT_ROOT / record.platform / record.post_id
+
+
+def media_storage(record: ArchiveRecord) -> tuple[Path, str]:
+    """Return ``(target_dir, url_prefix)`` for where to place media files.
+
+    For platforms listed in :data:`STATIC_MEDIA_PLATFORMS` the media is
+    written under ``<site>/static/images/archive/<platform>/<slug>/`` and
+    referenced from frontmatter as an absolute URL ``/images/archive/...``.
+    For every other platform the media lives alongside ``index.md`` inside
+    the Hugo page bundle and the frontmatter ``file:`` value is just the
+    basename (resolved at render time via ``.Resources.GetMatch``).
+
+    The returned ``url_prefix`` is the empty string in bundle mode and a
+    path ending in ``/`` in static mode, so callers can construct the final
+    frontmatter ``file`` value with a simple concatenation::
+
+        file_ref = url_prefix + basename if url_prefix else basename
+    """
+    if record.platform in STATIC_MEDIA_PLATFORMS:
+        target = (
+            SITE_ROOT
+            / "static"
+            / "images"
+            / "archive"
+            / record.platform
+            / record.post_id
+        )
+        prefix = f"/images/archive/{record.platform}/{record.post_id}/"
+        return target, prefix
+    return bundle_dir(record), ""
 
 
 def _load_manifest(bundle: Path) -> dict | None:
@@ -610,10 +731,16 @@ def write_bundle(
 
     bundle.mkdir(parents=True, exist_ok=True)
 
-    # Remove stale media from a previous import
+    media_dir, media_url_prefix = media_storage(record)
+
+    # Remove stale media from a previous import. ``media_files`` in the
+    # manifest stores basenames; the directory they lived in is whatever
+    # ``media_storage`` returns today. (This means platforms that migrate
+    # between bundle-mode and static-mode will orphan the old files once —
+    # a dedicated migration script is the right place to sweep those.)
     if manifest:
         for old in manifest.get("media_files", []):
-            old_path = bundle / old
+            old_path = media_dir / old
             if old_path.exists():
                 try:
                     old_path.unlink()
@@ -624,18 +751,23 @@ def write_bundle(
     media_files: list[str] = []
     for idx, media in enumerate(record.media):
         target_name = media.target_basename(idx)
-        target_path = bundle / target_name
+        if media_url_prefix:
+            media_dir.mkdir(parents=True, exist_ok=True)
+        target_path = media_dir / target_name
         shutil.copy2(media.src_path, target_path)
         media_files.append(target_name)
-        ref: dict = {"type": media.kind, "file": target_name}
+        file_ref = media_url_prefix + target_name if media_url_prefix else target_name
+        ref: dict = {"type": media.kind, "file": file_ref}
         if media.alt:
             ref["alt"] = media.alt
         poster_name = media.poster_basename(idx)
         if poster_name and media.poster_src and media.poster_src.exists():
-            poster_path = bundle / poster_name
+            poster_path = media_dir / poster_name
             shutil.copy2(media.poster_src, poster_path)
             media_files.append(poster_name)
-            ref["poster"] = poster_name
+            ref["poster"] = (
+                media_url_prefix + poster_name if media_url_prefix else poster_name
+            )
         media_refs.append(ref)
 
     fm_yaml = _frontmatter_yaml(
@@ -806,10 +938,7 @@ def _download_inline_image(
     from urllib.request import Request, urlopen
 
     headers = {
-        "User-Agent": (
-            "Mozilla/5.0 (compatible; anantshri-archive-importer/1.0; "
-            "+https://anantshri.info/)"
-        ),
+        "User-Agent": _user_agent(),
         "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
     }
     req = Request(url, headers=headers)
@@ -979,6 +1108,229 @@ def localize_inline_images(
 
     new_body = _MARKDOWN_IMAGE_RE.sub(_sub, body_md)
     return new_body, stats
+
+
+# ----------------------------------------------------------------------------
+# lnkd.in short-URL resolution
+# ----------------------------------------------------------------------------
+#
+# LinkedIn routinely wraps outbound links in ``https://lnkd.in/<code>`` short
+# URLs — both in posts the user composed inside the LinkedIn UI and in ones
+# copied by LinkedIn on their behalf. Once captured in the archive those
+# wrappers are (a) opaque (no hint of the real destination), (b) dependent on
+# LinkedIn's short-URL resolver staying online forever, and (c) tracked by
+# LinkedIn every time someone visits the archived page. The helpers below
+# resolve each short URL once to its canonical target and rewrite the body in
+# place so archived posts link directly to the real destination.
+#
+# Resolutions are cached in ``takeouts/lnkd-in-cache.json`` (a flat
+# ``{short_url: target_url}`` JSON map). The cache is consulted and updated
+# incrementally so re-runs don't re-hit the network and interrupted runs still
+# keep progress. The ``takeouts/`` folder is gitignored, so the cache is a
+# local-machine artefact; bundle bodies persist the resolved URLs directly, so
+# resolutions survive across clones even without the cache.
+
+SHORT_URL_CACHE_FILENAME = "lnkd-in-cache.json"
+
+# Match ``https://lnkd.in/<code>`` with optional trailing slug or query; we
+# drop common trailing punctuation (``.,;:!?)]}``) from the captured URL in
+# :func:`_strip_trailing_punct` so punctuation at the end of a sentence isn't
+# baked into the resolved link.
+_LNKD_IN_URL_RE = re.compile(
+    r"https?://lnkd\.in/[A-Za-z0-9_\-/?&=%#.~+]+",
+    re.IGNORECASE,
+)
+_TRAILING_PUNCT_RE = re.compile(r"[.,;:!?)\]}>'\"]+$")
+
+# Patterns used to dig the real destination out of a short-URL interstitial
+# page that refuses to HTTP-redirect (LinkedIn sometimes returns an HTML
+# "External link" warning page instead of a 301).
+_META_REFRESH_URL_RE = re.compile(
+    r"<meta[^>]+http-equiv\s*=\s*['\"]?refresh['\"]?[^>]+url\s*=\s*([^'\">]+)",
+    re.IGNORECASE,
+)
+_JS_LOCATION_URL_RE = re.compile(
+    r"(?:window\.location(?:\.href)?|document\.location)"
+    r"\s*=\s*['\"]([^'\"]+)['\"]",
+    re.IGNORECASE,
+)
+# Modern LinkedIn interstitial (``This link will take you to a page that's not
+# on LinkedIn``) exposes the destination URL as the ``href`` of an ``<a>`` tag
+# carrying ``data-tracking-control-name="external_url_click"``. The attribute
+# order isn't fixed — match either ordering.
+_LINKEDIN_INTERSTITIAL_RE = re.compile(
+    r"<a\b[^>]*?"
+    r"(?:"
+    r"data-tracking-control-name\s*=\s*['\"]external_url_click['\"][^>]*?"
+    r"href\s*=\s*['\"]([^'\"]+)['\"]"
+    r"|"
+    r"href\s*=\s*['\"]([^'\"]+)['\"][^>]*?"
+    r"data-tracking-control-name\s*=\s*['\"]external_url_click['\"]"
+    r")",
+    re.IGNORECASE | re.DOTALL,
+)
+
+_short_url_cache: dict[str, str] | None = None
+_short_url_cache_dirty = False
+
+
+def _load_short_url_cache() -> dict[str, str]:
+    """Read ``takeouts/lnkd-in-cache.json`` (or return empty)."""
+    path = TAKEOUTS_ROOT / SHORT_URL_CACHE_FILENAME
+    if not path.exists():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    return {k: v for k, v in data.items() if isinstance(k, str) and isinstance(v, str)}
+
+
+def _short_url_cache_get() -> dict[str, str]:
+    global _short_url_cache
+    if _short_url_cache is None:
+        _short_url_cache = _load_short_url_cache()
+    return _short_url_cache
+
+
+def save_short_url_cache() -> None:
+    """Persist the in-memory short-URL cache to disk if it has been updated.
+
+    Importers should call this at the end of a run (or periodically) so
+    resolved URLs survive across invocations.
+    """
+    global _short_url_cache_dirty
+    if _short_url_cache is None or not _short_url_cache_dirty:
+        return
+    path = TAKEOUTS_ROOT / SHORT_URL_CACHE_FILENAME
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(_short_url_cache, indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
+    _short_url_cache_dirty = False
+
+
+def _strip_trailing_punct(url: str) -> tuple[str, str]:
+    m = _TRAILING_PUNCT_RE.search(url)
+    if not m:
+        return url, ""
+    return url[: m.start()], url[m.start():]
+
+
+def _fetch_final_url(url: str, *, timeout: float = 20.0) -> tuple[str | None, str | None]:
+    """Follow ``lnkd.in`` redirects and return the final destination URL.
+
+    Returns ``(resolved_url, None)`` on success or ``(None, reason)`` on
+    failure. If the short-URL resolver returns an HTML interstitial instead
+    of a redirect, the response body is scanned for a meta-refresh or a
+    ``window.location`` assignment to recover the real destination.
+    """
+    from urllib.error import HTTPError, URLError
+    from urllib.request import Request, urlopen
+
+    headers = {
+        "User-Agent": _user_agent(),
+        "Accept": (
+            "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        ),
+        "Accept-Language": "en-US,en;q=0.8",
+    }
+    req = Request(url, headers=headers, method="GET")
+    try:
+        with urlopen(req, timeout=timeout) as resp:
+            final = resp.geturl() or url
+            status = getattr(resp, "status", 200)
+            if status >= 400:
+                return None, f"HTTP {status}"
+            if "lnkd.in" not in final.lower():
+                return final, None
+            # urllib followed redirects but still landed on lnkd.in — scan the
+            # interstitial HTML for a meta-refresh / JS redirect target.
+            try:
+                raw = resp.read(131_072)
+            except (TimeoutError, OSError) as exc:
+                return None, f"IO error while reading interstitial: {exc}"
+    except HTTPError as exc:
+        return None, f"HTTP {exc.code}"
+    except URLError as exc:
+        return None, f"URL error: {getattr(exc, 'reason', exc)}"
+    except (TimeoutError, OSError) as exc:
+        return None, f"IO error: {exc}"
+
+    text = raw.decode("utf-8", errors="replace") if raw else ""
+    m = _LINKEDIN_INTERSTITIAL_RE.search(text)
+    if m:
+        candidate = (m.group(1) or m.group(2) or "").strip()
+        if candidate and "lnkd.in" not in candidate.lower():
+            return candidate, None
+    for pattern in (_META_REFRESH_URL_RE, _JS_LOCATION_URL_RE):
+        m = pattern.search(text)
+        if not m:
+            continue
+        candidate = m.group(1).strip().strip("'\"")
+        if candidate and "lnkd.in" not in candidate.lower():
+            return candidate, None
+    return None, "interstitial with no recoverable target"
+
+
+def resolve_short_urls(text: str, *, dry_run: bool = False) -> tuple[str, dict]:
+    """Rewrite every ``https://lnkd.in/<code>`` in ``text`` to its final URL.
+
+    Cached resolutions (``takeouts/lnkd-in-cache.json``) are consulted first;
+    only unseen short URLs hit the network. Cached state is updated in memory
+    and persisted on :func:`save_short_url_cache`. Unresolvable URLs are left
+    verbatim so subsequent runs can retry them.
+
+    Returns ``(new_text, stats)`` where ``stats`` has::
+
+        {
+          "resolved":  int,            # freshly fetched and cached this call
+          "cached":    int,            # served from the persistent cache
+          "rewritten": int,            # total ``lnkd.in`` URLs replaced
+          "failed":    [(url, reason), ...],
+        }
+
+    ``dry_run=True`` still applies any cache hits (so the returned text is
+    accurate) but skips network lookups for uncached URLs.
+    """
+    global _short_url_cache_dirty
+
+    stats: dict = {
+        "resolved": 0,
+        "cached": 0,
+        "rewritten": 0,
+        "failed": [],
+    }
+    if not text or "lnkd.in" not in text.lower():
+        return text, stats
+
+    cache = _short_url_cache_get()
+
+    def _sub(match: re.Match[str]) -> str:
+        full = match.group(0)
+        short_url, trailing = _strip_trailing_punct(full)
+        if short_url in cache:
+            stats["cached"] += 1
+            stats["rewritten"] += 1
+            return cache[short_url] + trailing
+        if dry_run:
+            return full
+        resolved, err = _fetch_final_url(short_url)
+        if resolved is None:
+            stats["failed"].append((short_url, err or "unknown error"))
+            return full
+        cache[short_url] = resolved
+        stats["resolved"] += 1
+        stats["rewritten"] += 1
+        return resolved + trailing
+
+    new_text = _LNKD_IN_URL_RE.sub(_sub, text)
+    if stats["resolved"]:
+        _short_url_cache_dirty = True
+    return new_text, stats
 
 
 def load_exclude_set() -> set[str]:

@@ -63,6 +63,8 @@ from _archive_common import (  # noqa: E402
     load_auto_publish_policy,
     load_exclude_set,
     parse_utc,
+    resolve_short_urls,
+    save_short_url_cache,
     write_bundle,
 )
 
@@ -333,6 +335,8 @@ def _build_records(
     shortcode_map: dict[str, str],
     exclude_ids: set[str],
     draft: bool,
+    resolve_short: bool,
+    dry_run: bool,
 ) -> Iterable[ArchiveRecord]:
     for post in posts:
         timestamp = int(post.get("creation_timestamp") or 0)
@@ -357,6 +361,18 @@ def _build_records(
         )
         if post_id in exclude_ids:
             continue
+        if resolve_short and body and "lnkd.in" in body.lower():
+            body, s_stats = resolve_short_urls(body, dry_run=dry_run)
+            if s_stats["rewritten"] or s_stats["failed"]:
+                failed_count = len(s_stats["failed"])
+                print(
+                    f"  {post_id}: lnkd.in "
+                    f"resolved={s_stats['resolved']} "
+                    f"cached={s_stats['cached']} "
+                    f"failed={failed_count}"
+                )
+                for short, reason in s_stats["failed"]:
+                    print(f"    ! could not resolve {short} ({reason})")
         yield ArchiveRecord(
             platform="instagram",
             post_id=post_id,
@@ -399,6 +415,18 @@ def main() -> int:
         ),
     )
     parser.add_argument("--limit", type=int, default=0)
+    parser.add_argument(
+        "--no-resolve-short-urls",
+        dest="resolve_short_urls",
+        action="store_false",
+        default=True,
+        help=(
+            "Do not resolve https://lnkd.in/ short URLs found in Instagram "
+            "captions. By default the importer follows each short URL once "
+            "and rewrites the body to reference the real link, caching "
+            "results in takeouts/lnkd-in-cache.json."
+        ),
+    )
     args = parser.parse_args()
 
     if args.publish and args.auto_publish:
@@ -442,6 +470,8 @@ def main() -> int:
                 shortcode_map=shortcode_map,
                 exclude_ids=exclude_ids,
                 draft=not args.publish,
+                resolve_short=args.resolve_short_urls,
+                dry_run=args.dry_run,
             )
         )
 
@@ -475,6 +505,7 @@ def main() -> int:
 
         print(f"instagram import: {stats.summary()}")
     finally:
+        save_short_url_cache()
         if tmp is not None:
             shutil.rmtree(tmp, ignore_errors=True)
     return 0

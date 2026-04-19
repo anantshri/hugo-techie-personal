@@ -91,6 +91,9 @@ import re
 import shutil
 import sys
 import tempfile
+import time
+import urllib.error
+import urllib.request
 import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
@@ -110,6 +113,8 @@ from _archive_common import (  # noqa: E402
     load_exclude_set,
     localize_inline_images,
     parse_utc,
+    resolve_short_urls,
+    save_short_url_cache,
     slugify,
     write_bundle,
 )
@@ -117,6 +122,24 @@ from _archive_common import (  # noqa: E402
 SHARES_CSV = "Shares.csv"
 INSTANT_REPOSTS_CSV = "InstantReposts.csv"
 RESHARE_MAP_FILENAME = "linkedin-reshare-map.json"
+RESHARE_CACHE_FILENAME = ".linkedin-reshare-cache.json"
+# Public embed endpoint that reveals the parent URN of a reshare inside a
+# ``data-test-id="feed-reshare-content"`` wrapper. Works without authentication
+# for posts whose author's profile allows public view (virtually all).
+EMBED_URL_TEMPLATE = (
+    "https://www.linkedin.com/embed/feed/update/urn:li:{urn_type}:{urn_id}"
+)
+FEED_RESHARE_RE = re.compile(
+    r'data-test-id="feed-reshare-content"[^>]*'
+    r'data-activity-urn="urn:li:activity:(\d+)"',
+    re.IGNORECASE | re.DOTALL,
+)
+SCRAPE_USER_AGENT = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_0) AppleWebKit/605.1.15 "
+    "(KHTML, like Gecko) Version/17.0 Safari/605.1.15"
+)
+SCRAPE_REQUEST_DELAY_S = 0.5
+SCRAPE_REQUEST_TIMEOUT_S = 20.0
 # LinkedIn feed posts ship under several URN types: ``activity`` (legacy),
 # ``share`` (most common), ``ugcPost`` (newer user-generated content: polls,
 # multi-image carousels, etc.) and ``groupPost`` (posts inside a group, whose
@@ -286,6 +309,191 @@ def _load_reshare_map() -> dict[str, str]:
     return out
 
 
+def _load_reshare_cache() -> dict[str, dict]:
+    """Read ``takeouts/.linkedin-reshare-cache.json`` if present.
+
+    The cache memoises results from the public-embed scrape. Structure::
+
+        {
+          "share-7450442243523514368": {
+            "parent_url": "https://www.linkedin.com/feed/update/urn:li:activity:74504.../",
+            "fetched_at": "2026-04-19T12:00:00+00:00"
+          },
+          "share-1234": {
+            "parent_url": null,   # scraped, not a reshare (original post)
+            "fetched_at": "..."
+          }
+        }
+
+    Missing file or malformed JSON silently yield an empty cache.
+    """
+    path = TAKEOUTS_ROOT / RESHARE_CACHE_FILENAME
+    if not path.exists():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f"  ! ignoring malformed {RESHARE_CACHE_FILENAME}: {exc}")
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    return {
+        k: v
+        for k, v in data.items()
+        if isinstance(k, str) and isinstance(v, dict)
+    }
+
+
+def _save_reshare_cache(cache: dict[str, dict]) -> None:
+    path = TAKEOUTS_ROOT / RESHARE_CACHE_FILENAME
+    try:
+        TAKEOUTS_ROOT.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            json.dumps(cache, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+    except OSError as exc:
+        print(f"  ! could not save {RESHARE_CACHE_FILENAME}: {exc}")
+
+
+def _scrape_reshare_parent(urn_type: str, urn_id: str) -> str | None | bool:
+    """Fetch the public LinkedIn embed for a post and return its parent URL.
+
+    Returns:
+        * a canonical parent URL (``https://www.linkedin.com/feed/update/...``)
+          when the embed HTML contains a ``feed-reshare-content`` block.
+        * ``None`` when the embed loaded successfully with no reshare block,
+          or when LinkedIn returned 404/410 (post is gone or not publicly
+          viewable). Callers should cache this as "not a recoverable
+          reshare".
+        * ``False`` on transient network errors (timeouts, 5xx, DNS, etc.).
+          The caller should *not* cache these so a subsequent run can retry.
+    """
+    url = EMBED_URL_TEMPLATE.format(urn_type=urn_type, urn_id=urn_id)
+    req = urllib.request.Request(
+        url,
+        headers={
+            "User-Agent": SCRAPE_USER_AGENT,
+            "Accept": "text/html,application/xhtml+xml",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=SCRAPE_REQUEST_TIMEOUT_S) as resp:
+            if resp.status != 200:
+                return False
+            html = resp.read().decode("utf-8", errors="replace")
+    except urllib.error.HTTPError as exc:
+        if exc.code in (404, 410):
+            return None
+        return False
+    except (urllib.error.URLError, TimeoutError, OSError):
+        return False
+    m = FEED_RESHARE_RE.search(html)
+    if not m:
+        return None
+    return f"https://www.linkedin.com/feed/update/urn:li:activity:{m.group(1)}/"
+
+
+def _enrich_reshare_parents(
+    records: list[ArchiveRecord],
+    *,
+    manual_map: dict[str, str],
+    scrape: bool,
+    refresh_cache: bool,
+    dry_run: bool,
+) -> None:
+    """Populate ``extra.reshare_of_url`` on share records that lack it.
+
+    Priority:
+      1. Existing value (set from the manual map at record-build time). If
+         ``refresh_cache`` is true, manual-map values still win — they are the
+         user's explicit override.
+      2. On-disk scrape cache (``takeouts/.linkedin-reshare-cache.json``).
+      3. Fresh HTTP scrape of LinkedIn's public embed endpoint.
+
+    Only feed-share records are processed. InstantRepost records already have
+    a reliable ``reshare_of_url`` from the CSV, Pulse articles have no URN
+    context, and records already annotated by the manual map are left alone.
+    """
+    candidates: list[ArchiveRecord] = []
+    for rec in records:
+        if rec.post_id.startswith("repost-"):
+            continue
+        urn_type = rec.extra.get("urn_type")
+        urn_id = rec.extra.get("urn_id")
+        if not urn_type or not urn_id:
+            continue
+        if rec.extra.get("reshare_of_url"):
+            # Manual map already supplied a value; respect it.
+            continue
+        candidates.append(rec)
+
+    if not candidates:
+        return
+
+    cache = _load_reshare_cache()
+    cache_hits = 0
+    scraped_reshare = 0
+    scraped_original = 0
+    scrape_errors = 0
+    dirty = False
+
+    for idx, rec in enumerate(candidates, start=1):
+        key = rec.post_id.lower()
+        urn_type = rec.extra["urn_type"]
+        urn_id = rec.extra["urn_id"]
+
+        # Manual map wins even here (override scraped cache entries).
+        manual = manual_map.get(key)
+        if manual:
+            rec.extra["reshare_of_url"] = manual
+            continue
+
+        if not refresh_cache and key in cache:
+            cached = cache[key]
+            cache_hits += 1
+            parent = cached.get("parent_url")
+            if parent:
+                rec.extra["reshare_of_url"] = parent
+            continue
+
+        if not scrape:
+            continue
+
+        parent = _scrape_reshare_parent(urn_type, urn_id)
+        if parent is False:
+            scrape_errors += 1
+            # Don't cache failures so we retry next run.
+            continue
+        cache[key] = {
+            "parent_url": parent,
+            "fetched_at": datetime.now(timezone.utc).isoformat(),
+        }
+        dirty = True
+        if parent:
+            rec.extra["reshare_of_url"] = parent
+            scraped_reshare += 1
+        else:
+            scraped_original += 1
+        if idx % 20 == 0 or idx == len(candidates):
+            print(
+                f"  reshare scrape: {idx}/{len(candidates)} "
+                f"(reshare={scraped_reshare} original={scraped_original} "
+                f"error={scrape_errors})"
+            )
+        time.sleep(SCRAPE_REQUEST_DELAY_S)
+
+    if dirty and not dry_run:
+        _save_reshare_cache(cache)
+
+    print(
+        "reshare enrichment: "
+        f"candidates={len(candidates)} cache_hits={cache_hits} "
+        f"scraped_reshare={scraped_reshare} scraped_original={scraped_original} "
+        f"scrape_errors={scrape_errors}"
+    )
+
+
 def _resolve_media_files(media_value: str, media_root: Path | None) -> list[Path]:
     if not media_value or not media_root:
         return []
@@ -380,6 +588,7 @@ def _build_article_records(
     user: str,
     exclude_ids: set[str],
     draft: bool,
+    resolve_short: bool,
     dry_run: bool = False,
 ) -> Iterable[ArchiveRecord]:
     from bs4 import BeautifulSoup
@@ -457,6 +666,12 @@ def _build_article_records(
                 )
                 for url, reason in img_stats["failed"]:
                     print(f"    ! failed: {url} ({reason})")
+            body_md = _maybe_resolve_short_urls(
+                body_md,
+                enabled=resolve_short,
+                dry_run=dry_run,
+                label=html_path.name,
+            )
 
         if pulse_href:
             original_url = pulse_href if pulse_href.endswith("/") else pulse_href + "/"
@@ -547,6 +762,35 @@ def _clean_shares_csv_line_quotes(body: str) -> str:
     return "\n".join(cleaned)
 
 
+def _maybe_resolve_short_urls(
+    text: str,
+    *,
+    enabled: bool,
+    dry_run: bool,
+    label: str,
+) -> str:
+    """Resolve ``lnkd.in`` short URLs in ``text`` and log a one-liner per post.
+
+    Thin wrapper around :func:`_archive_common.resolve_short_urls` that only
+    prints a progress line when there's actually something to report, so the
+    common case (no ``lnkd.in`` URLs in this post) stays quiet.
+    """
+    if not enabled or not text or "lnkd.in" not in text.lower():
+        return text
+    new_text, stats = resolve_short_urls(text, dry_run=dry_run)
+    if stats["rewritten"] or stats["failed"]:
+        failed_count = len(stats["failed"])
+        print(
+            f"  {label}: lnkd.in "
+            f"resolved={stats['resolved']} "
+            f"cached={stats['cached']} "
+            f"failed={failed_count}"
+        )
+        for short, reason in stats["failed"]:
+            print(f"    ! could not resolve {short} ({reason})")
+    return new_text
+
+
 def _build_records(
     rows: Iterable[dict],
     *,
@@ -555,6 +799,8 @@ def _build_records(
     exclude_ids: set[str],
     draft: bool,
     reshare_map: dict[str, str],
+    resolve_short: bool,
+    dry_run: bool,
 ) -> Iterable[ArchiveRecord]:
     for row in rows:
         share_link = row.get("ShareLink") or row.get("Share Link") or ""
@@ -587,6 +833,21 @@ def _build_records(
         ).strip()
         body_parts = [p for p in (body_raw, shared_url) if p]
         body = "\n\n".join(body_parts)
+        body = _maybe_resolve_short_urls(
+            body,
+            enabled=resolve_short,
+            dry_run=dry_run,
+            label=f"{urn_type.lower()}-{urn_id}",
+        )
+        if shared_url and resolve_short and "lnkd.in" in shared_url.lower():
+            # Also resolve the ``SharedUrl`` we stash into ``extra.shared_url``
+            # so the frontmatter field doesn't keep a dead/obfuscated
+            # ``lnkd.in`` link when the body version got rewritten to the real
+            # destination above.
+            resolved_shared, _stats = resolve_short_urls(
+                shared_url, dry_run=dry_run
+            )
+            shared_url = resolved_shared
 
         media_value = row.get("MediaUrl") or row.get("Media Url") or ""
         media_files = _resolve_media_files(media_value, media_root)
@@ -718,6 +979,38 @@ def main() -> int:
         ),
     )
     parser.add_argument("--limit", type=int, default=0)
+    parser.add_argument(
+        "--no-scrape-reshares",
+        action="store_true",
+        default=False,
+        help=(
+            "Skip the public-embed scrape used to recover quote-reshare "
+            "parent URNs. Cached results and the manual map are still "
+            "applied; uncached candidates simply won't get an embed."
+        ),
+    )
+    parser.add_argument(
+        "--refresh-reshare-cache",
+        action="store_true",
+        default=False,
+        help=(
+            "Re-fetch every quote-reshare candidate, ignoring the on-disk "
+            "cache at takeouts/.linkedin-reshare-cache.json. Manual-map "
+            "overrides still win."
+        ),
+    )
+    parser.add_argument(
+        "--no-resolve-short-urls",
+        dest="resolve_short_urls",
+        action="store_false",
+        default=True,
+        help=(
+            "Do not resolve https://lnkd.in/ short URLs to their final "
+            "destinations. By default the importer follows each short URL "
+            "once and rewrites the body to reference the real link, caching "
+            "results in takeouts/lnkd-in-cache.json."
+        ),
+    )
     args = parser.parse_args()
 
     if args.publish and args.auto_publish:
@@ -759,6 +1052,8 @@ def main() -> int:
                         exclude_ids=exclude_ids,
                         draft=not args.publish,
                         reshare_map=reshare_map,
+                        resolve_short=args.resolve_short_urls,
+                        dry_run=args.dry_run,
                     )
                 )
             print(f"found {len(share_records)} linkedin feed posts")
@@ -778,6 +1073,7 @@ def main() -> int:
                     user=args.user,
                     exclude_ids=exclude_ids,
                     draft=not args.publish,
+                    resolve_short=args.resolve_short_urls,
                     dry_run=args.dry_run,
                 )
             )
@@ -805,6 +1101,14 @@ def main() -> int:
                 "no InstantReposts.csv in this archive (Basic export?); "
                 "skipping plain-repost import"
             )
+
+        _enrich_reshare_parents(
+            records,
+            manual_map=reshare_map,
+            scrape=not args.no_scrape_reshares,
+            refresh_cache=args.refresh_reshare_cache,
+            dry_run=args.dry_run,
+        )
 
         policy: AutoPublishPolicy | None = (
             load_auto_publish_policy() if args.auto_publish else None
@@ -836,6 +1140,7 @@ def main() -> int:
 
         print(f"linkedin import: {stats.summary()}")
     finally:
+        save_short_url_cache()
         if tmp is not None:
             shutil.rmtree(tmp, ignore_errors=True)
     return 0
