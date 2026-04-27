@@ -229,12 +229,19 @@ hr {
    HEADER & NAVIGATION
    =============================================== */
 
-.site-header {
-  background-color: rgba(255, 255, 255, 0.95);
-  border-bottom: 1px solid var(--color-border);
+/* .site-top-bar wraps .site-header + the optional .sponsor-banner so they
+   share a single sticky scroll position. The site-header keeps its visual
+   styling (background, border, blur) but the sticky positioning lives on
+   the wrapper so the sponsor banner pins together with the menu. */
+.site-top-bar {
   position: sticky;
   top: 0;
   z-index: 50;
+}
+
+.site-header {
+  background-color: rgba(255, 255, 255, 0.95);
+  border-bottom: 1px solid var(--color-border);
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
 }
@@ -3601,14 +3608,156 @@ html {
   color: white;
 }
 
-.sponsor-coffee {
+/* Legacy alias from when the partial only knew GitHub + Buy Me a Coffee. */
+.sponsor-coffee,
+.sponsor-buy_me_a_coffee {
   background: #ffdd00;
   color: #000000;
 }
 
-.sponsor-coffee:hover {
+.sponsor-coffee:hover,
+.sponsor-buy_me_a_coffee:hover {
   background: #ffea4d;
   color: #000000;
+}
+
+.sponsor-patreon {
+  background: #ff424d;
+  color: white;
+}
+
+.sponsor-patreon:hover {
+  background: #ff5d66;
+  color: white;
+}
+
+.sponsor-ko_fi {
+  background: #ff5e5b;
+  color: white;
+}
+
+.sponsor-ko_fi:hover {
+  background: #ff7775;
+  color: white;
+}
+
+.sponsor-liberapay {
+  background: #f6c915;
+  color: #1a1a1a;
+}
+
+.sponsor-liberapay:hover {
+  background: #ffd534;
+  color: #1a1a1a;
+}
+
+.sponsor-open_collective {
+  background: #297eff;
+  color: white;
+}
+
+.sponsor-open_collective:hover {
+  background: #4a93ff;
+  color: white;
+}
+
+.sponsor-tidelift {
+  background: #f6914d;
+  color: white;
+}
+
+.sponsor-tidelift:hover {
+  background: #ffa56a;
+  color: white;
+}
+
+.sponsor-polar {
+  background: #0062ff;
+  color: white;
+}
+
+.sponsor-polar:hover {
+  background: #2a7bff;
+  color: white;
+}
+
+.sponsor-thanks_dev {
+  background: #2d2d2d;
+  color: white;
+}
+
+.sponsor-thanks_dev:hover {
+  background: #4a4a4a;
+  color: white;
+}
+
+.sponsor-custom {
+  background: var(--color-primary, #0066cc);
+  color: white;
+}
+
+.sponsor-custom:hover {
+  background: var(--color-primary-hover, #2a7bff);
+  color: white;
+}
+
+/* Spacing modifier when rendered on the homepage under the social icons. */
+.support-buttons-home .support-buttons {
+  margin-top: 1rem;
+}
+
+/* Compact variant used inside the sticky sponsor banner. */
+.support-buttons-compact {
+  margin: 0;
+  gap: 0.5rem;
+}
+
+.support-buttons-compact .sponsor-btn {
+  padding: 0.35rem 0.85rem;
+  font-size: 0.8rem;
+}
+
+/* Sticky sponsor banner (just below the menu). The wrapper .site-top-bar
+   handles sticky positioning; this block supplies the strip styling. */
+.sponsor-banner {
+  background-color: rgba(255, 255, 255, 0.95);
+  border-bottom: 1px solid var(--color-border);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+@media (prefers-color-scheme: dark) {
+  .sponsor-banner {
+    background-color: rgba(15, 23, 42, 0.95);
+  }
+}
+
+.sponsor-banner-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.4rem 1rem;
+}
+
+.sponsor-banner-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-secondary, #475569);
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .sponsor-banner-label {
+    display: none;
+  }
+  .support-buttons-compact .sponsor-label {
+    display: none;
+  }
+  .support-buttons-compact .sponsor-btn {
+    padding: 0.35rem 0.65rem;
+  }
 }
 
 /* Section Titles (shared across layouts) */

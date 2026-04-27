@@ -8,7 +8,9 @@
 
 {{ .Content }}
 
+{{ if site.Params.sponsors }}{{ if site.Params.sponsors.show_on_projects | default true }}
 {{ partial "support-buttons.html" . }}
+{{ end }}{{ end }}
 
 {{ $pages := where .Pages "Section" "!=" "" }}
 {{ if .IsHome }}

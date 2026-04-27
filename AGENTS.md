@@ -95,6 +95,7 @@ When in doubt, start with `bootstrap-portfolio` — it delegates to the other sk
 - `{{% oembed url="https://…" %}}` — videos, slides, social posts. Always use the full `https://` URL, never a relative or localhost URL (Hugo can't fetch from itself at build time).
 - `{{< notice warning "Title" >}}…{{< /notice >}}` — styled callouts: `warning`, `info`, `tip`, `note`.
 - `{{< badges >}}` and platform-specific badge shortcodes — see [`set-up-badges`](agents/skills/set-up-badges/SKILL.md).
+- `{{< support-buttons >}}` — sponsor / "buy me a coffee" button row. Configure platforms via `[params.sponsors]` in `config.toml` (FUNDING.yml-style schema: `github`, `buy_me_a_coffee`, `patreon`, `ko_fi`, `liberapay`, `open_collective`, `tidelift`, `polar`, `thanks_dev`, `custom`). The same buttons can also appear automatically on the homepage (`params.home.show_sponsor`), above the projects listing (`params.sponsors.show_on_projects`), and as a sticky banner under the menu (`params.sponsors.show_as_banner`). Renders nothing when no platforms are configured. See [`docs/configuration.md`](docs/configuration.md) for the full schema.
 
 ### Shortcodes you must NOT use in content
 

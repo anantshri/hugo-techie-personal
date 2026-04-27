@@ -135,24 +135,33 @@
     {{ partial "head_custom.html" . }}
   </head>
     <body>
-      <header class="site-header">
-        <section class="top-nav">
-          <div>
-            <a href="{{ .Site.BaseURL }}" class="brand">{{ .Site.Title }}</a>
-          </div>
-          <input id="menu-toggle" type="checkbox" />
-          <label class='menu-button-container' for="menu-toggle">
-          <div class='menu-button'></div>
-        </label>
-          <ul class="menu">
-            {{ range .Site.Menus.main }}
-              <li><a href="{{ .URL | relURL }}">{{ .Name }}</a></li>
-            {{ end }}
-          </ul>
-        </section>
-      </header>
+      {{/* .site-top-bar wraps the menu and the optional sponsor banner so that
+           both stick to the top of the viewport together as a single unit. */}}
+      <div class="site-top-bar">
+        <header class="site-header">
+          <section class="top-nav">
+            <div>
+              <a href="{{ .Site.BaseURL }}" class="brand">{{ .Site.Title }}</a>
+            </div>
+            <input id="menu-toggle" type="checkbox" />
+            <label class='menu-button-container' for="menu-toggle">
+            <div class='menu-button'></div>
+          </label>
+            <ul class="menu">
+              {{ range .Site.Menus.main }}
+                <li><a href="{{ .URL | relURL }}">{{ .Name }}</a></li>
+              {{ end }}
+            </ul>
+          </section>
+        </header>
+        {{- with site.Params.sponsors -}}
+          {{- if .show_as_banner -}}
+            {{ partial "sponsor-banner.html" $ }}
+          {{- end -}}
+        {{- end }}
+      </div>
 
-      {{/* Banner section */}}
+      {{/* Site-wide announcement banner (scrolls normally; not the sponsor banner) */}}
       {{ if and (.Site.Params.Banner) (ne .Site.Params.Banner "") }}
       <div class="banner">
         <div class="banner-content">

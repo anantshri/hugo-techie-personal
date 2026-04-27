@@ -1,4 +1,22 @@
 {{ partial "header.html" . }}
+{{/* Homepage display toggles. Page-level frontmatter wins, then site.Params.home, then default true.
+     We use isset (not default) so an explicit `false` is honored. */}}
+{{- $showSocial := true -}}
+{{- if isset .Params "show_social" -}}
+  {{- $showSocial = .Params.show_social -}}
+{{- else -}}
+  {{- with site.Params.home -}}
+    {{- if isset . "show_social" -}}{{- $showSocial = .show_social -}}{{- end -}}
+  {{- end -}}
+{{- end -}}
+{{- $showSponsor := true -}}
+{{- if isset .Params "show_sponsor" -}}
+  {{- $showSponsor = .Params.show_sponsor -}}
+{{- else -}}
+  {{- with site.Params.home -}}
+    {{- if isset . "show_sponsor" -}}{{- $showSponsor = .show_sponsor -}}{{- end -}}
+  {{- end -}}
+{{- end -}}
 <main class="{{ .Site.Params.home_layout | default "home-layout-50-50" }}">
 <div id="mainimg">
 
@@ -6,6 +24,7 @@
     {{ with resources.Get $img_loc }}
       <img decoding="async" class="wp-image-1218" src='{{ .RelPermalink }}' alt="" srcset='{{ (.Resize "x944 q100").RelPermalink }} 944w, {{ (.Resize "x300 q100").RelPermalink }} 250w, {{ (.Resize "x850 q100").RelPermalink }} 768w, {{ (.Resize "x900 q100").RelPermalink }} 854w' sizes="(max-width: 709px) 85vw, (max-width: 909px) 67vw, (max-width: 1362px) 62vw, 840px" loading='lazy' /> 
     {{ end }}
+	{{ if $showSocial }}
 	<div class="social-navigation">
 		{{ range $key, $value := .Params.social_links }}
 			{{ if not (in $key "verify") }}
@@ -25,6 +44,12 @@
 			{{end}}
 		{{- end }}
 	</div>
+	{{ end }}
+	{{ if $showSponsor }}
+	<div class="support-buttons-home">
+		{{ partial "support-buttons.html" . }}
+	</div>
+	{{ end }}
 	<div class="verification-class">
 		{{ range $key, $value := .Params.social_links }}
 			{{ if in $key "verify" }}

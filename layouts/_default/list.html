@@ -8,7 +8,9 @@
 
 {{ .Content }}
 
+{{ if and (eq .Section "projects") (site.Params.sponsors) }}{{ if site.Params.sponsors.show_on_projects | default true }}
 {{ partial "support-buttons.html" . }}
+{{ end }}{{ end }}
 
 <!-- Get all projects from the projects section -->
 {{ $allProjects := where site.RegularPages "Section" "projects" }}

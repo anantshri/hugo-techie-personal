@@ -80,6 +80,35 @@ enableRobotsTXT = true
   hackerone_username = ""
   hackerone_image_dir = "images/HackerOneBadges"
 
+  # Sponsor / support buttons (FUNDING.yml-style schema). Each platform key is
+  # optional; only those with a non-empty value render. The partial renders
+  # nothing when the entire [params.sponsors] block is empty (the default in
+  # this exampleSite). Uncomment and fill in the platforms you use.
+  #
+  # [params.sponsors]
+  #   github = "your-username"            # https://github.com/sponsors/<user>
+  #   buy_me_a_coffee = "your-username"   # https://www.buymeacoffee.com/<user>
+  #   patreon = "your-username"           # https://www.patreon.com/<user>
+  #   ko_fi = "your-username"             # https://ko-fi.com/<user>
+  #   liberapay = "your-username"         # https://liberapay.com/<user>/
+  #   open_collective = "your-collective" # https://opencollective.com/<slug>
+  #   tidelift = "platform/package"       # https://tidelift.com/funding/github/<value>
+  #   polar = "your-username"             # https://polar.sh/<user>
+  #   thanks_dev = "your-username"        # https://thanks.dev/u/gh/<user>
+  #   custom = ["https://example.com/donate"]  # arbitrary URLs
+  #
+  #   # Display toggles
+  #   show_on_projects = true   # show buttons above the projects listing (default true)
+  #   show_as_banner = false    # sticky banner just below the menu on every page
+  #   banner_label = "Support my work"
+
+  # Homepage display toggles. Page-level frontmatter (in content/_index.md)
+  # wins over these site-wide defaults.
+  #
+  # [params.home]
+  #   show_social = true   # show social icons on the homepage (default true)
+  #   show_sponsor = true  # show sponsor buttons under the social icons (default true)
+
   # Social links for home page
   [params.social_links]
     twitter_url = "https://twitter.com/example"

@@ -1,0 +1,20 @@
+{{/*
+  sponsor-banner.html: compact sticky strip rendered just below the menu.
+
+  Reads the optional prefix label from site.Params.sponsors.banner_label
+  (default "Support my work"). Renders the same per-platform buttons as
+  support-buttons.html, but in compact mode, scoped inside a .sponsor-banner
+  wrapper for the strip styling.
+
+  Renders nothing when no sponsor platforms are configured.
+*/}}
+{{- $buttons := partial "support-buttons.html" (dict "compact" true) -}}
+{{- if (trim $buttons " \n\t\r") -}}
+{{- $label := site.Params.sponsors.banner_label | default "Support my work" -}}
+<div class="sponsor-banner">
+  <div class="sponsor-banner-inner">
+    {{- with $label }}<span class="sponsor-banner-label">{{ . }}</span>{{ end }}
+    {{ $buttons | safeHTML }}
+  </div>
+</div>
+{{- end -}}
