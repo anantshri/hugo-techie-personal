@@ -24,22 +24,26 @@
       <div class="archive-list-intro">{{ .Content }}</div>
     {{ end }}
 
-    {{/* Coverage info: newest post date and most recent import. Dates differ
-         when posts are old but the takeout was refreshed recently. On a
-         per-platform page we show one line; on the root /archive/ page we
-         break it down per platform because each takeout is imported on a
-         different day. */}}
+    {{/* Coverage info: oldest and newest post date in scope, plus the most
+         recent import timestamp. The post-date range shows the span of
+         archived content; the import date shows how stale the mirror is.
+         On a per-platform page we show one line; on the root /archive/
+         page we break it down per platform because each takeout is imported
+         on a different day. */}}
     {{ if gt (len $posts) 0 }}
       {{ if $platformParam }}
-        {{ $latestPost := (index $posts 0).Date }}
+        {{ $newestPost := (index $posts 0).Date }}
+        {{ $oldestPost := (index $posts.ByDate 0).Date }}
         {{ $byImport := sort $posts "Params.archived_at" "desc" }}
         {{ $latestImport := "" }}
         {{ with (index $byImport 0).Params.archived_at }}
           {{ $latestImport = time.AsTime . }}
         {{ end }}
         <p class="archive-list-coverage">
-          Content through
-          <time datetime="{{ $latestPost.Format "2006-01-02" }}">{{ $latestPost.Format "02 Jan 2006" }}</time>
+          Posts from
+          <time datetime="{{ $oldestPost.Format "2006-01-02" }}">{{ $oldestPost.Format "02 Jan 2006" }}</time>
+          to
+          <time datetime="{{ $newestPost.Format "2006-01-02" }}">{{ $newestPost.Format "02 Jan 2006" }}</time>
           {{ with $latestImport }}
             · last imported
             <time datetime="{{ .Format "2006-01-02" }}">{{ .Format "02 Jan 2006" }}</time>
@@ -58,7 +62,8 @@
             {{ range $platforms }}
               {{ $platformPosts := where $posts "Params.platform" .key }}
               {{ if gt (len $platformPosts) 0 }}
-                {{ $latestPost := (index $platformPosts 0).Date }}
+                {{ $newestPost := (index $platformPosts 0).Date }}
+                {{ $oldestPost := (index $platformPosts.ByDate 0).Date }}
                 {{ $byImport := sort $platformPosts "Params.archived_at" "desc" }}
                 {{ $latestImport := "" }}
                 {{ with (index $byImport 0).Params.archived_at }}
@@ -66,8 +71,10 @@
                 {{ end }}
                 <li>
                   <span class="archive-list-coverage-platform archive-list-coverage-platform--{{ .key }}">{{ .label }}</span>
-                  &mdash; through
-                  <time datetime="{{ $latestPost.Format "2006-01-02" }}">{{ $latestPost.Format "02 Jan 2006" }}</time>
+                  &mdash;
+                  <time datetime="{{ $oldestPost.Format "2006-01-02" }}">{{ $oldestPost.Format "02 Jan 2006" }}</time>
+                  &ndash;
+                  <time datetime="{{ $newestPost.Format "2006-01-02" }}">{{ $newestPost.Format "02 Jan 2006" }}</time>
                   {{ with $latestImport }}
                     · imported
                     <time datetime="{{ .Format "2006-01-02" }}">{{ .Format "02 Jan 2006" }}</time>
