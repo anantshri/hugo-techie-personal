@@ -879,7 +879,7 @@ uv run --with pyyaml python3 themes/hugo-techie-personal/scripts/import_facebook
 - Instagram and Facebook exports omit public permalinks; optional sidecars (`takeouts/instagram-shortcode-map.json`, `takeouts/facebook-url-map.json`) restore URL mirroring.
 - A smart redirector in `layouts/404.html` flattens `:`, `?`, `&`, `=` → `/` so URLs with LinkedIn URNs or Facebook query-string permalinks still resolve.
 
-**Content section**: create `content/archive/_index.md` (optionally per-platform `content/archive/<platform>/_index.md`) to enable the browse listing at `/archive/`.
+**Content section**: create `content/archive/_index.md` (optionally per-platform `content/archive/<platform>/_index.md`) to enable the browse listing at `/archive/`. The list page header automatically renders a coverage line — *"Content through &lt;newest post date&gt; · last imported &lt;newest archived_at&gt;"* — computed from the `date:` and `archived_at:` frontmatter on each bundle, so visitors can see at a glance how recent the mirror is.
 
 ## Documentation
 

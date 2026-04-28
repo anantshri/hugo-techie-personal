@@ -7,6 +7,13 @@
 {{ $isRoot := eq .Kind "section" | and (eq .Section "archive") | and (not .Parent.IsHome) }}
 {{ $platformParam := .Params.platform | default "" }}
 
+{{/* Collect archive posts up-front so the header can compute coverage info. */}}
+{{ $posts := where site.RegularPages "Section" "archive" }}
+{{ if $platformParam }}
+  {{ $posts = where $posts "Params.platform" $platformParam }}
+{{ end }}
+{{ $posts = $posts.ByDate.Reverse }}
+
 <div class="archive-list">
   <header class="archive-list-header">
     <h1>{{ .Title }}</h1>
@@ -15,6 +22,62 @@
     {{ end }}
     {{ if .Content }}
       <div class="archive-list-intro">{{ .Content }}</div>
+    {{ end }}
+
+    {{/* Coverage info: newest post date and most recent import. Dates differ
+         when posts are old but the takeout was refreshed recently. On a
+         per-platform page we show one line; on the root /archive/ page we
+         break it down per platform because each takeout is imported on a
+         different day. */}}
+    {{ if gt (len $posts) 0 }}
+      {{ if $platformParam }}
+        {{ $latestPost := (index $posts 0).Date }}
+        {{ $byImport := sort $posts "Params.archived_at" "desc" }}
+        {{ $latestImport := "" }}
+        {{ with (index $byImport 0).Params.archived_at }}
+          {{ $latestImport = time.AsTime . }}
+        {{ end }}
+        <p class="archive-list-coverage">
+          Content through
+          <time datetime="{{ $latestPost.Format "2006-01-02" }}">{{ $latestPost.Format "02 Jan 2006" }}</time>
+          {{ with $latestImport }}
+            · last imported
+            <time datetime="{{ .Format "2006-01-02" }}">{{ .Format "02 Jan 2006" }}</time>
+          {{ end }}
+        </p>
+      {{ else }}
+        {{ $platforms := slice
+          (dict "key" "twitter"   "label" "X / Twitter")
+          (dict "key" "linkedin"  "label" "LinkedIn")
+          (dict "key" "instagram" "label" "Instagram")
+          (dict "key" "facebook"  "label" "Facebook")
+        }}
+        <div class="archive-list-coverage archive-list-coverage--per-platform">
+          <p class="archive-list-coverage-heading">Coverage by platform:</p>
+          <ul class="archive-list-coverage-list">
+            {{ range $platforms }}
+              {{ $platformPosts := where $posts "Params.platform" .key }}
+              {{ if gt (len $platformPosts) 0 }}
+                {{ $latestPost := (index $platformPosts 0).Date }}
+                {{ $byImport := sort $platformPosts "Params.archived_at" "desc" }}
+                {{ $latestImport := "" }}
+                {{ with (index $byImport 0).Params.archived_at }}
+                  {{ $latestImport = time.AsTime . }}
+                {{ end }}
+                <li>
+                  <span class="archive-list-coverage-platform archive-list-coverage-platform--{{ .key }}">{{ .label }}</span>
+                  &mdash; through
+                  <time datetime="{{ $latestPost.Format "2006-01-02" }}">{{ $latestPost.Format "02 Jan 2006" }}</time>
+                  {{ with $latestImport }}
+                    · imported
+                    <time datetime="{{ .Format "2006-01-02" }}">{{ .Format "02 Jan 2006" }}</time>
+                  {{ end }}
+                </li>
+              {{ end }}
+            {{ end }}
+          </ul>
+        </div>
+      {{ end }}
     {{ end }}
   </header>
 
@@ -28,13 +91,6 @@
       <a href="{{ "/archive/facebook/" | relURL }}" class="archive-filter archive-filter--facebook">Facebook</a>
     </nav>
   {{ end }}
-
-  {{/* Collect archive posts */}}
-  {{ $posts := where site.RegularPages "Section" "archive" }}
-  {{ if $platformParam }}
-    {{ $posts = where $posts "Params.platform" $platformParam }}
-  {{ end }}
-  {{ $posts = $posts.ByDate.Reverse }}
 
   {{ if eq (len $posts) 0 }}
     <p class="archive-empty">No archived posts yet. Drop a takeout zip into <code>takeouts/</code> and run the importer.</p>

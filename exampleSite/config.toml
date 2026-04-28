@@ -1,6 +1,6 @@
 baseURL = "https://example.com"
 defaultContentLanguage = "en"
-title = "Hugo Techie Personal Demo"
+title = "Demo"
 theme = "hugo-techie-personal"
 disableHugoGeneratorInject = true
 enableRobotsTXT = true

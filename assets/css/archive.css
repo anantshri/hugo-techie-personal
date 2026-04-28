@@ -142,6 +142,65 @@
   margin-bottom: 1.5rem;
 }
 
+.archive-list-coverage {
+  margin: 0.75rem 0 0;
+  font-size: 0.85rem;
+  color: var(--color-text-muted, #666);
+}
+
+.archive-list-coverage time {
+  font-weight: 600;
+}
+
+.archive-list-coverage-heading {
+  margin: 0 0 0.4rem;
+  font-weight: 600;
+}
+
+.archive-list-coverage-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.archive-list-coverage-list li {
+  margin: 0;
+}
+
+.archive-list-coverage-platform {
+  display: inline-block;
+  min-width: 6.5rem;
+  padding: 0.05rem 0.5rem;
+  margin-right: 0.35rem;
+  border-radius: 4px;
+  background: var(--color-bg-muted, #f0f0f0);
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.archive-list-coverage-platform--twitter {
+  background: #1da1f2;
+  color: #fff;
+}
+
+.archive-list-coverage-platform--linkedin {
+  background: #0a66c2;
+  color: #fff;
+}
+
+.archive-list-coverage-platform--instagram {
+  background: linear-gradient(45deg, #f09433, #dc2743, #bc1888);
+  color: #fff;
+}
+
+.archive-list-coverage-platform--facebook {
+  background: #1877f2;
+  color: #fff;
+}
+
 .archive-filter-nav {
   display: flex;
   flex-wrap: wrap;
