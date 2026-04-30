@@ -74,6 +74,7 @@ from _archive_common import (  # noqa: E402
     load_exclude_set,
     parse_utc,
     resolve_short_urls,
+    rewrite_archive_body,
     save_short_url_cache,
     write_bundle,
 )
@@ -521,6 +522,10 @@ def _build_records(
                 )
                 for short, reason in s_stats["failed"]:
                     print(f"    ! could not resolve {short} ({reason})")
+        # Embed standalone X / Twitter / LinkedIn post URLs, autolink any
+        # remaining bare URLs, and strip tracking parameters. See
+        # ``rewrite_archive_body`` in ``_archive_common.py``.
+        body = rewrite_archive_body(body)
         yield ArchiveRecord(
             platform="facebook",
             post_id=post_id,

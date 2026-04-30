@@ -1352,3 +1352,372 @@ def load_exclude_set() -> set[str]:
             else:
                 ids.add(str(v))
     return ids
+
+
+# ----------------------------------------------------------------------------
+# Archive body rewriting
+# ----------------------------------------------------------------------------
+#
+# Three transforms applied to every imported archive post body, in order:
+#
+# 1. **Tracking-param stripping** — remove ``utm_*``, ``trk``, ``fbclid``,
+#    ``gclid``, ``mc_eid``/``mc_cid``, ``igshid``, ``si``, ``ref_src`` and
+#    ``ref_url`` query params from every URL we encounter, including URLs
+#    inside existing markdown links and shortcodes. The platforms append
+#    these for analytics and they make archived bodies noisier without
+#    adding any user value.
+#
+# 2. **Standalone-paragraph embed** — when a paragraph contains nothing but
+#    a single URL pointing at a Twitter/X status or LinkedIn feed update /
+#    Pulse article / posts page, replace the paragraph with a
+#    ``{{< oembed url="..." >}}`` shortcode call so the rendered archive
+#    page shows the post inline (matching how timeline entries embed
+#    referenced posts via the same shortcode).
+#
+# 3. **Bare-URL autolinking** — wrap any URL not already inside a markdown
+#    link, autolink, image or shortcode with ``<URL>`` (CommonMark autolink
+#    syntax). The site has ``markup.goldmark.extensions.linkify = false``
+#    so plain text URLs would otherwise render as un-clickable text. We
+#    explicitly opt-in archive bodies via the autolink syntax instead of
+#    flipping the global linkify setting.
+#
+# Plus, for LinkedIn specifically, an optional 4th transform applied
+# *before* the autolink/embed passes:
+#
+# 0. **Mention substitution** — LinkedIn's CSV export drops @-mention
+#    metadata and only ships tagged-people names as plain text. Their
+#    public embed endpoint, however, still returns the post HTML with
+#    full ``linkedin.com/in/<vanity>`` and ``linkedin.com/company/<slug>``
+#    anchors. The LinkedIn importer scrapes the embed once per post and
+#    feeds a list of ``(name, profile_url)`` tuples into
+#    :func:`rewrite_archive_body`, which rewrites the first plain-text
+#    occurrence of each name to ``[name](profile_url)``.
+#
+# All passes are idempotent. Re-running on already-rewritten markdown is
+# a no-op (modulo new mentions / new tracking params), so importer
+# re-runs converge.
+
+# URL match — greedy, terminated only by whitespace and angle brackets so
+# Wikipedia-style URLs with parens stay intact. Trailing punctuation /
+# unbalanced parens are trimmed by :func:`_trim_url_with_suffix`.
+_BODY_URL_RE = re.compile(r"https?://[^\s<>]+", re.IGNORECASE)
+
+# A URL we should embed via the oembed shortcode when it appears as the
+# sole content of a standalone paragraph. Profile/landing/company pages
+# are intentionally excluded — only "post-style" URLs match.
+_EMBED_POST_URL_RE = re.compile(
+    r"^https?://(?:www\.)?(?:"
+    r"(?:twitter|x)\.com/[^/\s?#]+/status/\d+"
+    r"|(?:[a-z]+\.)?linkedin\.com/feed/update/[^\s]+"
+    r"|(?:[a-z]+\.)?linkedin\.com/posts/[^\s]+"
+    r"|(?:[a-z]+\.)?linkedin\.com/pulse/[^\s]+"
+    r"|(?:[a-z]+\.)?linkedin\.com/embed/feed/update/[^\s]+"
+    r")",
+    re.IGNORECASE,
+)
+
+# Tracking query-param names. Bare ``ref`` and ``s`` are intentionally NOT
+# included — too many legitimate APIs (e.g. github.com ``?ref=branch``)
+# rely on those param names to function. ``utm_*`` is a prefix match.
+_TRACKING_PARAM_NAMES: frozenset[str] = frozenset(
+    {
+        "trk",
+        "fbclid",
+        "gclid",
+        "gclsrc",
+        "mc_eid",
+        "mc_cid",
+        "igshid",
+        "si",
+        "ref_src",
+        "ref_url",
+    }
+)
+
+
+def _is_tracking_param(name: str) -> bool:
+    """Return ``True`` when a query-param name is a known tracker."""
+    n = (name or "").strip().lower()
+    if not n:
+        return False
+    if n.startswith("utm_"):
+        return True
+    return n in _TRACKING_PARAM_NAMES
+
+
+def strip_tracking_params(url: str) -> str:
+    """Return ``url`` with known tracking query params removed.
+
+    Preserves param order and any non-tracking params verbatim. Empty
+    query strings collapse to a URL with no ``?``. Returns the input
+    unchanged when there's nothing to strip (so the function is cheap to
+    call on every URL).
+    """
+    if not url or "?" not in url:
+        return url
+    from urllib.parse import urlsplit, urlunsplit
+
+    try:
+        parts = urlsplit(url)
+    except ValueError:
+        return url
+    query = parts.query
+    if not query:
+        return url
+    # Manual parse to preserve ordering and pass values through verbatim.
+    # ``had_eq`` records whether the original ``key=value`` carried an
+    # explicit ``=`` so a bare key (``?foo``) round-trips as ``?foo``,
+    # not ``?foo=``.
+    kept: list[str] = []
+    changed = False
+    for pair in query.split("&"):
+        if not pair:
+            changed = True
+            continue
+        if "=" in pair:
+            name, _, value = pair.partition("=")
+            had_eq = True
+        else:
+            name, value = pair, ""
+            had_eq = False
+        if _is_tracking_param(name):
+            changed = True
+            continue
+        kept.append(f"{name}={value}" if had_eq else name)
+    if not changed:
+        return url
+    new_query = "&".join(kept)
+    return urlunsplit(
+        (parts.scheme, parts.netloc, parts.path, new_query, parts.fragment)
+    )
+
+
+# Trailing punctuation we strip from URL captures. Closing parens get
+# special treatment via :func:`_trim_url_with_suffix` so that balanced
+# parens inside the URL stay intact.
+_URL_TRAILING_PUNCT = ".,;:!?\"'>"
+
+
+def _trim_url_with_suffix(url: str) -> tuple[str, str]:
+    """Split trailing punctuation from a URL captured by ``_BODY_URL_RE``.
+
+    Greedy matching by ``[^\\s<>]+`` over-captures sentence-ending
+    punctuation (``foo.com/bar.``) and trailing close-parens that the
+    surrounding markdown owns (``[text](https://foo.com)``). Strip both,
+    keeping balanced parens inside the URL intact (Wikipedia URLs).
+
+    Returns ``(trimmed_url, trailing_punct_or_empty)``.
+    """
+    if not url:
+        return "", ""
+    suffix = ""
+    while url and url[-1] in _URL_TRAILING_PUNCT:
+        suffix = url[-1] + suffix
+        url = url[:-1]
+    while url.endswith(")") and url.count("(") < url.count(")"):
+        suffix = ")" + suffix
+        url = url[:-1]
+        while url and url[-1] in _URL_TRAILING_PUNCT:
+            suffix = url[-1] + suffix
+            url = url[:-1]
+    return url, suffix
+
+
+# Off-limit ranges: any byte index inside one of these spans is "owned"
+# by an existing markdown construct and bare-URL autolinking / mention
+# substitution skip it.
+_OFF_LIMIT_RES: tuple[re.Pattern[str], ...] = (
+    # Markdown links and images. ``\(([^)]*)\)`` won't catch URLs
+    # containing parens, but for off-limit detection we just need the
+    # rough span — false positives are fine, false negatives aren't.
+    re.compile(r"!?\[[^\]\n]*\]\([^)\n]*\)"),
+    # Markdown autolinks.
+    re.compile(r"<https?://[^>\s]+>", re.IGNORECASE),
+    # Hugo shortcodes (both ``{{< … >}}`` and ``{{% … %}}`` variants).
+    re.compile(r"\{\{[<%].*?[%>]\}\}", re.DOTALL),
+    # Reference link definitions ``[ref]: URL``.
+    re.compile(r"^\s*\[[^\]\n]+\]:\s*\S+", re.MULTILINE),
+    # Fenced code blocks — preserve verbatim.
+    re.compile(r"```[\s\S]*?```", re.MULTILINE),
+    # Inline code spans.
+    re.compile(r"`[^`\n]+`"),
+)
+
+
+def _off_limit_ranges(body: str) -> list[tuple[int, int]]:
+    """Return sorted, merged ``(start, end)`` byte ranges in ``body``
+    that are owned by existing markdown constructs and must not be
+    rewritten by bare-URL transforms.
+    """
+    if not body:
+        return []
+    ranges: list[tuple[int, int]] = []
+    for rx in _OFF_LIMIT_RES:
+        for m in rx.finditer(body):
+            ranges.append((m.start(), m.end()))
+    if not ranges:
+        return []
+    ranges.sort()
+    merged: list[tuple[int, int]] = [ranges[0]]
+    for s, e in ranges[1:]:
+        last_s, last_e = merged[-1]
+        if s <= last_e:
+            merged[-1] = (last_s, max(last_e, e))
+        else:
+            merged.append((s, e))
+    return merged
+
+
+def _is_off_limits(pos: int, ranges: list[tuple[int, int]]) -> bool:
+    """Return True if ``pos`` falls inside any off-limit span."""
+    for s, e in ranges:
+        if s > pos:
+            return False
+        if s <= pos < e:
+            return True
+    return False
+
+
+def _strip_tracking_params_in_url_match(
+    full: str,
+) -> tuple[str, str]:
+    """Apply :func:`strip_tracking_params` to a URL captured by ``_BODY_URL_RE``.
+
+    Returns ``(stripped_url, trailing_suffix)`` so the caller can stitch
+    surrounding markdown back together.
+    """
+    trimmed, suffix = _trim_url_with_suffix(full)
+    return strip_tracking_params(trimmed), suffix
+
+
+def _substitute_mentions(
+    body: str, mentions: Iterable[tuple[str, str]]
+) -> str:
+    """Rewrite the first plain-text occurrence of each mention name to a
+    markdown link.
+
+    ``mentions`` is iterated as a list of ``(display_name, profile_url)``
+    tuples. Sorted by descending name length so multi-word names match
+    before any single-word substring inside them ("Anant Shrivastava"
+    wins over "Anant"). Names already inside off-limit markdown
+    (existing links, autolinks, shortcodes) are left alone.
+    """
+    pairs = [
+        (str(n), str(u))
+        for n, u in (mentions or ())
+        if str(n).strip() and str(u).strip()
+    ]
+    if not pairs:
+        return body
+    # Longest name first so substring names don't steal from longer
+    # ones. Stable for equal lengths so the importer's input order
+    # tie-breaks deterministically.
+    pairs.sort(key=lambda p: -len(p[0]))
+
+    new_body = body
+    for name, url in pairs:
+        escaped = re.escape(name)
+        # Use a non-word-character boundary on both sides so we don't
+        # match name fragments mid-word ("Akash" inside "Akashic"). The
+        # name itself may end in "." (e.g. "Omair ."), which isn't a word
+        # char — `re.escape("Omair .")` ends in `\\.` and the lookahead
+        # below tolerates that fine.
+        pattern = re.compile(rf"(?<![A-Za-z0-9_]){escaped}(?![A-Za-z0-9_])")
+        off_limit = _off_limit_ranges(new_body)
+        for m in pattern.finditer(new_body):
+            if _is_off_limits(m.start(), off_limit):
+                continue
+            replacement = f"[{name}]({url})"
+            new_body = new_body[: m.start()] + replacement + new_body[m.end():]
+            break
+    return new_body
+
+
+def _embed_standalone_social_urls(body: str) -> str:
+    """Replace standalone-paragraph social-post URLs with oembed shortcodes.
+
+    A "standalone paragraph" here is a non-blank line surrounded by blank
+    lines (or the start/end of body) whose only non-whitespace content
+    is a single URL — optionally already wrapped as a markdown autolink
+    ``<URL>`` (so re-running stays idempotent).
+    """
+    if not body or "http" not in body.lower():
+        return body
+    lines = body.split("\n")
+    n = len(lines)
+    out: list[str] = []
+    i = 0
+    while i < n:
+        line = lines[i]
+        stripped = line.strip()
+        if not stripped:
+            out.append(line)
+            i += 1
+            continue
+        prev_blank = (i == 0) or lines[i - 1].strip() == ""
+        next_blank = (i == n - 1) or lines[i + 1].strip() == ""
+        if not (prev_blank and next_blank):
+            out.append(line)
+            i += 1
+            continue
+        m = re.fullmatch(r"<?\s*(https?://\S+?)\s*>?", stripped)
+        if m is None:
+            out.append(line)
+            i += 1
+            continue
+        url, _suffix = _trim_url_with_suffix(m.group(1))
+        if not url or not _EMBED_POST_URL_RE.match(url):
+            out.append(line)
+            i += 1
+            continue
+        cleaned = strip_tracking_params(url)
+        out.append(f'{{{{< oembed url="{cleaned}" >}}}}')
+        i += 1
+    return "\n".join(out)
+
+
+def _autolink_and_strip_urls(body: str) -> str:
+    """Strip tracking params on every URL; wrap bare URLs as ``<URL>``."""
+    if not body or "http" not in body.lower():
+        return body
+    off_limit = _off_limit_ranges(body)
+
+    def _sub(m: re.Match[str]) -> str:
+        cleaned, suffix = _strip_tracking_params_in_url_match(m.group(0))
+        if not cleaned:
+            return m.group(0)
+        if _is_off_limits(m.start(), off_limit):
+            return cleaned + suffix
+        return f"<{cleaned}>{suffix}"
+
+    return _BODY_URL_RE.sub(_sub, body)
+
+
+def rewrite_archive_body(
+    body: str,
+    *,
+    mentions: Iterable[tuple[str, str]] = (),
+) -> str:
+    """Apply mention / embed / autolink / tracking-strip rewrites to a body.
+
+    Idempotent: repeat invocations on an already-rewritten body return
+    a byte-identical result (modulo new mentions or newly-introduced
+    tracking params). Order matters:
+
+    1. Mention substitution (LinkedIn-only, no-op when ``mentions`` is empty).
+    2. Standalone-paragraph URL embed via the ``oembed`` shortcode.
+    3. Bare URL autolink + tracking-param strip.
+
+    Mentions run first so the substitutions create off-limit ranges that
+    later passes respect. Embeds run before autolinks because the embed
+    pass replaces the entire paragraph (otherwise the autolink pass
+    would wrap the URL as ``<...>`` and the standalone-paragraph
+    detector would have to handle that variant — which it does, but
+    keeping order makes the intent clearer).
+    """
+    if not body:
+        return body
+    body = _substitute_mentions(body, mentions)
+    body = _embed_standalone_social_urls(body)
+    body = _autolink_and_strip_urls(body)
+    return body

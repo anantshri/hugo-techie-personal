@@ -114,8 +114,10 @@ from _archive_common import (  # noqa: E402
     localize_inline_images,
     parse_utc,
     resolve_short_urls,
+    rewrite_archive_body,
     save_short_url_cache,
     slugify,
+    strip_tracking_params,
     write_bundle,
 )
 
@@ -123,9 +125,13 @@ SHARES_CSV = "Shares.csv"
 INSTANT_REPOSTS_CSV = "InstantReposts.csv"
 RESHARE_MAP_FILENAME = "linkedin-reshare-map.json"
 RESHARE_CACHE_FILENAME = ".linkedin-reshare-cache.json"
-# Public embed endpoint that reveals the parent URN of a reshare inside a
-# ``data-test-id="feed-reshare-content"`` wrapper. Works without authentication
-# for posts whose author's profile allows public view (virtually all).
+MENTION_MAP_FILENAME = "linkedin-mention-map.json"
+MENTION_CACHE_FILENAME = ".linkedin-mentions-cache.json"
+# Public embed endpoint that reveals (a) the parent URN of a reshare
+# inside a ``data-test-id="feed-reshare-content"`` wrapper and (b) the
+# fully-anchored ``@-mentions`` of any tagged people / companies in the
+# post body. Works without authentication for posts whose author's
+# profile allows public view (virtually all).
 EMBED_URL_TEMPLATE = (
     "https://www.linkedin.com/embed/feed/update/urn:li:{urn_type}:{urn_id}"
 )
@@ -133,6 +139,32 @@ FEED_RESHARE_RE = re.compile(
     r'data-test-id="feed-reshare-content"[^>]*'
     r'data-activity-urn="urn:li:activity:(\d+)"',
     re.IGNORECASE | re.DOTALL,
+)
+# LinkedIn embed pages render @-mentions as anchors that look like
+# ``<a class="link" href="https://nl.linkedin.com/in/aseemjakhar?trk=public_post_embed-text"
+#  target="_blank" data-tracking-control-name="public_post_embed-text" ...>Aseem Jakhar</a>``
+# for people, and similarly with ``/company/<slug>`` for companies/pages.
+#
+# The reliable mention signal is the combination of (a) host matches
+# ``linkedin.com/(in|company)/<slug>`` AND (b) the attribute
+# ``data-tracking-control-name="public_post_embed-text"`` is present
+# (other anchors on the page — the post author's name, the linked
+# article card, social-share / sign-up CTAs — use distinct
+# ``data-tracking-control-name`` values like ``…-feed-actor-name``,
+# ``…_like-cta`` etc.). We extract every ``<a>`` and post-filter on
+# both signals so attribute ordering changes upstream don't break the
+# extraction.
+ANCHOR_RE = re.compile(
+    r'<a\b(?P<attrs>[^>]*?)>(?P<text>[^<]+?)</a>',
+    re.DOTALL,
+)
+ATTR_RE = re.compile(
+    r'(?P<name>[a-zA-Z_][a-zA-Z0-9_:-]*)\s*=\s*"(?P<value>[^"]*)"',
+    re.DOTALL,
+)
+MENTION_HREF_RE = re.compile(
+    r"^https?://(?:[a-z0-9-]+\.)?linkedin\.com/(?:in|company)/",
+    re.IGNORECASE,
 )
 SCRAPE_USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_0) AppleWebKit/605.1.15 "
@@ -356,19 +388,150 @@ def _save_reshare_cache(cache: dict[str, dict]) -> None:
         print(f"  ! could not save {RESHARE_CACHE_FILENAME}: {exc}")
 
 
-def _scrape_reshare_parent(urn_type: str, urn_id: str) -> str | None | bool:
-    """Fetch the public LinkedIn embed for a post and return its parent URL.
+def _load_mention_map() -> dict[str, list[dict]]:
+    """Read ``takeouts/linkedin-mention-map.json`` if present.
+
+    Two shapes are accepted, mirroring the existing reshare-map layout:
+
+    1. **Per-post override** — keyed by bundle ``platform_id``
+       (``<urn_type_lower>-<urn_id>``). Values are lists of
+       ``{"name": ..., "url": ...}`` dicts. Used to add or override
+       mentions on a specific post::
+
+          {
+            "share-7445150664118231040": [
+              {"name": "Aseem Jakhar", "url": "https://nl.linkedin.com/in/aseemjakhar"}
+            ]
+          }
+
+    2. **Global name → URL** — a flat ``{name: url}`` map keyed by
+       display name. Used as a backstop when the embed scrape returns
+       no anchor for someone tagged in a body. Indicated by every
+       value being a string::
+
+          {
+            "Aseem Jakhar": "https://nl.linkedin.com/in/aseemjakhar",
+            "Akash Mahajan": "https://www.linkedin.com/in/akashm"
+          }
+
+    Returns a per-post dict with the global map injected under the
+    pseudo-key ``"*"`` so ``_enrich_mentions`` can look it up cheaply.
+    """
+    path = TAKEOUTS_ROOT / MENTION_MAP_FILENAME
+    if not path.exists():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f"  ! ignoring malformed {MENTION_MAP_FILENAME}: {exc}")
+        return {}
+    if not isinstance(data, dict):
+        print(
+            f"  ! {MENTION_MAP_FILENAME} should be a JSON object, got "
+            f"{type(data).__name__}; ignoring"
+        )
+        return {}
+
+    out: dict[str, list[dict]] = {}
+    global_pairs: list[dict] = []
+    for key, raw in data.items():
+        if not isinstance(key, str):
+            continue
+        if isinstance(raw, str):
+            # Global name -> url entry.
+            url = raw.strip()
+            if url and key.strip():
+                global_pairs.append({"name": key.strip(), "url": url})
+            continue
+        if isinstance(raw, list):
+            cleaned: list[dict] = []
+            for item in raw:
+                if not isinstance(item, dict):
+                    continue
+                name = str(item.get("name") or "").strip()
+                url = str(item.get("url") or "").strip()
+                if name and url:
+                    cleaned.append({"name": name, "url": url})
+            if cleaned:
+                out[key.strip().lower()] = cleaned
+    if global_pairs:
+        out["*"] = global_pairs
+    return out
+
+
+def _load_mentions_cache() -> dict[str, dict]:
+    """Read ``takeouts/.linkedin-mentions-cache.json`` if present.
+
+    Cache schema mirrors the reshare cache but stores a list of
+    ``{"name", "url"}`` entries plus a fetch timestamp::
+
+        {
+          "share-7445150664118231040": {
+            "mentions": [
+              {"name": "Aseem Jakhar", "url": "https://nl.linkedin.com/in/aseemjakhar"},
+              ...
+            ],
+            "fetched_at": "2026-04-29T12:00:00+00:00"
+          },
+          "share-9999": {"mentions": [], "fetched_at": "..."}
+        }
+
+    Empty ``mentions`` lists are valid: they record posts that have no
+    @-mentions so re-runs don't re-hit the network.
+    """
+    path = TAKEOUTS_ROOT / MENTION_CACHE_FILENAME
+    if not path.exists():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f"  ! ignoring malformed {MENTION_CACHE_FILENAME}: {exc}")
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    return {
+        k: v
+        for k, v in data.items()
+        if isinstance(k, str) and isinstance(v, dict)
+    }
+
+
+def _save_mentions_cache(cache: dict[str, dict]) -> None:
+    path = TAKEOUTS_ROOT / MENTION_CACHE_FILENAME
+    try:
+        TAKEOUTS_ROOT.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            json.dumps(cache, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+    except OSError as exc:
+        print(f"  ! could not save {MENTION_CACHE_FILENAME}: {exc}")
+
+
+# In-memory embed-HTML cache for the current import run. Keyed by
+# ``(urn_type, urn_id)``; values are ``str`` (HTML), ``None`` (loaded but
+# not found / 404), or ``False`` (transient network failure). Reshare
+# detection and mention extraction both consult this cache so each post
+# is fetched at most once per run, even when both enrichment passes are
+# enabled.
+_embed_html_cache: dict[tuple[str, str], str | None | bool] = {}
+
+
+def _scrape_embed_html(urn_type: str, urn_id: str) -> str | None | bool:
+    """Fetch (and per-run-cache) the LinkedIn public embed HTML for a URN.
 
     Returns:
-        * a canonical parent URL (``https://www.linkedin.com/feed/update/...``)
-          when the embed HTML contains a ``feed-reshare-content`` block.
-        * ``None`` when the embed loaded successfully with no reshare block,
-          or when LinkedIn returned 404/410 (post is gone or not publicly
-          viewable). Callers should cache this as "not a recoverable
-          reshare".
-        * ``False`` on transient network errors (timeouts, 5xx, DNS, etc.).
-          The caller should *not* cache these so a subsequent run can retry.
+        * the raw HTML string on a successful fetch.
+        * ``None`` on a definitive "not available" response (HTTP 404/410
+          or empty body). Callers should cache this as "not a recoverable
+          target".
+        * ``False`` on a transient network error (timeouts, 5xx, DNS).
+          Callers should *not* persist this so a future run can retry.
     """
+    key = (urn_type, urn_id)
+    if key in _embed_html_cache:
+        return _embed_html_cache[key]
+
     url = EMBED_URL_TEMPLATE.format(urn_type=urn_type, urn_id=urn_id)
     req = urllib.request.Request(
         url,
@@ -380,18 +543,102 @@ def _scrape_reshare_parent(urn_type: str, urn_id: str) -> str | None | bool:
     try:
         with urllib.request.urlopen(req, timeout=SCRAPE_REQUEST_TIMEOUT_S) as resp:
             if resp.status != 200:
+                _embed_html_cache[key] = False
                 return False
             html = resp.read().decode("utf-8", errors="replace")
     except urllib.error.HTTPError as exc:
         if exc.code in (404, 410):
+            _embed_html_cache[key] = None
             return None
+        _embed_html_cache[key] = False
         return False
     except (urllib.error.URLError, TimeoutError, OSError):
+        _embed_html_cache[key] = False
         return False
+
+    if not html:
+        _embed_html_cache[key] = None
+        return None
+
+    _embed_html_cache[key] = html
+    return html
+
+
+def _parse_reshare_parent_from_html(html: str) -> str | None:
+    """Return the canonical parent feed URL when ``html`` is a reshare embed.
+
+    Returns ``None`` when the embed isn't a reshare (no
+    ``feed-reshare-content`` block).
+    """
     m = FEED_RESHARE_RE.search(html)
     if not m:
         return None
     return f"https://www.linkedin.com/feed/update/urn:li:activity:{m.group(1)}/"
+
+
+def _parse_mentions_from_html(html: str) -> list[dict]:
+    """Return ``[{"name": ..., "url": ...}, ...]`` for every @-mention in
+    the embed.
+
+    Mentions are anchors that (a) link to ``linkedin.com/(in|company)/<slug>``
+    and (b) carry ``data-tracking-control-name="public_post_embed-text"``.
+    The trailing ``?trk=…`` tracking parameter on the href is stripped via
+    :func:`strip_tracking_params`. Duplicate names are de-duplicated
+    (longest URL wins, then first occurrence) so a name tagged twice in
+    the same post yields one mention entry.
+    """
+    if not html:
+        return []
+    seen: dict[str, str] = {}
+    order: list[str] = []
+    for m in ANCHOR_RE.finditer(html):
+        attrs = m.group("attrs") or ""
+        text = (m.group("text") or "").strip()
+        if not text:
+            continue
+        attr_map = {
+            am.group("name").lower(): am.group("value")
+            for am in ATTR_RE.finditer(attrs)
+        }
+        if attr_map.get("data-tracking-control-name") != "public_post_embed-text":
+            continue
+        href = attr_map.get("href") or ""
+        if not MENTION_HREF_RE.match(href):
+            continue
+        cleaned = strip_tracking_params(href)
+        # Drop a trailing slash difference so the cache hits the same key
+        # whether or not LinkedIn appends one to the embed-rendered URL.
+        if cleaned not in seen:
+            seen[cleaned] = text
+            order.append(cleaned)
+    out: list[dict] = []
+    for url in order:
+        out.append({"name": seen[url], "url": url})
+    return out
+
+
+def _scrape_reshare_parent(urn_type: str, urn_id: str) -> str | None | bool:
+    """Backwards-compatible wrapper: fetch the embed, parse reshare parent."""
+    html = _scrape_embed_html(urn_type, urn_id)
+    if html is None or html is False:
+        return html
+    return _parse_reshare_parent_from_html(html)
+
+
+def _scrape_post_mentions(
+    urn_type: str, urn_id: str
+) -> list[dict] | None | bool:
+    """Fetch the embed and return @-mention anchors.
+
+    Mirrors :func:`_scrape_reshare_parent`: returns a (possibly empty)
+    list of ``{"name", "url"}`` dicts on a successful fetch (empty when
+    the post had no mentions), ``None`` on definitive 404/410, or
+    ``False`` on transient network failure.
+    """
+    html = _scrape_embed_html(urn_type, urn_id)
+    if html is None or html is False:
+        return html
+    return _parse_mentions_from_html(html)
 
 
 def _enrich_reshare_parents(
@@ -490,6 +737,145 @@ def _enrich_reshare_parents(
         "reshare enrichment: "
         f"candidates={len(candidates)} cache_hits={cache_hits} "
         f"scraped_reshare={scraped_reshare} scraped_original={scraped_original} "
+        f"scrape_errors={scrape_errors}"
+    )
+
+
+def _enrich_mentions(
+    records: list[ArchiveRecord],
+    *,
+    manual_map: dict[str, list[dict]],
+    scrape: bool,
+    refresh_cache: bool,
+    dry_run: bool,
+) -> None:
+    """Populate ``extra.mentions`` on share records that have a URN.
+
+    Priority for each record:
+      1. Per-post manual override (``manual_map[post_id]``) — wins outright.
+      2. On-disk cache (``takeouts/.linkedin-mentions-cache.json``).
+      3. Fresh HTTP scrape of LinkedIn's public embed endpoint.
+
+    The global name → URL map is layered *on top* of every result as a
+    backstop: every name from the global map whose URL isn't already
+    present is appended. This lets a user maintain a small "known
+    contacts" map that fills in gaps the embed scrape can't (deleted
+    accounts, scrape misses, etc.).
+
+    Pulse articles (``extra.kind == "article"`` / ``"article_draft"``)
+    are skipped — the embed endpoint only exposes feed-share posts.
+    InstantRepost records have no original body of their own. Records
+    with ``extra.kind == "repost"`` are skipped on the same grounds.
+    """
+    candidates: list[ArchiveRecord] = []
+    for rec in records:
+        if rec.post_id.startswith("repost-"):
+            continue
+        kind = rec.extra.get("kind")
+        if kind in {"article", "article_draft", "repost"}:
+            continue
+        urn_type = rec.extra.get("urn_type")
+        urn_id = rec.extra.get("urn_id")
+        if not urn_type or not urn_id:
+            continue
+        candidates.append(rec)
+
+    if not candidates and not manual_map:
+        return
+
+    cache = _load_mentions_cache()
+    cache_hits = 0
+    scraped_with = 0
+    scraped_without = 0
+    scrape_errors = 0
+    dirty = False
+    global_pairs: list[dict] = manual_map.get("*", [])
+
+    def _merge_global(mentions: list[dict]) -> list[dict]:
+        if not global_pairs:
+            return mentions
+        seen_urls = {m["url"] for m in mentions if isinstance(m, dict)}
+        merged = list(mentions)
+        for entry in global_pairs:
+            if entry["url"] not in seen_urls:
+                merged.append(entry)
+                seen_urls.add(entry["url"])
+        return merged
+
+    for idx, rec in enumerate(candidates, start=1):
+        key = rec.post_id.lower()
+        urn_type = rec.extra["urn_type"]
+        urn_id = rec.extra["urn_id"]
+
+        # Manual map wins outright.
+        manual = manual_map.get(key)
+        if manual:
+            rec.extra["mentions"] = _merge_global(list(manual))
+            continue
+
+        if not refresh_cache and key in cache:
+            cached = cache[key]
+            cache_hits += 1
+            mentions = cached.get("mentions") or []
+            if not isinstance(mentions, list):
+                mentions = []
+            cleaned = [
+                {"name": str(m.get("name") or "").strip(),
+                 "url": str(m.get("url") or "").strip()}
+                for m in mentions
+                if isinstance(m, dict)
+            ]
+            cleaned = [m for m in cleaned if m["name"] and m["url"]]
+            merged = _merge_global(cleaned)
+            if merged:
+                rec.extra["mentions"] = merged
+            continue
+
+        if not scrape:
+            # Even without a fresh scrape, surface global mentions.
+            merged = _merge_global([])
+            if merged:
+                rec.extra["mentions"] = merged
+            continue
+
+        scraped = _scrape_post_mentions(urn_type, urn_id)
+        if scraped is False:
+            scrape_errors += 1
+            # Don't cache failures so we retry next run. Still apply
+            # globals so manual entries surface even on a flaky network.
+            merged = _merge_global([])
+            if merged:
+                rec.extra["mentions"] = merged
+            continue
+        # Successful fetch (possibly empty list, or None for 404/410).
+        mentions = list(scraped) if scraped else []
+        cache[key] = {
+            "mentions": mentions,
+            "fetched_at": datetime.now(timezone.utc).isoformat(),
+        }
+        dirty = True
+        if mentions:
+            scraped_with += 1
+        else:
+            scraped_without += 1
+        merged = _merge_global(mentions)
+        if merged:
+            rec.extra["mentions"] = merged
+        if idx % 20 == 0 or idx == len(candidates):
+            print(
+                f"  mention scrape: {idx}/{len(candidates)} "
+                f"(with={scraped_with} without={scraped_without} "
+                f"error={scrape_errors})"
+            )
+        time.sleep(SCRAPE_REQUEST_DELAY_S)
+
+    if dirty and not dry_run:
+        _save_mentions_cache(cache)
+
+    print(
+        "mention enrichment: "
+        f"candidates={len(candidates)} cache_hits={cache_hits} "
+        f"scraped_with={scraped_with} scraped_without={scraped_without} "
         f"scrape_errors={scrape_errors}"
     )
 
@@ -1000,6 +1386,28 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--no-scrape-mentions",
+        action="store_true",
+        default=False,
+        help=(
+            "Skip the public-embed scrape used to recover @-mention "
+            "profile links from share posts. Cached mentions and the "
+            "manual map at takeouts/linkedin-mention-map.json are still "
+            "applied; uncached candidates simply won't have their "
+            "tagged people resolved to clickable links."
+        ),
+    )
+    parser.add_argument(
+        "--refresh-mention-cache",
+        action="store_true",
+        default=False,
+        help=(
+            "Re-fetch every share's @-mentions, ignoring the on-disk "
+            "cache at takeouts/.linkedin-mentions-cache.json. Manual-map "
+            "overrides still win."
+        ),
+    )
+    parser.add_argument(
         "--no-resolve-short-urls",
         dest="resolve_short_urls",
         action="store_false",
@@ -1037,6 +1445,15 @@ def main() -> int:
             print(
                 f"reshare map: {len(reshare_map)} quote-reshare parents loaded "
                 f"from takeouts/{RESHARE_MAP_FILENAME}"
+            )
+        mention_map = _load_mention_map()
+        if mention_map:
+            per_post = sum(1 for k in mention_map if k != "*")
+            global_count = len(mention_map.get("*", []))
+            print(
+                f"mention map: {per_post} per-post override(s), "
+                f"{global_count} global name(s) loaded from "
+                f"takeouts/{MENTION_MAP_FILENAME}"
             )
         records: list[ArchiveRecord] = []
 
@@ -1109,6 +1526,33 @@ def main() -> int:
             refresh_cache=args.refresh_reshare_cache,
             dry_run=args.dry_run,
         )
+
+        _enrich_mentions(
+            records,
+            manual_map=mention_map,
+            scrape=not args.no_scrape_mentions,
+            refresh_cache=args.refresh_mention_cache,
+            dry_run=args.dry_run,
+        )
+
+        # Final body rewrite: mention substitution, standalone-URL embed,
+        # bare-URL autolinking, tracking-param strip. Done after both
+        # enrichment passes so mentions are populated before substitution
+        # runs. The ``mentions`` payload stays on ``extra`` for posterity
+        # (so a re-run sees the same cache key without another scrape) but
+        # ``rewrite_archive_body`` consumes only ``(name, url)`` tuples.
+        for record in records:
+            if not record.body:
+                continue
+            mentions = record.extra.get("mentions") or []
+            mention_pairs = [
+                (str(m.get("name") or ""), str(m.get("url") or ""))
+                for m in mentions
+                if isinstance(m, dict)
+            ]
+            record.body = rewrite_archive_body(
+                record.body, mentions=mention_pairs
+            )
 
         policy: AutoPublishPolicy | None = (
             load_auto_publish_policy() if args.auto_publish else None

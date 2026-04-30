@@ -1,3 +1,60 @@
+{{- /*
+  Render-time link hook.
+
+  Two transforms applied to every Markdown link before emission:
+
+  1. Upgrade ``http://`` -> ``https://``.
+  2. Strip known tracking query params (``utm_*``, ``trk``, ``fbclid``,
+     ``gclid``/``gclsrc``, ``mc_eid``/``mc_cid``, ``igshid``, ``si``,
+     ``ref_src``, ``ref_url``).
+
+  Tracking-param stripping is a defence-in-depth backstop: archive
+  importers already strip these at write time via
+  ``strip_tracking_params`` in ``_archive_common.py``. Hand-edited
+  bundles, content typed by humans, or third-party links can still
+  smuggle a tracker through, so we strip here too. The list mirrors
+  the Python implementation 1:1 — keep them in sync if you change
+  either.
+*/ -}}
 {{- $dest := replace .Destination "http://" "https://" -}}
-<a href="{{ $dest | safeURL }}"{{ with .Title}} title="{{ . }}"{{ end }}{{ if strings.HasPrefix .Destination "http" }} target="_blank" rel="noreferrer noopener nofollow"{{ end }}>{{ .Text | safeHTML }}</a>
+{{- $clean := $dest -}}
+{{- if hasPrefix $dest "http" -}}
+  {{- $u := urls.Parse $dest -}}
+  {{- with $u.RawQuery -}}
+    {{- $trackers := slice "trk" "fbclid" "gclid" "gclsrc" "mc_eid" "mc_cid" "igshid" "si" "ref_src" "ref_url" -}}
+    {{- $kept := slice -}}
+    {{- range (split . "&") -}}
+      {{- $pair := . -}}
+      {{- if $pair -}}
+        {{- $key := index (split $pair "=") 0 -}}
+        {{- $key_lc := lower $key -}}
+        {{- $is_tracker := false -}}
+        {{- if hasPrefix $key_lc "utm_" -}}
+          {{- $is_tracker = true -}}
+        {{- else if in $trackers $key_lc -}}
+          {{- $is_tracker = true -}}
+        {{- end -}}
+        {{- if not $is_tracker -}}
+          {{- $kept = $kept | append $pair -}}
+        {{- end -}}
+      {{- end -}}
+    {{- end -}}
+    {{- $new_query := delimit $kept "&" -}}
+    {{- if ne $new_query . -}}
+      {{- /* Rebuild the URL with the cleaned query string. ``urls.Parse``
+            keeps ``Scheme``, ``Host``, ``Path``, ``Fragment`` intact even
+            when the input is non-standard, so this is safe to call on
+            anything Goldmark hands us. */ -}}
+      {{- $rebuilt := printf "%s://%s%s" $u.Scheme $u.Host $u.Path -}}
+      {{- if $new_query -}}
+        {{- $rebuilt = printf "%s?%s" $rebuilt $new_query -}}
+      {{- end -}}
+      {{- if $u.Fragment -}}
+        {{- $rebuilt = printf "%s#%s" $rebuilt $u.Fragment -}}
+      {{- end -}}
+      {{- $clean = $rebuilt -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+<a href="{{ $clean | safeURL }}"{{ with .Title}} title="{{ . }}"{{ end }}{{ if strings.HasPrefix .Destination "http" }} target="_blank" rel="noreferrer noopener nofollow"{{ end }}>{{ .Text | safeHTML }}</a>
 {{- "" -}}
