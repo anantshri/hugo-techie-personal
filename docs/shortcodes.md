@@ -23,6 +23,28 @@ Embed external content (videos, slides, social posts) via OEmbed protocol.
 
 ---
 
+## video
+
+Embed a self-hosted or CDN-hosted MP4/WebM file with a responsive 16:9 player (same visual treatment as `oembed` boxes).
+
+```hugo
+{{< video
+  src="https://cdn.example.com/talk.mp4"
+  poster="/images/talk-poster.jpg"
+  caption="Optional caption shown below the player"
+>}}
+```
+
+| Parameter | Required | Default | Description |
+|-----------|----------|---------|-------------|
+| `src` | Yes | — | Video file URL |
+| `poster` | No | — | Poster image: absolute URL, or site path under `assets/` (e.g. `/images/foo.jpg` → `assets/images/foo.jpg` via `resources.Get`) |
+| `caption` | No | — | Figcaption below the player |
+| `aspect_ratio` | No | `16/9` | CSS `aspect-ratio` value (e.g. `9/16` for vertical) |
+| `type` | No | `video/mp4` | MIME type for the `<source>` element |
+
+---
+
 ## notice
 
 Styled callout/admonition boxes.

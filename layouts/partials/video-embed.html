@@ -1,0 +1,32 @@
+{{- $src := .src -}}
+{{- if not $src -}}
+  {{- errorf "video-embed: src is required" -}}
+{{- end -}}
+{{- $posterURL := "" -}}
+{{- with .poster -}}
+  {{- if findRE "^https?://" . -}}
+    {{- $posterURL = . -}}
+  {{- else -}}
+    {{- $imgLoc := strings.TrimPrefix "/" (replace . "/uploads" "images") -}}
+    {{- with resources.Get $imgLoc -}}
+      {{- $posterURL = (.Resize "x720 q85").RelPermalink -}}
+    {{- else -}}
+      {{- warnf "video-embed: poster not found in assets (tried %q): %q" $imgLoc . -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+{{- $caption := .caption | default "" -}}
+{{- $aspectRatio := .aspect_ratio | default "16/9" -}}
+{{- $mimeType := .type | default "video/mp4" -}}
+<figure class="video-embed">
+  <div class="oembed-container video-embed__box">
+    <div class="video-embed__frame" style="aspect-ratio: {{ $aspectRatio | safeCSS }};">
+      <video controls preload="metadata" playsinline{{ with $posterURL }} poster="{{ . }}"{{ end }}>
+        <source src="{{ $src }}" type="{{ $mimeType }}" />
+      </video>
+    </div>
+  </div>
+  {{- with $caption -}}
+  <figcaption class="video-embed__caption">{{ . }}</figcaption>
+  {{- end -}}
+</figure>
