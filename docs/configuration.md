@@ -9,10 +9,19 @@ Complete reference for all `config.toml` parameters supported by the theme.
   subtitle = "Your tagline"
   description = "Site-wide description for meta tags"
   footer = "&copy; [Your Name](https://yoursite.com)"
+  hide_theme_attribution = false         # Set true to hide the visible theme attribution
   profile_pic = "images/profile.png"     # Path under assets/
   home_layout = "home-layout-50-50"      # Home page CSS layout class
   Banner = "Banner message with **Markdown** support"  # Site-wide banner (capital B)
 ```
+
+### Footer attribution
+
+The theme always renders the user-defined `footer` string followed by the
+current year, and then appends a `Powered by [Hugo Techie Personal][...]
+theme` link. Set `hide_theme_attribution = true` to suppress the visible
+"Powered by …" portion — the theme still emits an HTML comment with the
+project URL so the source is credited in the page markup.
 
 ## Analytics
 

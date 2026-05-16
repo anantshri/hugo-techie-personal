@@ -20,6 +20,10 @@ enableRobotsTXT = true
   profile_pic = "images/profile.png"  # Replace with your own profile image
   description = "A comprehensive demonstration of the Hugo Techie Personal theme, showcasing timeline-based content organization, project portfolios, gadget reviews, and personal interests. Perfect for tech professionals, security researchers, and developers."
   footer = "&copy; [Hugo Techie Personal Demo](https://example.com)"
+  # The theme automatically appends a "Powered by Hugo Techie Personal theme"
+  # link after the footer text above. Set hide_theme_attribution = true to
+  # hide it in the rendered output (the attribution stays as an HTML comment).
+  # hide_theme_attribution = false
   # social_share_image = "/images/profile.png"  # Add your own social share image
   # featured_image = "/images/profile.png"      # Add your own featured image
   Banner = "<a href='#'>🚀 Explore the Hugo Techie Personal Theme Features! 🌐 📅</a>"

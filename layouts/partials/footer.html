@@ -1,7 +1,15 @@
   <footer>
-  {{ with .Site.Params.footer }}
-  {{ . | markdownify }} {{ now.Format "2006" }}
-  {{ end }}
+  {{- $attribution_md := "Powered by [Hugo Techie Personal](https://github.com/anantshri/hugo-techie-personal) theme" -}}
+  {{- $hide_attribution := .Site.Params.hide_theme_attribution -}}
+  {{ with .Site.Params.footer -}}
+    {{ . | markdownify }} {{ now.Format "2006" }}
+    {{- if not $hide_attribution }} | {{ $attribution_md | markdownify }}{{ end -}}
+  {{ else -}}
+    {{ if not $hide_attribution }}{{ $attribution_md | markdownify }} {{ now.Format "2006" }}{{ end -}}
+  {{- end }}
+  {{ if $hide_attribution -}}
+  {{ "<!-- Powered by Hugo Techie Personal theme: https://github.com/anantshri/hugo-techie-personal -->" | safeHTML }}
+  {{- end }}
   </footer>
   {{/* Custom JS from site config */}}
   {{ range .Site.Params.custom_js }}

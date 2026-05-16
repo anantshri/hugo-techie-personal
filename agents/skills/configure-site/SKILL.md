@@ -22,7 +22,7 @@ Edit `config.toml` and `content/_index.md` to configure the most common site-lev
 | Thing                          | File                 | Key |
 |--------------------------------|----------------------|-----|
 | Site title, baseURL            | `config.toml`        | `title`, `baseURL` |
-| Subtitle, description, footer  | `config.toml`        | `[params] subtitle`, `description`, `footer` |
+| Subtitle, description, footer  | `config.toml`        | `[params] subtitle`, `description`, `footer` (theme auto-appends a "Powered by Hugo Techie Personal theme" link; set `hide_theme_attribution = true` to hide) |
 | Profile pic                    | `config.toml`        | `[params] profile_pic` (relative to `assets/`) |
 | Site-wide banner               | `config.toml`        | `[params] Banner` (capital B!) |
 | Menu entries                   | `config.toml`        | `[[menu.main]]` blocks |
@@ -53,6 +53,9 @@ enableRobotsTXT = true
   subtitle = "Your tagline"
   description = "Site-wide description for meta tags and SEO"
   footer = "&copy; [Your Name](https://yourdomain.com)"
+  # The theme appends "Powered by Hugo Techie Personal theme" after the
+  # footer above. Uncomment to hide it (still emitted as an HTML comment).
+  # hide_theme_attribution = true
   profile_pic = "images/profile.png"
   home_layout = "home-layout-50-50"
   # Banner = "<a href='#'>Optional site-wide banner message</a>"
