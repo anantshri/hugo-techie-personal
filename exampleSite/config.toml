@@ -25,6 +25,11 @@ enableRobotsTXT = true
   Banner = "<a href='#'>🚀 Explore the Hugo Techie Personal Theme Features! 🌐 📅</a>"
   home_layout = "home-layout-50-50"
 
+  # Support / funding buttons (rendered by the support-buttons partial and shortcode).
+  # Set these to YOUR OWN funding URLs; buttons are hidden when unset.
+  github_sponsor_url = "https://github.com/sponsors/anantshri"
+  buymeacoffee_url = "https://www.buymeacoffee.com/anantshri"
+
   # Custom CSS files (paths relative to site root static dir)
   # custom_css = ["/css/custom.css"]
 
