@@ -501,6 +501,19 @@ The theme uses a **hierarchical icon system** that checks multiple locations:
 - **Third**: Shows styled text badges/links if no icons found
 - **Configuration**: `show_activity_icons = false` disables all icons
 
+#### Custom Placeholder Images
+
+Timeline, project, and gadget pages use default SVG placeholder images when no real image is set. Replace them with your own via `[params.placeholders]` in `config.toml` (paths are relative to your site's `assets/` directory):
+
+```toml
+[params.placeholders]
+  timeline = "images/my-timeline-placeholder.svg"
+  project  = "images/my-project-placeholder.svg"
+  gadget   = "images/my-gadget-placeholder.svg"
+```
+
+Omitted keys fall back to the theme's built-in placeholder SVGs.
+
 ## New Features Added (Extracted from hugo_booster)
 
 ### Notice/Admonition System
