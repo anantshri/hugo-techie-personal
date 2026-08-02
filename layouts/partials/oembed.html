@@ -108,7 +108,10 @@
 </div>
 {{ end }}
 
-{{/* Try data-driven approach first */}}
+{{/* Try data-driven approach first (skipped when a YouTube playlist was already
+     rendered above — YouTube's oEmbed endpoint also returns JSON for playlist
+     URLs, which would otherwise produce a duplicate single-video embed). */}}
+{{ if eq $matched 0 }}
 {{ $data := dict }}
 {{- range hugo.Data.oembed }}
   {{- if le 1 ( findRE .pattern $videoUrl.Host | len ) }}
@@ -184,6 +187,7 @@
       {{ end }}
     {{ end }}
   {{ end }}
+{{ end }}
 {{ end }}
 
 {{/* Same-site slides: if URL points to a local slides page, render embed directly

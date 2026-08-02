@@ -21,6 +21,19 @@ Embed external content (videos, slides, social posts) via OEmbed protocol.
 
 **Note:** Always use the full absolute URL (`https://...`) for OEmbed. Relative URLs and `localhost` will not work since Hugo's `resources.GetRemote` cannot fetch from itself during build.
 
+**YouTube playlists:** Playlist URLs (`https://www.youtube.com/playlist?list=...` or a `watch?v=...&list=...` URL without a video) are detected automatically and each video is rendered as its own embed. Two layouts are available:
+
+- `full` (default) — one video per row, stacked vertically
+- `grid` — responsive multi-column grid of smaller embeds
+
+The layout can be set per-shortcode, per-page (frontmatter `playlist_layout`), or site-wide (`params.youtube.default_playlist_layout` in `config.toml`):
+
+```hugo
+{{% oembed url="https://www.youtube.com/playlist?list=PLxxxxxx" layout="grid" %}}
+```
+
+Video enumeration uses the YouTube Data API v3 (`params.youtube.api_key`) when configured, falling back to the YouTube RSS feed (max 15 videos, no API key needed).
+
 ---
 
 ## notice
