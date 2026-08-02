@@ -71,6 +71,20 @@ This theme extends the excellent [Hugo Xmin](https://github.com/yihui/hugo-xmin)
 
 This theme provides comprehensive timeline functionality and additional features:
 
+### Support / Funding Buttons
+
+The theme can display "GitHub Sponsors" and "Buy Me a Coffee" buttons on list and project pages (via the `support-buttons` partial) or anywhere in content via the `{{< support-buttons >}}` shortcode. Configure the URLs in your `config.toml`:
+
+```toml
+[params]
+  # Your own funding URLs. Buttons are hidden when the key is unset,
+  # so nothing is rendered until you configure it.
+  github_sponsor_url = "https://github.com/sponsors/your-username"
+  buymeacoffee_url = "https://www.buymeacoffee.com/your-username"
+```
+
+**Note:** the example site ships with the theme author's demo URLs so the demo shows the buttons — replace them with your own values.
+
 ### Noti.st Integration
 
 The theme supports embedding slides from Noti.st, including custom domain CNAMEs. Configure this in your `config.toml`:
