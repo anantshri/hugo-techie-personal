@@ -14,6 +14,19 @@ Complete reference for all `config.toml` parameters supported by the theme.
   Banner = "Banner message with **Markdown** support"  # Site-wide banner (capital B)
 ```
 
+## Custom Placeholder Images
+
+The theme ships with default SVG placeholder images for timeline entries, projects, and gadgets (e.g. `assets/images/timeline-placeholder.svg`). You can replace them with your own images by setting `[params.placeholders]` in `config.toml`. Each key is a path **relative to your site's `assets/` directory** (e.g. place the file at `assets/images/my-placeholder.svg` and reference it as `images/my-placeholder.svg`):
+
+```toml
+[params.placeholders]
+  timeline = "images/my-timeline-placeholder.svg"
+  project  = "images/my-project-placeholder.svg"
+  gadget   = "images/my-gadget-placeholder.svg"
+```
+
+When a key is omitted, the theme's built-in SVG placeholder is used as the default.
+
 ## Analytics
 
 ```toml
