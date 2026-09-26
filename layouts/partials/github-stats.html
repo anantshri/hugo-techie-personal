@@ -1,0 +1,36 @@
+{{- /*
+  GitHub repository stat badges for pages that declare a `github_url`
+  frontmatter value (used by the projects section).
+
+  Renders nothing when:
+    * the page has no `github_url`, or
+    * the URL does not point at github.com, or
+    * the feature is disabled site-wide:
+
+        [params.github_stats]
+          enable = false
+
+  Badges come from flat.badgen.net (the same source the
+  hackingarchivesofindia tool pages use), so one network round trip per badge is
+  expected on first paint; `loading="lazy"` keeps that off the critical path.
+*/ -}}
+{{- $enable := true -}}
+{{- with site.Params.github_stats -}}
+  {{- if isset . "enable" -}}{{- $enable = .enable -}}{{- end -}}
+{{- end -}}
+{{- $gh := .Params.github_url -}}
+{{- if and $enable $gh -}}
+  {{- $u := urls.Parse $gh -}}
+  {{- /* strip leading/trailing slashes so "…/repo/" and "…/repo" behave the same */ -}}
+  {{- $segments := split (replaceRE "^/+|/+$" "" $u.Path) "/" -}}
+  {{- if and (in $u.Host "github.com") (ge (len $segments) 2) -}}
+    {{- $owner := index $segments 0 -}}
+    {{- $repo := strings.TrimSuffix ".git" (index $segments 1) -}}
+    {{- $repoPath := printf "%s/%s" $owner $repo -}}
+    <div class="project-github-stats">
+      {{- range (slice "license" "release" "tag" "last-commit" "contributors" "commits" "stars") }}
+      <img src="https://flat.badgen.net/github/{{ . }}/{{ $repoPath }}" alt="{{ . }} for {{ $repoPath }}" loading="lazy" />
+      {{- end }}
+    </div>
+  {{- end -}}
+{{- end -}}
