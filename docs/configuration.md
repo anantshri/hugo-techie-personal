@@ -143,6 +143,26 @@ Complete reference for all `config.toml` parameters supported by the theme.
   hackerone_image_dir = "images/HackerOneBadges"
 ```
 
+## GitHub Repository Stats
+
+Project pages show repository badges (license, latest release, tag, last commit,
+contributors, commit count and stars) whenever the page frontmatter declares a
+GitHub URL:
+
+```yaml
+# content/projects/my-project.md
+github_url: "https://github.com/owner/repo"
+```
+
+The badges are served by [flat.badgen.net](https://flat.badgen.net/) and are
+rendered by `layouts/partials/github-stats.html`. Pages without a valid
+`github.com/...` URL render nothing. Disable the feature site-wide with:
+
+```toml
+[params.github_stats]
+  enable = false
+```
+
 ## Output Formats
 
 Required in `config.toml` for slides, OEmbed, and map features:

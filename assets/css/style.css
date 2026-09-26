@@ -703,6 +703,23 @@ body:not([class*="home-layout-"]) {
   flex-wrap: wrap;
 }
 
+/* Project GitHub Stats - badgen badges below the project links */
+.project-github-stats {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin: 0 var(--space-4) var(--space-6);
+  padding: 0;
+}
+
+.project-github-stats img {
+  display: block;
+  height: 20px;
+  width: auto;
+}
+
 /* Images */
 .img_gadget {
   max-width: 100%;

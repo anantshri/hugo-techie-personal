@@ -76,6 +76,9 @@
 </div>
 {{ end }}
 
+{{/* GitHub repository stats (license / release / commits / stars ...) */}}
+{{ partial "github-stats.html" . }}
+
 {{/* Related Timeline Entries Section */}}
 {{ $currentProjectSlug := .File.TranslationBaseName }}
 {{ $relatedTimelineEntries := slice }}
