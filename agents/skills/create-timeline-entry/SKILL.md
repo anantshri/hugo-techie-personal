@@ -56,7 +56,7 @@ date: 2025-06-15
 author: "Your Name"
 activity: talk
 event: "Event Name 2025"
-featured_image: /images/event-2025.jpg         # omit if no image
+featured_image: /images/event-2025.jpg         # omit if assets/images/<slug>.* exists
 redirect_url: https://conference.com/session   # omit if none
 focus:
   - appsec
@@ -177,10 +177,15 @@ Same template; use `activity: article`, `redirect_url` = the published URL.
 
 ## Step 5 — image (optional)
 
-If the user gives you a hero image:
+If the user gives you a hero image, prefer naming it after the entry slug so you can omit `featured_image`:
 
-1. Save to `static/images/<descriptive-name>.jpg` (or `.png`/`.webp`).
-2. Reference as `featured_image: /images/<descriptive-name>.jpg` (absolute path with leading slash).
+1. Save to `assets/images/<timeline-slug>.jpg` (or `.png`/`.webp`/`.jpeg`/`.gif`) — same basename as `content/timeline/<timeline-slug>.md`.
+2. Leave `featured_image` out of the frontmatter. The theme looks up `assets/images/<slug>.*` automatically (webp, then jpg/jpeg, then png, then gif) before falling back to the placeholder SVG.
+
+Use an explicit `featured_image` only when the file basename does **not** match the entry:
+
+1. Save to `assets/images/<descriptive-name>.jpg`.
+2. Set `featured_image: /images/<descriptive-name>.jpg` (absolute path with leading slash).
 
 If no image, omit `featured_image` entirely — the theme renders a placeholder SVG. Do not invent a filename.
 

@@ -1,0 +1,64 @@
+{{/*
+  Resolve the featured image for a timeline entry.
+
+  Context: a Page (the timeline entry).
+
+  Returns a dict:
+    resource      - hugo.Resource, or false if nothing could be resolved
+    isPlaceholder - true when the result is the generic timeline placeholder SVG
+    source        - "featured" | "slug" | "placeholder" | "none"
+
+  Resolution order:
+    1. Non-empty `featured_image` frontmatter (legacy `/uploads/…` rewritten to
+       `images/…`; leading slash stripped so `/images/foo.jpg` maps to assets)
+    2. Top-level `assets/images/<entry-filename>.{webp,jpg,jpeg,png,gif}`
+       matching the markdown basename (e.g. content/timeline/my-talk.md →
+       assets/images/my-talk.webp). SVG is skipped so activity icons in the
+       same folder cannot be picked up as featured images.
+    3. Configurable placeholder (`params.placeholders.timeline`, default
+       `images/timeline-placeholder.svg`)
+*/}}
+{{- $page := . -}}
+{{- $resource := false -}}
+{{- $source := "none" -}}
+
+{{/* 1. Explicit featured_image */}}
+{{- with $page.Params.featured_image -}}
+  {{- $imgLoc := strings.TrimPrefix "/" (replace . "/uploads" "images") -}}
+  {{- with resources.Get $imgLoc -}}
+    {{- $resource = . -}}
+    {{- $source = "featured" -}}
+  {{- end -}}
+{{- end -}}
+
+{{/* 2. Filename match: assets/images/<slug>.<ext> */}}
+{{- if not $resource -}}
+  {{- $slug := "" -}}
+  {{- with $page.File -}}
+    {{- if ne .ContentBaseName "_index" -}}
+      {{- $slug = .ContentBaseName -}}
+    {{- end -}}
+  {{- end -}}
+  {{- if $slug -}}
+    {{- range $ext := slice "webp" "jpg" "jpeg" "png" "gif" -}}
+      {{- if not $resource -}}
+        {{- with resources.Get (printf "images/%s.%s" $slug $ext) -}}
+          {{- $resource = . -}}
+          {{- $source = "slug" -}}
+        {{- end -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+
+{{/* 3. Placeholder SVG */}}
+{{- $isPlaceholder := false -}}
+{{- if not $resource -}}
+  {{- with resources.Get (site.Params.placeholders.timeline | default "images/timeline-placeholder.svg") -}}
+    {{- $resource = . -}}
+    {{- $source = "placeholder" -}}
+    {{- $isPlaceholder = true -}}
+  {{- end -}}
+{{- end -}}
+
+{{- return (dict "resource" $resource "isPlaceholder" $isPlaceholder "source" $source) -}}

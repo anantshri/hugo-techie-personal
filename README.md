@@ -479,6 +479,7 @@ This theme is designed for timeline-based content with support for:
 - Embedded content (YouTube, Vimeo, SlideShare, Noti.st)
 - Responsive timeline layout
 - Configurable activity icons with intelligent fallbacks
+- Featured image from `featured_image`, or automatically from `assets/images/<entry-slug>.*`, then a placeholder SVG
 
 #### Activity Icons Configuration
 

@@ -73,6 +73,16 @@ project URL so the source is credited in the page markup.
   show_activity_icons = true    # Show SVG icons for activity types
 ```
 
+### Featured images
+
+Timeline cards and single-page heroes resolve images in this order:
+
+1. `featured_image` frontmatter, if set and the file exists under `assets/` (`/uploads/…` is rewritten to `images/…`; a leading slash is stripped so `/images/foo.jpg` maps to `assets/images/foo.jpg`)
+2. A top-level file named after the entry: `assets/images/<slug>.{webp,jpg,jpeg,png,gif}` where `<slug>` is the markdown filename without `.md`
+3. The placeholder SVG (`params.placeholders.timeline`, default `images/timeline-placeholder.svg`)
+
+Drop `assets/images/my-talk.jpg` next to `content/timeline/my-talk.md` and omit `featured_image`. SVG files are not matched in step 2 so activity icons in the same folder cannot be used as featured images. List cards still prefer an oembed when `excerpt` contains `https://`.
+
 ## Slides / Presentations
 
 ```toml

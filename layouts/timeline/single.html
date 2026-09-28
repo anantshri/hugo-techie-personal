@@ -3,26 +3,21 @@
 {{ partial "breadcrumbs.html" . }}
 
 {{/* Featured Image Box */}}
-{{ $hasFeaturedImage := and .Params.featured_image (not (isset .Params "hide_featured")) }}
-{{ $shouldShowPlaceholder := and (not (isset .Params "hide_featured")) (not (in .Params.excerpt "https://")) }}
-{{ if or $hasFeaturedImage $shouldShowPlaceholder }}
+{{ $hideFeatured := isset .Params "hide_featured" }}
+{{ $urlExcerpt := in .Params.excerpt "https://" }}
+{{ $feat := partial "timeline-featured-resource.html" . }}
+{{ $hasRealImage := and $feat.resource (not $feat.isPlaceholder) }}
+{{ $shouldShowPlaceholder := and (not $hideFeatured) (not $urlExcerpt) $feat.isPlaceholder }}
+{{ if and (not $hideFeatured) (or $hasRealImage $shouldShowPlaceholder) }}
 <div class="timeline-featured-box">
   <div class="timeline-featured-content">
-    {{ if $hasFeaturedImage }}
-      {{ $img_loc := replace .Params.featured_image "/uploads" "images" }}
-      {{- $image := resources.Get $img_loc -}}
-      {{ if $image }}
-        <img src='{{ ($image.Resize "x400 q100").RelPermalink }}' alt='{{.Title}}' maxwidth='650px' maxheight='360px' loading="lazy" /> 
-      {{ else if $shouldShowPlaceholder }}
-        {{ $placeholder := resources.Get (site.Params.placeholders.timeline | default "images/timeline-placeholder.svg") }}
-        {{ if $placeholder }}
-          <img src="{{ $placeholder.RelPermalink }}" alt="Placeholder for {{ .Title }}" style="opacity: 0.7; max-width: 400px;" />
-        {{ end }}
-      {{ end }}
-    {{ else if $shouldShowPlaceholder }}
-      {{ $placeholder := resources.Get (site.Params.placeholders.timeline | default "images/timeline-placeholder.svg") }}
-      {{ if $placeholder }}
-        <img src="{{ $placeholder.RelPermalink }}" alt="Placeholder for {{ .Title }}" style="opacity: 0.7; max-width: 400px;" />
+    {{ with $feat.resource }}
+      {{ if $feat.isPlaceholder }}
+        <img src="{{ .RelPermalink }}" alt="Placeholder for {{ $.Title }}" style="opacity: 0.7; max-width: 400px;" />
+      {{ else if eq .MediaType.SubType "svg" }}
+        <img src="{{ .RelPermalink }}" alt="{{ $.Title }}" maxwidth="650px" maxheight="360px" loading="lazy" />
+      {{ else }}
+        <img src="{{ (.Resize "x400 q100").RelPermalink }}" alt="{{ $.Title }}" maxwidth="650px" maxheight="360px" loading="lazy" />
       {{ end }}
     {{ end }}
   </div>

@@ -18,7 +18,14 @@
     <meta property="og:url" content="{{ .Permalink }}" />
     <meta property="og:site_name" content="{{ .Site.Title }}" />
     {{ with .Lastmod }}<meta property="article:modified_time" content="{{ .Format "2006-01-02T15:04:05Z07:00" }}" />{{ end }}
-    {{ with .Params.featured_image }}<meta property="og:image" content="{{ . | absURL }}" />{{ end }}
+    {{ if and .IsPage (eq .Section "timeline") }}
+      {{ $feat := partial "timeline-featured-resource.html" . }}
+      {{ if and $feat.resource (not $feat.isPlaceholder) }}
+    <meta property="og:image" content="{{ $feat.resource.Permalink }}" />
+      {{ end }}
+    {{ else }}
+      {{ with .Params.featured_image }}<meta property="og:image" content="{{ . | absURL }}" />{{ end }}
+    {{ end }}
     <meta name="twitter:card" content="summary_large_image">
     {{ if .IsPage }}<meta name="twitter:label1" content="Est. reading time">
     <meta name="twitter:data1" content="{{ .ReadingTime }} minute{{ if ne .ReadingTime 1 }}s{{ end }}">{{ end }}

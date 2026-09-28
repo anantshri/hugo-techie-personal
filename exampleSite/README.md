@@ -98,7 +98,7 @@ The theme includes comprehensive activity icons:
 The theme includes automatic placeholder images for better visual consistency:
 - **Project placeholder** - Generic folder icon for projects without specific images
 - **Gadget placeholder** - Generic device icon for gadgets without specific images
-- **Timeline placeholder** - Generic timeline icon for timeline entries with missing featured images
+- **Timeline placeholder** - Generic timeline icon for timeline entries with no `featured_image` and no `assets/images/<slug>.*` match
 - **Automatic fallback** - Placeholders appear when no matching image is found
 - **Visual consistency** - Maintains layout integrity across all content types
 

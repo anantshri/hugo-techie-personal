@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Timeline slug-matched featured images** — If a timeline entry has no `featured_image` (or the path does not resolve), the theme looks for `assets/images/<entry-filename>.{webp,jpg,jpeg,png,gif}` and uses that before falling back to the placeholder SVG. Drop `assets/images/my-talk.jpg` next to `content/timeline/my-talk.md` and omit the frontmatter field. Wired into list, term, mosaic, single-page hero, and `og:image`.
 - **AI-assistant guide (`AGENTS.md` + `agents/`)** — portable authoring guidance that ships with the theme so non-technical users can drive a full site build by chatting with any AI assistant (Cursor, Claude Code, ChatGPT with browsing, Codex, Aider, Windsurf, …)
   - New `AGENTS.md` at the theme root — router-style, ≤250 lines, zero site-specific references; tells assistants the zero-CLI contract and which skill to pick per task
   - New `agents/skills/` with 11 reusable skills covering the full site lifecycle: `bootstrap-portfolio` (flagship, 3 modes: research-only / full-generate / interactive), `create-timeline-entry`, `create-slide-deck`, `create-project`, `create-gadget`, `create-interest`, `write-bio-page`, `configure-site`, `set-up-badges`, `import-social-archive`, `deploy-site`

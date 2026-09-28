@@ -85,7 +85,8 @@ When in doubt, start with `bootstrap-portfolio` — it delegates to the other sk
 
 ### Images
 
-- Site images live under `static/images/` and are referenced as `/images/foo.jpg`.
+- Timeline featured images live under `assets/images/` so Hugo can resize them. Preferred: name the file after the entry (`assets/images/<slug>.jpg`) and omit `featured_image` — the theme picks it up automatically. Use `featured_image: /images/other-name.jpg` only when the basename does not match.
+- Other site images live under `static/images/` and are referenced as `/images/foo.jpg`.
 - Project images live under `static/images/projects/` and are referenced as `images/projects/foo.png` (no leading slash — it's relative to the static root).
 - If the user doesn't provide an image, omit `featured_image` entirely; the theme renders a placeholder SVG. Don't invent filenames.
 - For profile pics, bio photos, and anything else Hugo needs to resize, put it under `assets/` (e.g. `assets/images/bio/headshot.jpg`).

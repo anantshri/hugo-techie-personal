@@ -1,0 +1,30 @@
+{{/*
+  Media block inside a timeline list/term/mosaic card.
+
+  Context: the timeline entry Page.
+
+  URL excerpts (containing https://) render as an oembed. Otherwise the
+  featured image is resolved via timeline-featured-resource.html (explicit
+  frontmatter, then assets/images/<slug>.*, then the placeholder SVG).
+*/}}
+{{- $page := . -}}
+{{- if in $page.Params.excerpt "https://" -}}
+  {{ partial "oembed.html" (dict "url" $page.Params.excerpt "page" $page) }}
+  {{ with $page.Params.event }}
+    <span>{{ . | markdownify }}</span>
+  {{ end }}
+{{- else -}}
+  {{- $feat := partial "timeline-featured-resource.html" $page -}}
+  {{- with $feat.resource -}}
+    {{- if $feat.isPlaceholder -}}
+      <img src="{{ .RelPermalink }}" alt="Placeholder for {{ $page.Title }}" style="opacity: 0.7; max-width: 250px;" />
+    {{- else if eq .MediaType.SubType "svg" -}}
+      <img src="{{ .RelPermalink }}" alt="{{ $page.Title }}" maxwidth="450px" maxheight="250px" loading="lazy" />
+    {{- else -}}
+      <img src="{{ (.Resize "x250 q85").RelPermalink }}" alt="{{ $page.Title }}" maxwidth="450px" maxheight="250px" loading="lazy" />
+    {{- end -}}
+    <br />
+  {{- end -}}
+  {{ $page.Params.event | markdownify }}
+  {{ $page.Params.excerpt | markdownify }}
+{{- end -}}
