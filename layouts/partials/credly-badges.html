@@ -13,57 +13,61 @@
 {{ $hideExpired := eq ($params.hide_expired | default "false") "true" }}
 {{ $isSmall := eq $size "small" }}
 
-{{ if $username }}
-  {{ $badgeUrl := printf "https://www.credly.com/users/%s/badges.json" $username }}
-  
+  {{ if $username }}
+    {{ $badgeUrl := printf "https://www.credly.com/users/%s/badges.json" $username }}
+
   {{/* Try to fetch from API first, fallback to cached data if API fails */}}
   {{ $badgesData := false }}
   {{ $badges := false }}
-  
+  {{ $usingStaleFallback := false }}
+  {{ $cachedFallback := false }}
+
   {{/* Try cached data first (from previous build) */}}
   {{ $cachedJson := resources.Get "data/CredlyBadges.json" }}
   {{ if $cachedJson }}
     {{ with try ($cachedJson.Content | transform.Unmarshal) }}
       {{ with .Err }}
-        {{ warnf "Error parsing cached Credly badges JSON: %s" . }}
+        {{ warnf "credly-badges: error parsing cached Credly badges JSON from assets/data/CredlyBadges.json: %s" . }}
       {{ else }}
         {{/* Only use cached data if it actually contains badges */}}
         {{ $cachedBadges := .Value.data | default .Value }}
         {{ if and $cachedBadges (gt (len $cachedBadges) 0) }}
           {{ $badgesData = .Value }}
-          {{ warnf "Using cached Credly badges data from assets/data/CredlyBadges.json" }}
+          {{ $cachedFallback = true }}
         {{ else }}
-          {{ warnf "Cached Credly badges file is empty, will fetch fresh data from API" }}
+          {{ warnf "credly-badges: cached Credly badges file assets/data/CredlyBadges.json is empty, will fetch fresh data from API" }}
         {{ end }}
       {{ end }}
     {{ end }}
   {{ end }}
-  
+
   {{/* Try API to get fresh data and update cache */}}
   {{ with try (resources.GetRemote $badgeUrl) }}
     {{ with .Err }}
-      {{ if not $badgesData }}
-        {{ warnf "Error fetching Credly badges from API: %s. No cached data available." . }}
-      {{ else }}
-        {{ warnf "Error fetching Credly badges from API: %s. Using cached data." . }}
+      {{ warnf "credly-badges: FAILED to fetch %s: %s" $badgeUrl . }}
+      {{ if $cachedFallback }}
+        {{ $usingStaleFallback = true }}
       {{ end }}
     {{ else }}
-      {{/* Save API response to cache for next build (copy raw response before unmarshaling) */}}
-      {{ $cachePath := "data/CredlyBadges.json" }}
-      {{ $copiedJson := .Value | resources.Copy $cachePath }}
-      {{ if $copiedJson }}
-        {{ warnf "Cached Credly badges API response to assets/%s" $cachePath }}
-      {{ end }}
-      
+      {{/* Note: resources.Copy only publishes a copy of the response to the
+         output directory; Hugo cannot write into assets/ at build time. The
+         persistent on-disk fallback is data/CredlyBadges.json, refreshed via
+         scripts/refresh-credly-cache.sh. */}}
       {{ with try (.Value | transform.Unmarshal) }}
         {{ with .Err }}
-          {{ if not $badgesData }}
-            {{ warnf "Error parsing Credly badges JSON from API: %s" . }}
+          {{ warnf "credly-badges: error parsing Credly badges JSON from API: %s" . }}
+          {{ if $cachedFallback }}
+            {{ $usingStaleFallback = true }}
           {{ end }}
         {{ else }}
           {{ $badgesData = .Value }}
         {{ end }}
       {{ end }}
+    {{ end }}
+  {{ else }}
+    {{/* GetRemote itself errored outside try (defensive; try normally traps it) */}}
+    {{ if $cachedFallback }}
+      {{ $usingStaleFallback = true }}
     {{ end }}
   {{ end }}
   
@@ -71,11 +75,16 @@
   {{ if not $badgesData }}
     {{ $siteData := hugo.Data.CredlyBadges }}
     {{ if $siteData }}
-      {{ warnf "Using Credly badges data from Site.Data (initial setup)" }}
+      {{ warnf "credly-badges: API unavailable - showing STALE badge data from data/CredlyBadges.json (Site.Data). Refresh it with: ./themes/hugo-techie-personal/scripts/refresh-credly-cache.sh" }}
       {{ $badgesData = $siteData }}
+      {{ $usingStaleFallback = true }}
     {{ else }}
-      {{ warnf "No Credly badges data available. API request failed and no cache found." }}
+      {{ warnf "credly-badges: No Credly badges data available. API request failed and no cache found." }}
     {{ end }}
+  {{ end }}
+
+  {{ if $usingStaleFallback }}
+    {{ warnf "credly-badges: >>> DEPLOYED BADGES MAY BE OUTDATED (stale fallback in use for user %q) <<<" $username }}
   {{ end }}
   
   {{ if $badgesData }}

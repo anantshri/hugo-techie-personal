@@ -37,25 +37,36 @@
     {{ end }}
     
     {{/* Try API */}}
+    {{ $credlyApiFailed := false }}
     {{ with try (resources.GetRemote $badgeUrl) }}
       {{ if not .Err }}
-        {{ $cachePath := "data/CredlyBadges.json" }}
         {{ $remoteResource := .Value }}
-        {{ with resources.FromString $cachePath $remoteResource.Content }}
-          {{ $copiedResource := . | resources.Copy $cachePath }}
-          {{/* Resource cached - using with block prevents output */}}
-        {{ end }}
         {{ with try ($remoteResource.Content | transform.Unmarshal) }}
           {{ if not .Err }}
             {{ $badgesData = .Value }}
+          {{ else }}
+            {{ warnf "badges: error parsing Credly badges JSON from API: %s" .Err }}
+            {{ $credlyApiFailed = true }}
           {{ end }}
         {{ end }}
+      {{ else }}
+        {{ warnf "badges: FAILED to fetch Credly badges from %s: %s" $badgeUrl .Err }}
+        {{ $credlyApiFailed = true }}
       {{ end }}
     {{ end }}
-    
+
     {{/* Fallback to Site.Data */}}
     {{ if not $badgesData }}
       {{ $badgesData = hugo.Data.CredlyBadges }}
+      {{ if $badgesData }}
+        {{ if $credlyApiFailed }}
+          {{ warnf "badges: Credly API unavailable - showing STALE badge data from data/CredlyBadges.json. Refresh it with: ./themes/hugo-techie-personal/scripts/refresh-credly-cache.sh" }}
+        {{ else }}
+          {{ warnf "badges: using Credly badges from data/CredlyBadges.json (API fetch skipped or returned nothing)" }}
+        {{ end }}
+      {{ else }}
+        {{ warnf "badges: no Credly badges data available (API fetch failed and data/CredlyBadges.json missing)" }}
+      {{ end }}
     {{ end }}
     
     {{ if $badgesData }}
@@ -125,29 +136,40 @@
     {{ end }}
     
     {{/* Try API */}}
+    {{ $accredibleApiFailed := false }}
     {{ $timestamp := now.Unix | string }}
     {{ $message := printf "GET %s HTTP/1.1 %s" $apiPath $timestamp }}
     {{ $signature := hmac "sha256" $secretKey $message }}
     {{ $headers := dict "accept" "application/json, text/plain, */*" "x-signature" $signature "x-timestamp" $timestamp }}
     {{ with try (resources.GetRemote $apiUrl (dict "headers" $headers)) }}
       {{ if not .Err }}
-        {{ $cachePath := "data/AccredibleBadges.json" }}
         {{ $remoteResource := .Value }}
-        {{ with resources.FromString $cachePath $remoteResource.Content }}
-          {{ $copiedResource := . | resources.Copy $cachePath }}
-          {{/* Resource cached - using with block prevents output */}}
-        {{ end }}
         {{ with try ($remoteResource.Content | transform.Unmarshal) }}
           {{ if not .Err }}
             {{ $badgesData = .Value }}
+          {{ else }}
+            {{ warnf "badges: error parsing Accredible badges JSON from API: %s" .Err }}
+            {{ $accredibleApiFailed = true }}
           {{ end }}
         {{ end }}
+      {{ else }}
+        {{ warnf "badges: FAILED to fetch Accredible badges from API: %s" .Err }}
+        {{ $accredibleApiFailed = true }}
       {{ end }}
     {{ end }}
-    
+
     {{/* Fallback to Site.Data */}}
     {{ if not $badgesData }}
       {{ $badgesData = hugo.Data.AccredibleBadges }}
+      {{ if $badgesData }}
+        {{ if $accredibleApiFailed }}
+          {{ warnf "badges: Accredible API unavailable - showing STALE badge data from data/AccredibleBadges.json" }}
+        {{ else }}
+          {{ warnf "badges: using Accredible badges from data/AccredibleBadges.json (API fetch skipped or returned nothing)" }}
+        {{ end }}
+      {{ else }}
+        {{ warnf "badges: no Accredible badges data available (API fetch failed and data/AccredibleBadges.json missing)" }}
+      {{ end }}
     {{ end }}
     
     {{ if $badgesData }}
